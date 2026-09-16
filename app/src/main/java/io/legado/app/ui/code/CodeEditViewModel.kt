@@ -20,7 +20,6 @@ import io.legado.app.help.CacheManager
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.BackstageWebView
 import io.legado.app.help.webView.WebJsExtensions.Companion.nameCache
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.toastOnUi
 import org.eclipse.tm4e.core.registry.IThemeSource
 import org.jsoup.Jsoup
@@ -102,7 +101,6 @@ class CodeEditViewModel(application: Application, private val savedState: SavedS
             success.invoke()
         }.onError {
             context.toastOnUi("error\n${it.localizedMessage}")
-            it.printOnDebug()
         }
     }
 

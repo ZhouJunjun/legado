@@ -20,7 +20,6 @@ import io.legado.app.model.jsSource.JsSourceEngine
 import io.legado.app.model.jsSource.JsSourceUpsert
 import io.legado.app.utils.GSON
 import io.legado.app.utils.NetworkUtils
-import io.legado.app.utils.printOnDebug
 import io.modelcontextprotocol.kotlin.sdk.server.ClientConnection
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.ServerOptions
@@ -110,7 +109,6 @@ object McpToolServer {
         val fileNames = try {
             appCtx.assets.list(assetDir).orEmpty().toList()
         } catch (error: IOException) {
-            error.printOnDebug()
             emptyList()
         }
         fileNames

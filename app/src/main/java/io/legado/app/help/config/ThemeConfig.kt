@@ -29,7 +29,6 @@ import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.hexString
 import io.legado.app.utils.postEvent
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.putPrefInt
 import io.legado.app.utils.putPrefString
 import io.legado.app.utils.stackBlur
@@ -223,7 +222,6 @@ object ThemeConfig {
                 val json = configFile.readText()
                 return GSON.fromJsonArray<Config>(json).getOrThrow()
             }.onFailure {
-                it.printOnDebug()
             }
         }
         return null

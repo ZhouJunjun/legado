@@ -51,7 +51,6 @@ import io.legado.app.utils.broadcastPendingIntent
 import io.legado.app.utils.defaultSharedPreferences
 import io.legado.app.utils.isJsonArray
 import io.legado.app.utils.postEvent
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.servicePendingIntent
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.Main
@@ -389,7 +388,6 @@ class AudioPlayService : BaseService(),
             postEvent(EventBus.AUDIO_STATE, Status.PAUSE)
             upAudioPlayNotification()
         } catch (e: Exception) {
-            e.printOnDebug()
         }
     }
 
@@ -436,7 +434,6 @@ class AudioPlayService : BaseService(),
             }
             if (resumed && startProgress) upPlayProgress()
         } catch (e: Exception) {
-            e.printOnDebug()
             stopSelf()
         }
     }

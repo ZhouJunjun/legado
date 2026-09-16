@@ -51,7 +51,6 @@ class BookSourceDebugWebSocket(handshakeRequest: NanoHTTPD.IHTTPSession) :
             }.onFailure {
                 cancelOwnedDebug()
                 if (it is CancellationException) throw it
-                it.printOnDebug()
                 runCatching {
                     close(
                         NanoWSD.WebSocketFrame.CloseCode.InternalServerError,
@@ -123,7 +122,6 @@ class BookSourceDebugWebSocket(handshakeRequest: NanoHTTPD.IHTTPSession) :
             }.onFailure {
                 if (it is CancellationException) throw it
                 cancelOwnedDebug()
-                it.printOnDebug()
                 runCatching {
                     close(
                         NanoWSD.WebSocketFrame.CloseCode.InternalServerError,
@@ -157,7 +155,6 @@ class BookSourceDebugWebSocket(handshakeRequest: NanoHTTPD.IHTTPSession) :
             }.onFailure {
                 cancelOwnedDebug()
                 if (it is CancellationException) throw it
-                it.printOnDebug()
                 runCatching {
                     close(
                         NanoWSD.WebSocketFrame.CloseCode.InternalServerError,

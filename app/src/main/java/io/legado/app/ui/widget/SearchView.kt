@@ -16,7 +16,6 @@ import android.view.Gravity
 import android.widget.TextView
 import androidx.appcompat.widget.SearchView
 import io.legado.app.R
-import io.legado.app.utils.printOnDebug
 
 
 class SearchView @JvmOverloads constructor(
@@ -48,7 +47,6 @@ class SearchView @JvmOverloads constructor(
             }
             updateQueryHint()
         } catch (e: Exception) {
-            e.printOnDebug()
         }
     }
 

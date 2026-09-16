@@ -19,7 +19,6 @@ import io.legado.app.receiver.NetworkChangedListener
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.applyPromotedProgress
 import io.legado.app.utils.postEvent
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.servicePendingIntent
@@ -194,7 +193,6 @@ class McpService : BaseService() {
             activeAddressKeys = addresses.mapNotNull { it.hostAddress }.sorted()
             updateAddresses(addresses, port)
         } catch (error: Exception) {
-            error.printOnDebug()
             stopWithError(error.localizedMessage ?: getString(R.string.mcp_service_start_failed))
         }
     }

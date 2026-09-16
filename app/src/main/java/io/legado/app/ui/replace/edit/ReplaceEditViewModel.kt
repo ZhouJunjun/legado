@@ -49,7 +49,6 @@ class ReplaceEditViewModel(application: Application) : BaseViewModel(application
             success.invoke(it)
         }.onError {
             context.toastOnUi(it.localizedMessage ?: "Error")
-            it.printOnDebug()
         }
     }
 

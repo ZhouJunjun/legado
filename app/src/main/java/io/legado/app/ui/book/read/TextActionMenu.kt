@@ -27,7 +27,6 @@ import io.legado.app.databinding.PopupActionMenuBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.gone
 import io.legado.app.utils.isAbsUrl
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.share
 import io.legado.app.utils.toastOnUi
@@ -212,7 +211,6 @@ class TextActionMenu(private val context: Context, private val callBack: CallBac
                     }
                     context.startActivity(intent)
                 }.onFailure {
-                    it.printOnDebug()
                     context.toastOnUi(it.localizedMessage ?: "ERROR")
                 }
             }

@@ -3,7 +3,6 @@ package io.legado.app.model.analyzeRule
 import androidx.annotation.Keep
 import com.jayway.jsonpath.JsonPath
 import com.jayway.jsonpath.ReadContext
-import io.legado.app.utils.printOnDebug
 
 
 @Suppress("RegExpRedundantEscape")
@@ -52,7 +51,7 @@ class AnalyzeByJSonPath(
                         ob.toString()
                     }
                 } catch (e: Exception) {
-                    onError?.invoke(e) ?: e.printOnDebug()
+                    onError?.invoke(e)
                 }
             }
             return result
@@ -89,7 +88,7 @@ class AnalyzeByJSonPath(
                         result.add(obj.toString())
                     }
                 } catch (e: Exception) {
-                    onError?.invoke(e) ?: e.printOnDebug()
+                    onError?.invoke(e)
                 }
             } else {
                 result.add(st)
@@ -139,7 +138,7 @@ class AnalyzeByJSonPath(
                 try {
                     return ArrayList(it.read<List<Any>>(rules[0]))
                 } catch (e: Exception) {
-                    onError?.invoke(e) ?: e.printOnDebug()
+                    onError?.invoke(e)
                 }
             }
         } else {

@@ -101,7 +101,7 @@ class App : Application() {
             LiveEventBus.config()
                 .lifecycleObserverAlwaysActive(true)
                 .autoClear(false)
-                .enableLogger(BuildConfig.DEBUG || AppConfig.recordLog)
+                .enableLogger(AppConfig.recordLog)
                 .setLogger(EventLogger())
             DefaultData.upVersion()
             AppFreezeMonitor.init(this@App)
@@ -266,14 +266,6 @@ class App : Application() {
 
         companion object {
             private const val TAG = "[LiveEventBus]"
-        }
-    }
-
-    companion object {
-        init {
-            if (BuildConfig.DEBUG) {
-                System.setProperty("kotlinx.coroutines.debug", "on")
-            }
         }
     }
 

@@ -16,7 +16,6 @@ import io.legado.app.utils.BitmapUtils
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.SystemUtils
 import io.legado.app.utils.isContentScheme
-import io.legado.app.utils.printOnDebug
 import splitties.init.appCtx
 import java.io.File
 import java.io.FileOutputStream
@@ -147,7 +146,6 @@ class PdfFile(var book: Book) : AutoCloseable {
                 descriptor?.close()
             }
         }.onFailure {
-            it.printOnDebug()
         }
     }
 
@@ -249,7 +247,6 @@ class PdfFile(var book: Book) : AutoCloseable {
             }
         } catch (e: Exception) {
             AppLog.put("加载书籍封面失败\n${e.localizedMessage}", e)
-            e.printOnDebug()
         }
     }
 

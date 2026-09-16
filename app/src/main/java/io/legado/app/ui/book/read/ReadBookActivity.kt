@@ -577,10 +577,6 @@ class ReadBookActivity : BaseReadBookActivity(),
                     }
                     R.id.menu_manual_replace_rule -> item.isVisible = AppConfig.manualReplaceRule
                     R.id.menu_re_segment -> item.isChecked = book.getReSegment()
-//                    R.id.menu_enable_review -> {
-//                        item.isVisible = BuildConfig.DEBUG
-//                        item.isChecked = AppConfig.enableReview
-//                    }
 
                     R.id.menu_reimport_source -> item.isVisible = onLine
                     R.id.menu_reverse_content -> {

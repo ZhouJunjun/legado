@@ -48,7 +48,6 @@ class FontAdapter(context: Context, private val curFilePath: String, val callBac
                     Typeface.createFromFile(doc.uri.path!!)
                 }
             }.onFailure {
-                it.printOnDebug()
                 AppLog.put("读取字体 ${doc.name} 出错\n${it.localizedMessage}", it, true)
             }.getOrNull() ?: Typeface.DEFAULT
             tvFont.text = context.getString(

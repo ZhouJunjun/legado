@@ -164,7 +164,6 @@ object NetworkUtils {
         try {
             absoluteUrl = URL(baseURL.substringBefore(","))
         } catch (e: Exception) {
-            e.printOnDebug()
         }
         return getAbsoluteURL(absoluteUrl, relativePath)
     }
@@ -251,7 +250,6 @@ object NetworkUtils {
         try {
             enumeration = NetworkInterface.getNetworkInterfaces()
         } catch (e: SocketException) {
-            e.printOnDebug()
             return emptyList()
         }
 

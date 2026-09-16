@@ -92,7 +92,6 @@ object StringUtils {
                 }
             }
         }.onFailure {
-            it.printOnDebug()
         }
         return ""
     }

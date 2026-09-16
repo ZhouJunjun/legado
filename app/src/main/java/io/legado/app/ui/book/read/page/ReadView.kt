@@ -7,14 +7,12 @@ import android.graphics.Canvas
 import android.graphics.RectF
 import android.os.Build
 import android.util.AttributeSet
-import android.util.Log
 import android.view.MotionEvent
 import android.view.ViewConfiguration
 import android.view.WindowInsets
 import android.widget.FrameLayout
 import android.widget.Magnifier
 import androidx.annotation.RequiresApi
-import io.legado.app.BuildConfig
 import io.legado.app.R
 import io.legado.app.constant.PageAnim
 import io.legado.app.data.entities.BookProgress
@@ -961,9 +959,6 @@ class ReadView(context: Context, attrs: AttributeSet) :
      * @param resetPageOffset 滚动阅读是是否重置位置
      */
     override fun upContent(relativePosition: Int, resetPageOffset: Boolean) {
-        if (BuildConfig.DEBUG && relativePosition == 0) Log.d("ReadPosition",
-            "bind scroll=$isScroll reset=$resetPageOffset position=${ReadBook.durChapterPos} " +
-                "chapter=${System.identityHashCode(ReadBook.curTextChapter)}")
         post {
             curPage.setContentDescription(pageFactory.curPage.text)
         }
@@ -1105,10 +1100,6 @@ class ReadView(context: Context, attrs: AttributeSet) :
         if (ReadBook.msg != null || !ReadBook.isLayoutAvailable) return
         // A replacement chapter can finish before its final UI bind runs.
         if (curPage.textPage.textChapter !== ReadBook.curTextChapter) return
-        if (BuildConfig.DEBUG) Log.d("ReadPosition",
-            "capture scroll=$isScroll preserve=$preserveText position=${ReadBook.durChapterPos} " +
-                "visible=${getReadPosition()?.second?.chapterPosition} " +
-                "chapter=${System.identityHashCode(ReadBook.curTextChapter)}")
         if (isScroll || (preserveText && ReadBook.isScroll)) {
             val (chapterIndex, line) = getReadPosition() ?: return
             if (chapterIndex != ReadBook.durChapterIndex) return

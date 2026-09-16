@@ -17,7 +17,6 @@ fun WebSettings.setDarkeningAllowed(allow: Boolean) {
             WebSettingsCompat.setAlgorithmicDarkeningAllowed(this, allow)
             return
         }.onFailure {
-            it.printOnDebug()
         }
     }
     if (allow) {

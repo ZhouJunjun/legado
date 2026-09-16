@@ -86,7 +86,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
                 onLineImportLive.postValue(uri)
             }
         }.onError {
-            it.printOnDebug()
             val msg = "无法打开文件\n${it.localizedMessage}"
             errorLive.postValue(msg)
             AppLog.put(msg, it)
@@ -180,7 +179,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
                 return
             }
         }.onFailure {
-            it.printOnDebug()
             AppLog.put("尝试导入为JSON文件失败\n${it.localizedMessage}", it)
         }
         if (fileDoc.name.matches(jsFileRegex)) {
@@ -325,7 +323,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
     }
 
     private fun reportSharedImportError(error: Throwable) {
-        error.printOnDebug()
         errorLive.postValue(error.localizedMessage ?: context.getString(R.string.wrong_format))
         AppLog.put("尝试导入分享内容失败\n${error.localizedMessage}", error)
     }

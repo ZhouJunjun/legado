@@ -16,7 +16,6 @@ import io.legado.app.help.source.removeSortCache
 import io.legado.app.model.SharedJsScope
 import io.legado.app.ui.association.parseSingleRssSourceJson
 import io.legado.app.utils.getClipText
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers
@@ -73,7 +72,6 @@ class RssSourceEditViewModel(application: Application) : BaseViewModel(applicati
             success(it)
         }.onError {
             context.toastOnUi(it.localizedMessage)
-            it.printOnDebug()
         }
     }
 

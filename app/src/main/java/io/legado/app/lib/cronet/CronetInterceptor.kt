@@ -6,7 +6,6 @@ import androidx.annotation.Keep
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.CookieManager
 import io.legado.app.help.http.CookieManager.cookieJarHeader
-import io.legado.app.utils.printOnDebug
 import okhttp3.Call
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
@@ -58,11 +57,6 @@ class CronetInterceptor(private val cookieJar: CookieJar) : Interceptor {
         } catch (e: Throwable) {
             if (e is java.util.concurrent.CancellationException) throw e
             cronetException = e
-            if (!e.message.toString().contains("ERR_CERT_", true)
-                && !e.message.toString().contains("ERR_SSL_", true)
-            ) {
-                e.printOnDebug()
-            }
             throw CronetUnavailableException("Cronet request failed", cronetException)
         }
     }

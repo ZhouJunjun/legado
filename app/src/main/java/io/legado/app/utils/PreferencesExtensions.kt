@@ -48,11 +48,8 @@ fun Context.getSharedPreferences(
             }
         }
     } catch (e: NoSuchFieldException) {
-        e.printOnDebug()
     } catch (e: IllegalArgumentException) {
-        e.printOnDebug()
     } catch (e: IllegalAccessException) {
-        e.printOnDebug()
     }
     return null
 }

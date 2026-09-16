@@ -10,7 +10,6 @@ import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory
 import com.bumptech.glide.load.engine.cache.MemorySizeCalculator
 import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
-import io.legado.app.BuildConfig
 import io.legado.app.help.config.AppConfig
 import java.io.File
 import java.io.InputStream
@@ -46,7 +45,7 @@ class LegadoGlideModule : AppGlideModule() {
         builder.setBitmapPool(bitmapPool)
         builder.setImageDecoderEnabledForBitmaps(true)
         builder.setDiskCache(InternalCacheDiskCacheFactory(context, 1024 * 1024 * 1000))
-        if (!BuildConfig.DEBUG && !AppConfig.recordLog) {
+        if (!AppConfig.recordLog) {
             builder.setLogLevel(Log.ERROR)
         }
     }

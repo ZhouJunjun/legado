@@ -26,7 +26,6 @@ import io.legado.app.model.ReadManga
 import io.legado.app.model.SourceCallBack
 import io.legado.app.model.VideoPlay
 import io.legado.app.model.webBook.WebBook
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers.Main
@@ -169,7 +168,6 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
                 }
             }.onError {
                 if (!paginationState.fail(request)) return@onError
-                it.printOnDebug()
                 errorTopLiveData.value = it.stackTraceStr
             }
     }
@@ -216,7 +214,6 @@ class ExploreShowViewModel(application: Application) : BaseViewModel(application
                 }
             }.onError {
                 if (!paginationState.fail(request)) return@onError
-                it.printOnDebug()
                 errorLiveData.value = it.stackTraceStr
             }
     }

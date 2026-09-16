@@ -40,7 +40,6 @@ import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.servicePendingIntent
 import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.CancellationException
@@ -556,7 +555,6 @@ class HttpReadAloudService : BaseReadAloudService(),
                     is CancellationException -> throw e
                     is ScriptException, is WrappedException -> {
                         AppLog.put("js错误\n${e.localizedMessage}", e, true)
-                        e.printOnDebug()
                         throw e
                     }
 
@@ -573,7 +571,6 @@ class HttpReadAloudService : BaseReadAloudService(),
                         downloadErrorNo++
                         val msg = "tts下载错误\n${e.localizedMessage}"
                         AppLog.put(msg, e)
-                        e.printOnDebug()
                         if (downloadErrorNo > 5) {
                             val msg1 = "TTS服务器连续5次错误，已暂停阅读。"
                             AppLog.put(msg1, e, true)

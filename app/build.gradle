@@ -68,7 +68,8 @@ android {
         targetSdk 36
         versionCode = versionCodeValue
         versionName version
-        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Base app name; release overrides it per channel below.
+        manifestPlaceholders.put("app_name", "@string/app_name")
         // Keep app translations while dropping unused transitive dependency locales.
         resourceConfigurations += [
                 'en',
@@ -121,17 +122,6 @@ android {
 
             minifyEnabled true
             shrinkResources = true
-            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'cronet-proguard-rules.pro'
-        }
-        debug {
-            if (project.hasProperty("RELEASE_STORE_FILE")) {
-                signingConfig = signingConfigs.myConfig
-            }
-            manifestPlaceholders.put("app_name", "@string/app_name")
-
-            applicationIdSuffix '.debug'
-            versionNameSuffix 'debug'
-            minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro', 'cronet-proguard-rules.pro'
         }
     }
@@ -189,10 +179,6 @@ android {
         }
     }
 
-    sourceSets {
-        // Adds exported schema location as test app assets.
-        androidTest.assets.srcDirs += files("$projectDir/schemas".toString())
-    }
     lint {
         checkDependencies = true
     }
@@ -211,8 +197,6 @@ dependencies {
     //noinspection GradleDependency,GradlePackageUpdate
     //coreLibraryDesugaring('com.android.tools:desugar_jdk_libs_nio:2.0.4')
     coreLibraryDesugaring(libs.desugar)
-    testImplementation(libs.junit)
-    androidTestImplementation(libs.bundles.androidTest)
     //kotlin
     //noinspection GradleDependency,DifferentStdlibGradleVersion
     implementation(libs.kotlin.stdlib)
@@ -280,7 +264,6 @@ dependencies {
     implementation(libs.room.ktx)
     //kapt("androidx.room:room-compiler:$room_version")
     ksp(libs.room.compiler)
-    androidTestImplementation(libs.room.testing)
 
     //liveEventBus
     implementation(libs.liveeventbus)
@@ -322,9 +305,6 @@ dependencies {
         exclude group: 'org.jetbrains.kotlin', module: 'kotlin-reflect'
     }
     implementation(libs.ktor.server.cio) {
-        exclude group: 'org.jetbrains.kotlin', module: 'kotlin-reflect'
-    }
-    testImplementation(libs.ktor.server.test.host) {
         exclude group: 'org.jetbrains.kotlin', module: 'kotlin-reflect'
     }
 

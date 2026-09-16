@@ -1,9 +1,0 @@
-gradle.beforeProject { project ->
-    project.plugins.withId('com.android.application') {
-        def components = project.extensions.getByName('androidComponents')
-        components.beforeVariants(components.selector().withBuildType('debug')) { variant ->
-            // Unshrunk HtmlUnit contains MethodHandle calls; this test runs on API 36.
-            variant.minSdk = 26
-        }
-    }
-}

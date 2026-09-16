@@ -9,7 +9,6 @@ import io.legado.app.constant.AppPattern
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.http.CookieManager.cookieJarHeader
 import io.legado.app.help.http.okHttpClient
-import io.legado.app.utils.DebugLog
 import io.legado.app.utils.externalCache
 import okhttp3.Headers
 import okhttp3.MediaType
@@ -39,9 +38,7 @@ val cronetEngine: ExperimentalCronetEngine? by lazy {
             enableBrotli(true)//Brotli压缩
             setExperimentalOptions(options)
         }
-        val engine = builder.build()
-        DebugLog.d("Cronet Version:", engine.versionString)
-        engine
+        builder.build()
     } catch (e: Throwable) {
         cronetEngineFailure = e
         AppLog.put("初始化cronetEngine出错", e)

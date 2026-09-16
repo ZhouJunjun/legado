@@ -16,7 +16,6 @@ import io.legado.app.model.BookCover
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
 import io.legado.app.utils.fromJsonObject
-import io.legado.app.utils.printOnDebug
 import splitties.init.appCtx
 import java.io.File
 
@@ -38,7 +37,6 @@ object DefaultData {
                     importDefaultDictRules()
                 }
             }.onError {
-                it.printOnDebug()
             }
         }
     }

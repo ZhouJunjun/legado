@@ -14,7 +14,6 @@ import io.legado.app.utils.FileUtils
 import io.legado.app.utils.HtmlFormatter
 import io.legado.app.utils.encodeURI
 import io.legado.app.utils.isXml
-import io.legado.app.utils.printOnDebug
 import me.ag2s.epublib.domain.EpubBook
 import me.ag2s.epublib.domain.Resource
 import me.ag2s.epublib.domain.TOCReference
@@ -137,7 +136,6 @@ class EpubFile(var book: Book) : AutoCloseable {
         }.onFailure {
             close()
             AppLog.put("读取Epub文件失败\n${it.localizedMessage}", it)
-            it.printOnDebug()
         }.getOrThrow()
     }
 
@@ -317,7 +315,6 @@ class EpubFile(var book: Book) : AutoCloseable {
             }
         } catch (e: Exception) {
             AppLog.put("加载书籍封面失败\n${e.localizedMessage}", e)
-            e.printOnDebug()
         }
     }
 
@@ -491,7 +488,6 @@ class EpubFile(var book: Book) : AutoCloseable {
             }
         }.onFailure {
             kotlin.runCatching { descriptor?.close() }
-            it.printOnDebug()
         }
     }
 

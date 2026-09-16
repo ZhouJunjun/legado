@@ -26,7 +26,6 @@ import io.legado.app.help.book.BookHelp
 import io.legado.app.help.glide.progress.ProgressManager
 import io.legado.app.model.BookCover
 import io.legado.app.model.ReadManga
-import io.legado.app.utils.printOnDebug
 
 internal fun mangaImagePath(imageUrl: String): String {
     val book = ReadManga.book ?: return imageUrl
@@ -140,7 +139,6 @@ open class MangaVH<VB : ViewBinding>(val binding: VB, private val context: Conte
                 }
             }).into(mImage)
         } catch (e: Exception) {
-            e.printOnDebug()
         }
 
     }

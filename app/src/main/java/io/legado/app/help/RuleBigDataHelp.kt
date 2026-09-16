@@ -1,7 +1,6 @@
 package io.legado.app.help
 
 import io.legado.app.data.appDb
-import io.legado.app.utils.DebugLog
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.externalFiles
@@ -13,7 +12,6 @@ import java.io.File
 import java.io.IOException
 
 internal const val RULE_DATA_QUERY_BATCH_SIZE = 900
-private const val RULE_DATA_LOG_TAG = "RuleBigDataHelp"
 
 internal data class RuleDataDirectory(
     val directory: File,
@@ -96,9 +94,7 @@ private fun File.readRuleDataKey(markerFileName: String): Result<String?> {
 }
 
 private fun deleteRuleDataEntry(file: File, deleteRootDir: Boolean = false) {
-    if (!FileUtils.delete(file, deleteRootDir)) {
-        DebugLog.w(RULE_DATA_LOG_TAG, "Unable to delete invalid rule data: ${file.path}")
-    }
+    FileUtils.delete(file, deleteRootDir)
 }
 
 object RuleBigDataHelp {

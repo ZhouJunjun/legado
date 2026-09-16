@@ -2,7 +2,6 @@ package io.legado.app.lib.cronet
 
 import androidx.annotation.Keep
 import io.legado.app.help.config.AppConfig
-import io.legado.app.utils.printOnDebug
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeout
@@ -64,11 +63,6 @@ class CronetCoroutineInterceptor(private val cookieJar: CookieJar) : Interceptor
 
         } catch (e: Throwable) {
             if (e is java.util.concurrent.CancellationException) throw e
-            if (!e.message.toString().contains("ERR_CERT_", true)
-                && !e.message.toString().contains("ERR_SSL_", true)
-            ) {
-                e.printOnDebug()
-            }
             throw CronetUnavailableException("Cronet request failed", e)
         }
 

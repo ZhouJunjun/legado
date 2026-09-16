@@ -49,7 +49,6 @@ import io.legado.app.receiver.MediaButtonReceiver
 import io.legado.app.ui.video.VideoPlayerActivity
 import io.legado.app.utils.activityPendingIntent
 import io.legado.app.utils.broadcastPendingIntent
-import io.legado.app.utils.printOnDebug
 import io.legado.app.utils.servicePendingIntent
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.Main
@@ -355,7 +354,6 @@ class VideoPlayService : BaseService() {
             upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED)
             upVideoPlayNotification()
         } catch (e: Exception) {
-            e.printOnDebug()
         }
     }
 
@@ -372,7 +370,6 @@ class VideoPlayService : BaseService() {
             upPlayProgress()
             upVideoPlayNotification()
         } catch (e: Exception) {
-            e.printOnDebug()
             stop()
         }
     }
