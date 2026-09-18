@@ -39,8 +39,6 @@ object SourceSharePassphrase {
     private val unsafeUrlTokens = mappings.values.flatten() + listOf("！", "©", "¥", "^")
 
     enum class Type(val code: String) {
-        BOOK_SOURCE("sy"),
-        RSS_SOURCE("dy"),
         DICT_RULE("zd"),
         REPLACE_RULE("jh"),
         TOC_RULE("ml"),

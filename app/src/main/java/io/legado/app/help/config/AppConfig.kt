@@ -371,9 +371,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefBoolean(PreferKey.showExploreCategories, false)
         set(value) = appCtx.putPrefBoolean(PreferKey.showExploreCategories, value)
 
-    val showRSS: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showRss, true)
-
     val autoRefreshBook: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.autoRefresh)
 

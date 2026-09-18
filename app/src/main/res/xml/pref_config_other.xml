@@ -49,12 +49,6 @@
             android:title="@string/show_discovery_fast_scroller"
             app:iconSpaceReserved="false" />
 
-        <io.legado.app.lib.prefs.SwitchPreference
-            android:defaultValue="true"
-            android:key="showRss"
-            android:title="@string/show_rss"
-            app:iconSpaceReserved="false" />
-
         <io.legado.app.lib.prefs.NameListPreference
             android:defaultValue="bookshelf"
             android:key="defaultHomePage"
@@ -95,10 +89,6 @@
         <io.legado.app.lib.prefs.Preference
             android:key="sourceEditMaxLine"
             android:title="@string/source_edit_text_max_line" />
-
-        <io.legado.app.lib.prefs.Preference
-            android:key="checkSource"
-            android:title="@string/check_source_config" />
 
         <io.legado.app.lib.prefs.Preference
             android:key="uploadRule"

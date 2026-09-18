@@ -42,12 +42,10 @@ import io.legado.app.service.AudioCacheService
 import io.legado.app.service.AudioPlayService
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.ui.book.changesource.ChangeBookSourceDialog
-import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
-import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.invisible
@@ -98,22 +96,6 @@ class AudioPlayActivity :
     private var oldLyric: String? = null
     private var menuCustomBtn: MenuItem? = null
     private var pendingAudioCacheAction: (() -> Unit)? = null
-
-    private val tocActivityResult = registerForActivityResult(TocActivityResult()) {
-        it?.let {
-            if (it[0] != AudioPlay.book?.durChapterIndex
-                || it[1] == 0
-            ) {
-                AudioPlay.skipTo(it[0] as Int)
-            }
-        }
-    }
-    private val sourceEditResult =
-        registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
-            if (it.resultCode == RESULT_OK) {
-                viewModel.upSource()
-            }
-        }
     private val audioCacheDirSelect = registerForActivityResult(HandleFileContract()) { result ->
         val treeUri = result.uri?.toString()
         if (treeUri == null) {
@@ -136,6 +118,16 @@ class AudioPlayActivity :
                 toastOnUi(R.string.audio_cache_folder_invalid)
             }
             pendingAudioCacheAction = null
+        }
+    }
+
+    private val tocActivityResult = registerForActivityResult(TocActivityResult()) {
+        it?.let {
+            if (it[0] != AudioPlay.book?.durChapterIndex
+                || it[1] == 0
+            ) {
+                AudioPlay.skipTo(it[0] as Int)
+            }
         }
     }
 
@@ -238,12 +230,6 @@ class AudioPlayActivity :
             R.id.menu_audio_cache_folder -> selectAudioCacheFolder()
             R.id.menu_audio_cache_range -> showAudioCacheRange()
             R.id.menu_clear_current_audio_cache -> clearCurrentAudioCache()
-            R.id.menu_edit_source -> AudioPlay.bookSource?.let {
-                sourceEditResult.launch {
-                    putExtra("sourceUrl", it.bookSourceUrl)
-                }
-            }
-
             /* 跳过片头片尾设定按钮 */
             R.id.menu_skip_credits -> AudioPlay.book?.let {
                 showDialogFragment(AudioSkipCredits.newInstance(it))

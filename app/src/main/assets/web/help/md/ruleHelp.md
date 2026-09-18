@@ -2,7 +2,6 @@
 
 * [阅读3.0(Legado)规则说明](https://mgz0227.github.io/The-tutorial-of-Legado/)　
 * [书源帮助文档](https://mgz0227.github.io/The-tutorial-of-Legado/Rule/source.html)　
-* [订阅源帮助文档](https://mgz0227.github.io/The-tutorial-of-Legado/Rule/rss.html)　
 * 辅助键盘❓中可插入URL参数模板,打开帮助,js教程,正则教程,选择文件
 
 ## 基础配置

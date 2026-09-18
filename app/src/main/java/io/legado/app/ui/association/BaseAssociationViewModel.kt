@@ -34,9 +34,6 @@ internal fun jsonImportType(map: Map<String, *>): String? =
             map.containsKey("bookSourceUrl") ->
                 "bookSource"
 
-            map.containsKey("sourceUrl") ->
-                "rssSource"
-
             map.containsKey("pattern") && map.containsKey("style") &&
                 map.containsKey("uuid") && !map.containsKey("replacement") ->
                 "highlightRule"

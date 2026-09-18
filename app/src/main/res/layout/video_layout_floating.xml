@@ -14,8 +14,7 @@
         android:id="@+id/surface_container"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:gravity="center"
-        tools:background="@drawable/image_rss_article" />
+        android:gravity="center" />
 
     <LinearLayout
         android:id="@+id/layout_top"

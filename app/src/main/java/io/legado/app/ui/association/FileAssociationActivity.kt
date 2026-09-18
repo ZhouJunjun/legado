@@ -81,8 +81,6 @@ class FileAssociationActivity :
                 return@observe
             }
             when (it.first) {
-                "bookSource" -> showDialogFragment(ImportBookSourceDialog(it.second, true))
-                "rssSource" -> showDialogFragment(ImportRssSourceDialog(it.second, true))
                 "replaceRule" -> showDialogFragment(ImportReplaceRuleDialog(it.second, true))
                 "highlightRule" -> showImportHighlightRuleDialog(it.second, true)
                 "httpTts" -> showDialogFragment(ImportHttpTtsDialog(it.second, true))

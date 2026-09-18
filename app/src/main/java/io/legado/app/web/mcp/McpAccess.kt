@@ -1,11 +1,21 @@
 package io.legado.app.web.mcp
 
 import java.net.InetAddress
+import java.security.MessageDigest
 
 object McpAccess {
 
     const val PATH = "/mcp"
     const val TOKEN_HEADER = "X-Legado-Token"
+
+    /** 常量时间比较, 避免时序侧信道 */
+    fun matchesToken(expected: String?, actual: String?): Boolean {
+        if (expected.isNullOrBlank() || actual == null) return false
+        return MessageDigest.isEqual(
+            expected.toByteArray(Charsets.UTF_8),
+            actual.toByteArray(Charsets.UTF_8),
+        )
+    }
 
     fun allowedHosts(addresses: List<InetAddress>): List<String> = buildList {
         add("localhost")

@@ -260,7 +260,6 @@ class BottomBarSkinActivity : BaseActivity<ActivityBottomBarSkinBinding>() {
                     intArrayOf(
                         R.drawable.ic_bottom_books,
                         R.drawable.ic_bottom_explore,
-                        R.drawable.ic_bottom_rss_feed,
                         R.drawable.ic_bottom_person,
                     ).forEach { res ->
                         val iv = makeIconView()

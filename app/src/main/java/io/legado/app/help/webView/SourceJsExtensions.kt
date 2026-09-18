@@ -1,17 +1,14 @@
-package io.legado.app.ui.rss.read
+package io.legado.app.help.webView
 
 import android.webkit.JavascriptInterface
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
-import com.script.rhino.runScriptWithContext
 import io.legado.app.constant.BookType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.RssReadRecord
-import io.legado.app.data.entities.RssSource
 import io.legado.app.help.JsExtensions
 import io.legado.app.model.AudioPlay
 import io.legado.app.model.ReadBook
@@ -24,10 +21,7 @@ import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.login.createSourceLoginRoute
 import io.legado.app.ui.login.resolveLoginSource
-import io.legado.app.ui.rss.article.RssSortActivity
 import io.legado.app.ui.widget.dialog.PhotoDialog
-import io.legado.app.utils.isJsonObject
-import io.legado.app.utils.openUrl
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
@@ -35,13 +29,12 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
 import java.lang.ref.WeakReference
 import java.net.URL
 
 
 @Suppress("unused")
-open class RssJsExtensions(
+open class SourceJsExtensions(
     activity: AppCompatActivity?,
     source: BaseSource?,
     val bookType: Int = 0
@@ -110,7 +103,6 @@ open class RssJsExtensions(
                         origin = origin,
                         currentSource = source,
                         findBookSource = { appDb.bookSourceDao.getBookSource(it) },
-                        findRssSource = { appDb.rssSourceDao.getByKey(it) },
                     )
                     if (toSource == null) {
                         activity.toastOnUi("未找到指定源")
@@ -134,86 +126,7 @@ open class RssJsExtensions(
                     }
                 }
 
-                "sort" -> {
-                    val toSource = origin?.let { o ->
-                        appDb.rssSourceDao.getByKey(o)
-                    } ?: (source as? RssSource) ?: return@launch
-                    val sortUrl = if (url.isJsonObject()) {
-                        url
-                    } else {
-                        title?.let {
-                            JSONObject().put(title, url).toString()
-                        } ?: url
-                    }
-                    val sourceUrl = toSource.sourceUrl
-                    RssSortActivity.start(activity, sortUrl, sourceUrl)
-                }
 
-                "rss" -> {
-                    val toSource = origin?.let { o ->
-                        appDb.rssSourceDao.getByKey(o)
-                    } ?: (source as? RssSource) ?: return@launch
-                    val title = title ?: toSource.sourceName
-                    val sourceUrl = toSource.sourceUrl
-                    val singleTop = sourceUrl == source.getKey()
-                    if (url.isNullOrBlank()) {
-                        if (toSource.singleUrl) {
-                            if (sourceUrl.startsWith("http", true)) {
-                                ReadRssActivity.start(
-                                    activity,
-                                    singleTop,
-                                    sourceUrl,
-                                    title
-                                )
-                            } else {
-                                activity.openUrl(sourceUrl)
-                            }
-                            return@launch
-                        }
-                        val startHtml = toSource.startHtml?.let {
-                            when {
-                                it.startsWith("@js:") -> runScriptWithContext {
-                                    toSource.evalJS(it.substring(4)).toString()
-                                }
-
-                                it.startsWith("<js>") -> runScriptWithContext {
-                                    toSource.evalJS(it.substring(4, it.lastIndexOf("<"))).toString()
-                                }
-
-                                else -> it
-                            }
-                        }
-                        if (startHtml.isNullOrBlank()) {
-                            RssSortActivity.start(activity, null, sourceUrl)
-                        } else {
-                            ReadRssActivity.start(
-                                activity,
-                                singleTop,
-                                sourceUrl,
-                                title,
-                                startHtml = startHtml
-                            )
-                        }
-                        return@launch
-                    }
-                    val rss =appDb.rssStarDao.get(sourceUrl, url)?.toRecord() ?: appDb.rssArticleDao.getByLink(sourceUrl, url)?.toRecord()
-                    val rssReadRecord = rss ?: RssReadRecord(
-                        record = url,
-                        title = title,
-                        origin = sourceUrl,
-                        readTime = System.currentTimeMillis()
-                    )
-                    appDb.rssReadRecordDao.insertRecord(rssReadRecord) //留下历史记录
-                    withContext(Main) {
-                        ReadRssActivity.start(
-                            activity,
-                            singleTop,
-                            sourceUrl,
-                            title,
-                            url
-                        )
-                    }
-                }
 
                 "search" -> {
                     title?.let {

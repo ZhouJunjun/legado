@@ -29,12 +29,6 @@ class OnLineImportActivity :
                 return@observe
             }
             when (it.first) {
-                "bookSource" -> showDialogFragment(
-                    ImportBookSourceDialog(it.second, true)
-                )
-                "rssSource" -> showDialogFragment(
-                    ImportRssSourceDialog(it.second, true)
-                )
                 "replaceRule" -> showDialogFragment(
                     ImportReplaceRuleDialog(it.second, true)
                 )
@@ -79,14 +73,6 @@ class OnLineImportActivity :
                 return
             }
             when (it.path) {
-                "/bookSource" -> showDialogFragment(
-                    ImportBookSourceDialog(url, true)
-                )
-
-                "/rssSource" -> showDialogFragment(
-                    ImportRssSourceDialog(url, true)
-                )
-
                 "/replaceRule" -> showDialogFragment(
                     ImportReplaceRuleDialog(url, true)
                 )
@@ -111,12 +97,6 @@ class OnLineImportActivity :
                     AddToBookshelfDialog(url, true)
                 )
                 "/importonline" -> when (it.host) {
-                    "booksource" -> showDialogFragment(
-                        ImportBookSourceDialog(url, true)
-                    )
-                    "rsssource" -> showDialogFragment(
-                        ImportRssSourceDialog(url, true)
-                    )
                     "replace" -> showDialogFragment(
                         ImportReplaceRuleDialog(url, true)
                     )

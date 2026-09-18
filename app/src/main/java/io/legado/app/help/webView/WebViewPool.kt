@@ -9,7 +9,6 @@ import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.rss.read.VisibleWebView
 import io.legado.app.utils.setDarkeningAllowed
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers

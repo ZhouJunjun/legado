@@ -13,11 +13,4 @@
 
     </item>
 
-    <item
-        android:id="@+id/menu_source_manage"
-        android:icon="@drawable/ic_settings"
-        android:title="@string/book_source_manage"
-        app:showAsAction="always"
-        tools:ignore="AlwaysShowAction" />
-
 </menu>

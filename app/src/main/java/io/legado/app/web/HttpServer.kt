@@ -4,12 +4,9 @@ import android.graphics.Bitmap
 import fi.iki.elonen.NanoHTTPD
 import io.legado.app.api.ReturnData
 import io.legado.app.api.controller.BookController
-import io.legado.app.api.controller.BookSourceController
-import io.legado.app.api.controller.BookSourceCheckController
 import io.legado.app.api.controller.HttpLogController
 import io.legado.app.api.controller.ReplaceRuleController
 import io.legado.app.api.controller.ReviewController
-import io.legado.app.api.controller.RssSourceController
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.service.WebService
 import io.legado.app.utils.GSON
@@ -57,58 +54,29 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
                 }
 
                 Method.POST -> {
-                    val requestError = when {
-                        uri == "/saveJsSource" -> {
-                            BookSourceController.validateJsSourceRequest(session.headers)
-                        }
+                    val files = HashMap<String, String>()
+                    session.parseBody(files)
+                    val postData = files["postData"]
 
-                        uri in PROTECTED_SOURCE_WRITE_ROUTES &&
-                            !BookSourceController.hasValidJsSourceApiToken(session.headers) -> {
-                            ReturnData().setErrorMsg("Web 书源访问令牌未配置或不正确")
-                        }
-
-                        else -> null
-                    }
-                    if (requestError != null) {
-                        returnData = requestError
-                        shouldCloseConnection = true
-                    } else {
-                        val files = HashMap<String, String>()
-                        session.parseBody(files)
-                        val postData = files["postData"]
-
-                        returnData = runBlocking {
-                            when (uri) {
-                                "/saveBookSource" -> BookSourceController.saveSource(postData)
-                                "/startBookSourceCheck" -> BookSourceCheckController.start(postData)
-                                "/stopBookSourceCheck" -> BookSourceCheckController.stop(postData)
-                                "/saveBookSources" -> BookSourceController.saveSources(postData)
-                                "/saveJsSource" -> BookSourceController.saveJsSource(
-                                    postData,
-                                    session.parameters["openedSourceUrl"]?.firstOrNull(),
-                                )
-                                "/deleteBookSources" -> BookSourceController.deleteSources(postData)
-                                "/saveBook" -> BookController.saveBook(postData)
-                                "/deleteBook" -> BookController.deleteBook(postData)
-                                "/saveBookProgress" -> BookController.saveBookProgress(postData)
-                                "/addLocalBook" -> BookController.addLocalBook(
-                                    session.parameters,
-                                    files,
-                                )
-                                "/saveReadConfig" -> BookController.saveWebReadConfig(postData)
-                                "/openLegacyReview" -> ReviewController.openLegacyReview(
-                                    postData,
-                                    session.headers["origin"],
-                                )
-                                "/runLegacyReview" -> ReviewController.runLegacyReview(postData)
-                                "/saveRssSource" -> RssSourceController.saveSource(postData)
-                                "/saveRssSources" -> RssSourceController.saveSources(postData)
-                                "/deleteRssSources" -> RssSourceController.deleteSources(postData)
-                                "/saveReplaceRule" -> ReplaceRuleController.saveRule(postData)
-                                "/deleteReplaceRule" -> ReplaceRuleController.delete(postData)
-                                "/testReplaceRule" -> ReplaceRuleController.testRule(postData)
-                                else -> null
-                            }
+                    returnData = runBlocking {
+                        when (uri) {
+                            "/saveBook" -> BookController.saveBook(postData)
+                            "/deleteBook" -> BookController.deleteBook(postData)
+                            "/saveBookProgress" -> BookController.saveBookProgress(postData)
+                            "/addLocalBook" -> BookController.addLocalBook(
+                                session.parameters,
+                                files,
+                            )
+                            "/saveReadConfig" -> BookController.saveWebReadConfig(postData)
+                            "/openLegacyReview" -> ReviewController.openLegacyReview(
+                                postData,
+                                session.headers["origin"],
+                            )
+                            "/runLegacyReview" -> ReviewController.runLegacyReview(postData)
+                            "/saveReplaceRule" -> ReplaceRuleController.saveRule(postData)
+                            "/deleteReplaceRule" -> ReplaceRuleController.delete(postData)
+                            "/testReplaceRule" -> ReplaceRuleController.testRule(postData)
+                            else -> null
                         }
                     }
                 }
@@ -121,42 +89,21 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
                             session.headers["origin"],
                         )
                     }
-                    val requestError = if (
-                        uri in PROTECTED_HTTP_LOG_READ_ROUTES &&
-                        !BookSourceController.hasValidJsSourceApiToken(session.headers)
-                    ) {
-                        ReturnData().setErrorMsg("Web 书源访问令牌未配置或不正确")
-                    } else {
-                        null
-                    }
-                    if (requestError != null) {
-                        returnData = requestError
-                        shouldCloseConnection = true
-                    } else {
-                        returnData = when (uri) {
-                            "/getBookSource" -> BookSourceController.getSource(parameters)
-                            "/getBookSources" -> BookSourceController.sources
-                            "/getBookSourcesForManagement" -> BookSourceCheckController.sources(parameters)
-                            "/getBookSourceCheckStates" -> BookSourceCheckController.states()
-                            "/getJsSourceApiTokenRequired" ->
-                                BookSourceController.isJsSourceApiTokenRequired
-                            "/getHttpLogs" -> HttpLogController.getLogs(parameters)
-                            "/getHttpLog" -> HttpLogController.getLog(parameters)
-                            "/getBookshelf" -> BookController.bookshelf
-                            "/getChapterList" -> BookController.getChapterList(parameters)
-                            "/refreshToc" -> BookController.refreshToc(parameters)
-                            "/getBookContent" -> BookController.getBookContent(parameters)
-                            "/getReviewSummary" -> ReviewController.getSummary(parameters)
-                            "/getReviewDetail" -> ReviewController.getDetail(parameters)
-                            "/getReviewReplies" -> ReviewController.getReplies(parameters)
-                            "/cover" -> BookController.getCover(parameters)
-                            "/image" -> BookController.getImg(parameters)
-                            "/getReadConfig" -> BookController.getWebReadConfig()
-                            "/getRssSource" -> RssSourceController.getSource(parameters)
-                            "/getRssSources" -> RssSourceController.sources
-                            "/getReplaceRules" -> ReplaceRuleController.allRules
-                            else -> null
-                        }
+                    returnData = when (uri) {
+                        "/getHttpLogs" -> HttpLogController.getLogs(parameters)
+                        "/getHttpLog" -> HttpLogController.getLog(parameters)
+                        "/getBookshelf" -> BookController.bookshelf
+                        "/getChapterList" -> BookController.getChapterList(parameters)
+                        "/refreshToc" -> BookController.refreshToc(parameters)
+                        "/getBookContent" -> BookController.getBookContent(parameters)
+                        "/getReviewSummary" -> ReviewController.getSummary(parameters)
+                        "/getReviewDetail" -> ReviewController.getDetail(parameters)
+                        "/getReviewReplies" -> ReviewController.getReplies(parameters)
+                        "/cover" -> BookController.getCover(parameters)
+                        "/image" -> BookController.getImg(parameters)
+                        "/getReadConfig" -> BookController.getWebReadConfig()
+                        "/getReplaceRules" -> ReplaceRuleController.allRules
+                        else -> null
                     }
                 }
 
@@ -249,14 +196,6 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
                 "connect-src 'none'; object-src 'none'; base-uri http: https:; " +
                 "form-action 'none'"
         private val PROTECTED_SOURCE_WRITE_ROUTES = setOf(
-            "/startBookSourceCheck",
-            "/stopBookSourceCheck",
-            "/saveBookSource",
-            "/saveBookSources",
-            "/deleteBookSources",
-            "/saveRssSource",
-            "/saveRssSources",
-            "/deleteRssSources",
             "/saveReplaceRule",
             "/deleteReplaceRule",
             "/testReplaceRule",
@@ -264,8 +203,6 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
             "/runLegacyReview",
         )
         private val PROTECTED_HTTP_LOG_READ_ROUTES = setOf(
-            "/getBookSourceCheckStates",
-            "/getBookSourcesForManagement",
             "/getHttpLogs",
             "/getHttpLog",
         )
@@ -274,12 +211,6 @@ class HttpServer(port: Int) : NanoHTTPD(port) {
     private fun Response.addWebHeaders(origin: String?, uri: String) {
         addHeader("X-Content-Type-Options", "nosniff")
         origin?.let { addHeader("Access-Control-Allow-Origin", it) }
-        if (
-            uri in PROTECTED_HTTP_LOG_READ_ROUTES ||
-            uri == "/getJsSourceApiTokenRequired"
-        ) {
-            addHeader("Cache-Control", "no-store")
-        }
         if (uri.startsWith("/vue/") && uri.endsWith(".html")) {
             addHeader("Cache-Control", "no-cache")
             addHeader("Content-Security-Policy", VUE_CONTENT_SECURITY_POLICY)

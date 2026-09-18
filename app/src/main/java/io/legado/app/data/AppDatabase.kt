@@ -26,11 +26,6 @@ import io.legado.app.data.dao.HighlightRuleDao
 import io.legado.app.data.dao.KeyboardAssistsDao
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.dao.ReplaceRuleDao
-import io.legado.app.data.dao.RssArticleDao
-import io.legado.app.data.dao.RssReadRecordDao
-import io.legado.app.data.dao.RssSourceDao
-import io.legado.app.data.dao.RssStarDao
-import io.legado.app.data.dao.RuleSubDao
 import io.legado.app.data.dao.SearchBookDao
 import io.legado.app.data.dao.SearchKeywordDao
 import io.legado.app.data.dao.ServerDao
@@ -41,7 +36,6 @@ import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookHighlight
 import io.legado.app.data.entities.BookMemo
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.BookSourceCheckState
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.AutoTaskRule
@@ -53,11 +47,6 @@ import io.legado.app.data.entities.HighlightRule
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.data.entities.ReplaceRule
-import io.legado.app.data.entities.RssArticle
-import io.legado.app.data.entities.RssReadRecord
-import io.legado.app.data.entities.RssSource
-import io.legado.app.data.entities.RssStar
-import io.legado.app.data.entities.RuleSub
 import io.legado.app.data.entities.SearchBook
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.data.entities.Server
@@ -77,14 +66,13 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 111,
+    version = 113,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
         ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
-        RssSource::class, Bookmark::class, RssArticle::class, RssReadRecord::class,
-        RssStar::class, TxtTocRule::class, ReadRecord::class, HttpTTS::class, Cache::class,
-        RuleSub::class, DictRule::class, KeyboardAssist::class, Server::class,
-        AutoTaskRule::class, BookHighlight::class, HighlightRule::class, BookSourceCheckState::class,
+        Bookmark::class, TxtTocRule::class, ReadRecord::class, HttpTTS::class, Cache::class,
+        DictRule::class, KeyboardAssist::class, Server::class,
+        AutoTaskRule::class, BookHighlight::class, HighlightRule::class,
         BookMemo::class],
     views = [BookSourcePart::class],
     autoMigrations = [
@@ -148,7 +136,15 @@ val appDb by lazy {
         AutoMigration(from = 101, to = 102, spec = DatabaseMigrations.Migration_101_102::class),
         AutoMigration(from = 102, to = 103),
         AutoMigration(from = 103, to = 104),
-        AutoMigration(from = 110, to = 111)
+        AutoMigration(from = 110, to = 111),
+        AutoMigration(
+            from = 111, to = 112,
+            spec = DatabaseMigrations.Migration_111_112::class
+        ),
+        AutoMigration(
+            from = 112, to = 113,
+            spec = DatabaseMigrations.Migration_112_113::class
+        )
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -164,17 +160,12 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val replaceRuleDao: ReplaceRuleDao
     abstract val searchBookDao: SearchBookDao
     abstract val searchKeywordDao: SearchKeywordDao
-    abstract val rssSourceDao: RssSourceDao
     abstract val bookmarkDao: BookmarkDao
-    abstract val rssArticleDao: RssArticleDao
-    abstract val rssStarDao: RssStarDao
-    abstract val rssReadRecordDao: RssReadRecordDao
     abstract val cookieDao: CookieDao
     abstract val txtTocRuleDao: TxtTocRuleDao
     abstract val readRecordDao: ReadRecordDao
     abstract val httpTTSDao: HttpTTSDao
     abstract val cacheDao: CacheDao
-    abstract val ruleSubDao: RuleSubDao
     abstract val dictRuleDao: DictRuleDao
     abstract val keyboardAssistsDao: KeyboardAssistsDao
     abstract val serverDao: ServerDao
@@ -186,7 +177,6 @@ abstract class AppDatabase : RoomDatabase() {
         const val BOOK_TABLE_NAME = "books"
         const val BOOK_GROUP_TABLE_NAME = "book_groups"
         const val BOOK_SOURCE_TABLE_NAME = "book_sources"
-        const val RSS_SOURCE_TABLE_NAME = "rssSources"
 
         val dbCallback = object : Callback() {
 
@@ -256,14 +246,6 @@ abstract class AppDatabase : RoomDatabase() {
                     where not exists (select * from book_groups where groupId = ${BookGroup.IdError})
                 """.trimIndent()
                 db.execSQL(insertBookGroupErrorSql)
-                @Language("sql")
-                val upBookSourceLoginUiSql =
-                    "update book_sources set loginUi = null where loginUi = 'null'"
-                db.execSQL(upBookSourceLoginUiSql)
-                @Language("sql")
-                val upRssSourceLoginUiSql =
-                    "update rssSources set loginUi = null where loginUi = 'null'"
-                db.execSQL(upRssSourceLoginUiSql)
                 @Language("sql")
                 val upHttpTtsLoginUiSql =
                     "update httpTTS set loginUi = null where loginUi = 'null'"

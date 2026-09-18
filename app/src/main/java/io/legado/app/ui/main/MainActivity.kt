@@ -46,18 +46,15 @@ import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.about.CrashLogsDialog
 import io.legado.app.ui.about.UpdateDialog
 import io.legado.app.ui.autoTask.ImportAutoTaskDialog
-import io.legado.app.ui.association.ImportBookSourceDialog
 import io.legado.app.ui.association.ImportDictRuleDialog
 import io.legado.app.ui.association.ImportHttpTtsDialog
 import io.legado.app.ui.association.ImportReplaceRuleDialog
-import io.legado.app.ui.association.ImportRssSourceDialog
 import io.legado.app.ui.association.ImportTxtTocRuleDialog
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
 import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.my.MyFragment
-import io.legado.app.ui.main.rss.RssFragment
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.ui.widget.text.BadgeView
 import io.legado.app.utils.clearClip
@@ -95,20 +92,18 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private val idBookshelf1 = 11
     private val idBookshelf2 = 12
     private val idExplore = 1
-    private val idRss = 2
     private val idMy = 3
     private var exitTime: Long = 0
     private var bookshelfReselected: Long = 0
     private var exploreReselected: Long = 0
     private var pagePosition = 0
     private val fragmentMap = hashMapOf<Int, Fragment>()
-    private var bottomMenuCount = 4
+    private var bottomMenuCount = 3
     private val EXIT_INTERVAL = 2000L
-    private val realPositions = arrayOf(idBookshelf, idExplore, idRss, idMy)
+    private val realPositions = arrayOf(idBookshelf, idExplore, idMy)
     private val menuIdToSlot = linkedMapOf(
         R.id.menu_bookshelf to "bookshelf",
         R.id.menu_discovery to "home",
-        R.id.menu_rss to "notes",
         R.id.menu_my_config to "settings",
     )
     private val adapter by lazy {
@@ -161,10 +156,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             backupSync()
             //设置回调
             viewModel.setActivityCallback(this@MainActivity)
-            //自动更新书源
-            binding.viewPagerMain.postDelayed(1000) {
-                viewModel.ruleSubsUp()
-            }
             scheduleSourceSharePassphraseRead(1500)
             //自动更新书籍
             val isAutoRefreshedBook = savedInstanceState?.getBoolean("isAutoRefreshedBook") ?: false
@@ -211,9 +202,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
             R.id.menu_discovery ->
                 viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
-
-            R.id.menu_rss ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), false)
 
             R.id.menu_my_config ->
                 viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
@@ -475,19 +463,13 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     private fun upBottomMenu() {
         val showDiscovery = AppConfig.showDiscovery
-        val showRss = AppConfig.showRSS
         binding.bottomNavigationView.menu.let { menu ->
             menu.findItem(R.id.menu_discovery).isVisible = showDiscovery
-            menu.findItem(R.id.menu_rss).isVisible = showRss
         }
         var index = 0
         if (showDiscovery) {
             index++
             realPositions[index] = idExplore
-        }
-        if (showRss) {
-            index++
-            realPositions[index] = idRss
         }
         index++
         realPositions[index] = idMy
@@ -555,12 +537,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                     clearClip()
                     val value = result.value
                     when (value.type) {
-                        SourceSharePassphrase.Type.BOOK_SOURCE ->
-                            showDialogFragment(ImportBookSourceDialog(value.url))
-
-                        SourceSharePassphrase.Type.RSS_SOURCE ->
-                            showDialogFragment(ImportRssSourceDialog(value.url))
-
                         SourceSharePassphrase.Type.DICT_RULE ->
                             showDialogFragment(ImportDictRuleDialog(value.url))
 
@@ -602,10 +578,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
             }
 
-            "rss" -> if (AppConfig.showRSS) {
-                binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idRss), false)
-            }
-
             "my" -> binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
         }
     }
@@ -642,7 +614,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             if ((fragmentId == idBookshelf1 && any is BookshelfFragment1)
                 || (fragmentId == idBookshelf2 && any is BookshelfFragment2)
                 || (fragmentId == idExplore && any is ExploreFragment)
-                || (fragmentId == idRss && any is RssFragment)
                 || (fragmentId == idMy && any is MyFragment)
             ) {
                 return POSITION_UNCHANGED
@@ -655,7 +626,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 idBookshelf1 -> BookshelfFragment1(position)
                 idBookshelf2 -> BookshelfFragment2(position)
                 idExplore -> ExploreFragment(position)
-                idRss -> RssFragment(position)
                 else -> MyFragment(position)
             }
         }
@@ -677,16 +647,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     override fun openImportUi(type:Int, source: String) {
-        when (type) {
-            0 -> showDialogFragment(
-                ImportBookSourceDialog(source)
-            )
-            1 -> showDialogFragment(
-                ImportRssSourceDialog(source)
-            )
-            2 -> showDialogFragment(
-                ImportReplaceRuleDialog(source)
-            )
+        if (type == 2) {
+            showDialogFragment(ImportReplaceRuleDialog(source))
         }
     }
 

@@ -35,7 +35,6 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
     private val defaultIcons = mapOf(
         R.id.menu_bookshelf to R.drawable.ic_bottom_books,
         R.id.menu_discovery to R.drawable.ic_bottom_explore,
-        R.id.menu_rss to R.drawable.ic_bottom_rss_feed,
         R.id.menu_my_config to R.drawable.ic_bottom_person,
     )
 

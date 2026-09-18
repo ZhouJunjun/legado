@@ -87,7 +87,6 @@ import io.legado.app.ui.book.read.ReadBookActivity.Companion.RESULT_DELETED
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
-import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.login.SourceLoginActivity
@@ -185,19 +184,6 @@ class BookInfoActivity :
     ) {
         if (it.resultCode == RESULT_OK) {
             viewModel.upEditBook()
-        }
-    }
-    private val editSourceResult = registerForActivityResult(
-        StartActivityContract(BookSourceEditActivity::class.java)
-    ) {
-        if (it.resultCode == RESULT_CANCELED) {
-            return@registerForActivityResult
-        }
-        book?.let { book ->
-            viewModel.bookSource = appDb.bookSourceDao.getBookSource(book.origin)?.also { source ->
-                viewModel.hasCustomBtn = source.customButton
-            }
-            viewModel.refreshBook(book)
         }
     }
     private var chapterChanged = false
@@ -1073,10 +1059,6 @@ class BookInfoActivity :
                 if (book.isLocal) return@let
                 if (!appDb.bookSourceDao.has(book.origin)) {
                     toastOnUi(R.string.error_no_source)
-                    return@let
-                }
-                editSourceResult.launch {
-                    putExtra("sourceUrl", book.origin)
                 }
             }
         }

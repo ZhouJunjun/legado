@@ -21,9 +21,6 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.RssReadRecord
-import io.legado.app.data.entities.RssSource
-import io.legado.app.data.entities.RssStar
 import io.legado.app.exception.ContentEmptyException
 import io.legado.app.help.CacheManager
 import io.legado.app.help.book.getDanmaku
@@ -34,11 +31,9 @@ import io.legado.app.help.gsyVideo.ExoVideoManager.Companion.FULLSCREEN_ID
 import io.legado.app.help.gsyVideo.FloatingPlayer
 import io.legado.app.help.gsyVideo.VideoPlayer
 import io.legado.app.model.analyzeRule.AnalyzeUrl
-import io.legado.app.model.rss.Rss
 import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
-import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.externalCache
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
@@ -120,10 +115,6 @@ object VideoPlay : CoroutineScope by MainScope(){
     /**  本集的进度  **/
     var durChapterPos = 0
     var inBookshelf = true
-    /**  订阅收藏  **/
-    var rssStar: RssStar? = null
-    /**  订阅历史记录,收藏优先  **/
-    var rssRecord: RssReadRecord? = null
     /**  弹幕相关  **/
     var danmakuFile: File? = null
     var danmakuStr: String? = null
@@ -164,72 +155,6 @@ object VideoPlay : CoroutineScope by MainScope(){
             return
         }
         durChapterPos.takeIf { it > 0 }?.toLong()?.let { player.seekOnStart = it }
-        (source as? RssSource)?.let { s ->
-            val rssArticle = rssStar?.toRssArticle() ?: rssRecord?.toRssArticle()
-            if (rssArticle == null) {
-                appCtx.toastOnUi("未找到订阅")
-                return
-            }
-            videoTitle = rssArticle.title
-            val ruleContent = s.ruleContent
-            if (ruleContent.isNullOrBlank()) {
-                Coroutine.async(loadScope, IO) {
-                    val mUrl = rssArticle.link
-                    videoUrl = mUrl
-                    val analyzeUrl = AnalyzeUrl(
-                        mUrl,
-                        source = source,
-                        ruleData = rssArticle
-                    )
-                    withContext(Main) {
-                        player.mapHeadData = analyzeUrl.headerMap
-                        player.setUp(
-                            analyzeUrl.url,
-                            false,
-                            File(appCtx.externalCache, "exoplayer"),
-                            rssArticle.title
-                        )
-                        if (autoPlay) {
-                            player.startPlayLogic()
-                        }
-                    }
-                }.onError {
-                    AppLog.put("加载订阅源视频链接失败", it, true)
-                }
-            } else {
-                Rss.getContent(loadScope, rssArticle, ruleContent, s)
-                    .onSuccess(IO) { content ->
-                        val content = content.trim()
-                        val mUrl = if (content.isEmpty()) {
-                            throw ContentEmptyException("正文为空")
-                        } else if (content.startsWith("<")) { //当作mpd文本
-                            val name = MD5Utils.md5Encode(content) + ".mpd"
-                            val file = FileUtils.createFileIfNotExist(videoTempFile,name)
-                            file.writeText(content)
-                            Uri.fromFile(file).toString()
-                        } else {
-                            NetworkUtils.getAbsoluteURL(rssArticle.link, content)
-                        }
-                        videoUrl = mUrl
-                        val analyzeUrl = AnalyzeUrl(
-                            mUrl,
-                            source = source,
-                            ruleData = rssArticle
-                        )
-                        val playUrl = analyzeUrl.url
-                        withContext(Main) {
-                            player.mapHeadData = analyzeUrl.headerMap
-                            player.setUp(playUrl, false, File(appCtx.externalCache, "exoplayer"), rssArticle.title)
-                            if (autoPlay) {
-                                player.startPlayLogic()
-                            }
-                        }
-                    }.onError {
-                        AppLog.put("加载订阅源为链接的正文失败", it, true)
-                    }
-            }
-            return
-        }
         val book = book
         if (book == null) {
             appCtx.toastOnUi("未找到书籍")
@@ -337,8 +262,6 @@ object VideoPlay : CoroutineScope by MainScope(){
             durVolume = null
             durChapterPos = 0
             inBookshelf = true
-            rssStar = null
-            rssRecord = null
             danmakuStr = null
             danmakuFile = null
             lockCurScreen = false
@@ -413,7 +336,6 @@ object VideoPlay : CoroutineScope by MainScope(){
         source = sourceKey?.let {
             when (sourceType) {
                 SourceType.book -> appDb.bookSourceDao.getBookSource(it)
-                SourceType.rss -> appDb.rssSourceDao.getByKey(it)
                 else -> null
             }
         }
@@ -438,17 +360,6 @@ object VideoPlay : CoroutineScope by MainScope(){
             isLoading = false
             appCtx.toastOnUi("未找到源")
             return false
-        }
-        record?.let{ //订阅源
-            val sourceKey = sourceKey ?: return@let
-            rssStar =appDb.rssStarDao.get(sourceKey, it)?.also{ r ->
-                durChapterPos = r.durPos
-            }
-            if (rssStar == null) {
-                rssRecord = appDb.rssReadRecordDao.getRecord(it,sourceKey)?.also{ r ->
-                    durChapterPos = r.durPos
-                }
-            }
         }
         return true
     }
@@ -491,11 +402,9 @@ object VideoPlay : CoroutineScope by MainScope(){
 
     fun saveRead(durPos: Int? = null) {
         val book = book
-        val rssStar = rssStar
-        val rssRecord = rssRecord
         val durPos = durPos ?: videoManager.currentPosition.toInt()
         durChapterPos = durPos
-        if (book == null && rssStar == null && rssRecord == null) {
+        if (book == null) {
             videoUrl?.let { videoUrl ->
                 CacheManager.put(VIDEO_POS_NAME + videoUrl, durPos, VIDEO_POS_SAVE_TIME)
             }
@@ -523,19 +432,11 @@ object VideoPlay : CoroutineScope by MainScope(){
                 SourceCallBack.callBackBook(SourceCallBack.SAVE_READ, source as BookSource?, book, chapter, durTime.toString())
                 book.update()
             }
-            rssStar?.let {
-                it.durPos = durPos
-                appDb.rssStarDao.update(it)
-            }
-            rssRecord?.let {
-                it.durPos = durPos
-                appDb.rssReadRecordDao.update(it)
-            }
             postEvent(EventBus.VIDEO_SUB_TITLE, videoTitle ?: appCtx.getString(R.string.data_loading))
         }
     }
 
     fun getDisplayCover(): String? {
-        return book?.getDisplayCover() ?: rssStar?.image ?: rssRecord?.image
+        return book?.getDisplayCover()
     }
 }

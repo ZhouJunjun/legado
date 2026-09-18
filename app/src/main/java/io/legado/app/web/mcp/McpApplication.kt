@@ -8,7 +8,6 @@ import io.ktor.server.request.header
 import io.ktor.server.response.header
 import io.ktor.server.response.respondText
 import io.ktor.server.routing.RoutingContext
-import io.legado.app.api.controller.BookSourceController
 import io.modelcontextprotocol.kotlin.sdk.server.Server
 import io.modelcontextprotocol.kotlin.sdk.server.mcpStreamableHttp
 
@@ -24,7 +23,7 @@ fun Application.configureMcp(
         context.response.header(HttpHeaders.CacheControl, "no-store")
         if (
             tokenRequiredProvider() &&
-            !BookSourceController.matchesJsSourceApiToken(
+            !McpAccess.matchesToken(
                 tokenProvider(),
                 context.request.header(McpAccess.TOKEN_HEADER),
             )

@@ -100,7 +100,6 @@
 
     <string-array name="rule_type">
         <item>书源</item>
-        <item>订阅源</item>
         <item>替换规则</item>
     </string-array>
 

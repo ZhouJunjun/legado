@@ -486,13 +486,11 @@ class ReadMenu @JvmOverloads constructor(
             popupActionMenu(context) {
                 item(context.getString(R.string.login), "login", hasLogin)
                 item(context.getString(R.string.chapter_pay), "chapterPay", canPay)
-                item(context.getString(R.string.edit_book_source), "editSource")
                 item(context.getString(R.string.disable_book_source), "disableSource")
             }.show(tvSourceAction) { action ->
                 when (action) {
                     "login" -> callBack.showLogin()
                     "chapterPay" -> callBack.payAction()
-                    "editSource" -> callBack.openSourceEditActivity()
                     "disableSource" -> callBack.disableSource()
                 }
             }
@@ -739,7 +737,6 @@ class ReadMenu @JvmOverloads constructor(
         fun openReplaceRule()
         fun openChapterList()
         fun openSearchActivity(searchWord: String?)
-        fun openSourceEditActivity()
         fun openBookInfoActivity()
         fun showReadStyle()
         fun showMoreSetting()

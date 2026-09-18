@@ -48,7 +48,6 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.collections.forEach
 import kotlin.math.min
-import io.legado.app.model.RuleUpdate
 import io.legado.app.model.SourceCallBack
 
 class MainViewModel(application: Application) : BaseViewModel(application) {
@@ -104,20 +103,6 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     fun upAllBookToc() {
         execute {
             addToWaitUp(appDb.bookDao.hasUpdateBooks, AppConfig.onlyUpdateRead)
-        }
-    }
-
-    fun ruleSubsUp() {
-        execute {
-            val ruleSubs = appDb.ruleSubDao.all
-            for (ruleSub in ruleSubs) {
-                if (ruleSub.autoUpdate) {
-                    val checkResult = RuleUpdate.cacheSource(ruleSub)
-                    if(checkResult) {
-                        callback?.openImportUi(ruleSub.type, ruleSub.url)
-                    }
-                }
-            }
         }
     }
 

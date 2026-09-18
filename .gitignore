@@ -18,3 +18,9 @@ package-lock.json
 .kotlin/
 .cxx
 .vscode
+
+# 本地签名材料（勿提交）
+*.jks
+*.keystore
+!/.github/workflows/legado.jks
+keystore.properties

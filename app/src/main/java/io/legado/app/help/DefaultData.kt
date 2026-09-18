@@ -5,7 +5,6 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.DictRule
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.data.entities.KeyboardAssist
-import io.legado.app.data.entities.RssSource
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
@@ -29,9 +28,6 @@ object DefaultData {
                 }
                 if (LocalConfig.needUpTxtTocRule) {
                     importDefaultTocRules()
-                }
-                if (LocalConfig.needUpRssSources) {
-                    importDefaultRssSources()
                 }
                 if (LocalConfig.needUpDictRule) {
                     importDefaultDictRules()
@@ -77,14 +73,6 @@ object DefaultData {
         GSON.fromJsonArray<ThemeConfig.Config>(json).getOrNull() ?: emptyList()
     }
 
-    val rssSources: List<RssSource> by lazy {
-        val json = String(
-            appCtx.assets.open("defaultData${File.separator}rssSources.json")
-                .readBytes()
-        )
-        GSON.fromJsonArray<RssSource>(json).getOrDefault(emptyList())
-    }
-
     val coverRule: BookCover.CoverRule by lazy {
         val json = String(
             appCtx.assets.open("defaultData${File.separator}coverRule.json")
@@ -120,14 +108,6 @@ object DefaultData {
     fun importDefaultTocRules() {
         appDb.txtTocRuleDao.deleteDefault()
         appDb.txtTocRuleDao.insert(*txtTocRules.toTypedArray())
-    }
-
-    fun importDefaultRssSources() {
-        appDb.rssSourceDao.all
-            .filter { it.sourceGroup == "legado" }
-            .forEach { it.clearSharedGlobalState() }
-        appDb.rssSourceDao.deleteDefault()
-        appDb.rssSourceDao.insert(*rssSources.toTypedArray())
     }
 
     fun importDefaultDictRules() {

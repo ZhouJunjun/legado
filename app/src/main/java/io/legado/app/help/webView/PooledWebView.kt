@@ -2,7 +2,6 @@ package io.legado.app.help.webView
 
 import android.content.Context
 import android.content.MutableContextWrapper
-import io.legado.app.ui.rss.read.VisibleWebView
 
 class PooledWebView(
     val realWebView: VisibleWebView, // 真正的WebView实例

@@ -17,13 +17,8 @@ internal const val BOOK_SOURCE_PART_VIEW =
     lastUpdateTime, respondTime, weight,
     (exploreUrl is not null and trim(exploreUrl) <> '') hasExploreUrl,
     eventListener, bookSourceType,
-    (mainJs is not null and trim(mainJs) <> '') hasJs,
-    coalesce(c.status, 'NEEDS_CHECK') checkStatus,
-    coalesce(c.revision, '') checkRevision,
-    coalesce(c.sourceRevision, '') sourceRevision,
-    coalesce(c.checkedAt, 0) checkedAt,
-    coalesce(c.detail, '') checkDetail
-    from book_sources b left join book_source_check_states c on b.bookSourceUrl = c.bookSourceUrl"""
+    (mainJs is not null and trim(mainJs) <> '') hasJs
+    from book_sources b"""
 
 @DatabaseView(
     BOOK_SOURCE_PART_VIEW,
@@ -58,11 +53,6 @@ data class BookSourcePart(
     var bookSourceType: Int = 0,
     // 是否为纯 JS 单文件源
     var hasJs: Boolean = false,
-    var checkStatus: String = BookSourceCheckState.NEEDS_CHECK,
-    var checkRevision: String = "",
-    var sourceRevision: String = "",
-    var checkedAt: Long = 0,
-    var checkDetail: String = "",
 ) {
 
     override fun hashCode(): Int {

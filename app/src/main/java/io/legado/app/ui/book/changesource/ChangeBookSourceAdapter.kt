@@ -203,7 +203,6 @@ class ChangeBookSourceAdapter(
         popupActionMenu(context) {
             item(context.getString(R.string.to_top), "topSource")
             item(context.getString(R.string.to_bottom), "bottomSource")
-            item(context.getString(R.string.edit_source), "editSource")
             item(context.getString(R.string.disable_source), "disableSource")
             item(context.getString(R.string.delete_source), "deleteSource")
             danger("deleteSource")
@@ -211,7 +210,6 @@ class ChangeBookSourceAdapter(
             when (action) {
                 "topSource" -> callBack.topSource(searchBook)
                 "bottomSource" -> callBack.bottomSource(searchBook)
-                "editSource" -> callBack.editSource(searchBook)
                 "disableSource" -> callBack.disableSource(searchBook)
                 "deleteSource" -> {
                     if (deleteSourceDialog == null) {
@@ -246,7 +244,6 @@ class ChangeBookSourceAdapter(
         fun changeTo(searchBook: SearchBook)
         fun topSource(searchBook: SearchBook)
         fun bottomSource(searchBook: SearchBook)
-        fun editSource(searchBook: SearchBook)
         fun disableSource(searchBook: SearchBook)
         fun deleteSource(searchBook: SearchBook)
         fun setBookScore(searchBook: SearchBook, score: Int)

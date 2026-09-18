@@ -21,12 +21,6 @@
         <item>三列</item>
 	</string-array>
 
-	<string-array name="rss_type">
-		<item>网页</item>
-		<item>图片</item>
-		<item>视频</item>
-	</string-array>
-
 	<string-array name="group_style">
 		<item>Tab</item>
 		<item>Folder</item>
@@ -178,14 +172,12 @@
 
 	<string-array name="rule_type">
 		<item>BookSource</item>
-		<item>RssSource</item>
 		<item>ReplaceRule</item>
 	</string-array>
 
 	<string-array name="default_home_page">
 		<item>@string/bookshelf</item>
 		<item>@string/discovery</item>
-		<item>@string/rss</item>
 		<item>@string/my</item>
 	</string-array>
 
@@ -199,7 +191,6 @@
 	<string-array name="default_home_page_value">
 		<item>bookshelf</item>
 		<item>explore</item>
-		<item>rss</item>
 		<item>my</item>
 	</string-array>
 

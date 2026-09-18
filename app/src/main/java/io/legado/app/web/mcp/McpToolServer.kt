@@ -2,23 +2,16 @@ package io.legado.app.web.mcp
 
 import com.script.rhino.runScriptWithContext
 import io.legado.app.api.ReturnData
-import io.legado.app.api.controller.BookSourceController
 import io.legado.app.api.controller.HttpLogController
 import io.legado.app.constant.AppConst
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.BookSourcePart
-import io.legado.app.help.IntentData
 import io.legado.app.help.http.CookieManager
 import io.legado.app.help.http.CookieStore
 import io.legado.app.help.http.HttpLogRecord
-import io.legado.app.help.source.SourceHelp
-import io.legado.app.model.CheckSource
-import io.legado.app.model.CheckSourceResult
 import io.legado.app.model.Debug
 import io.legado.app.model.jsSource.JsSourceEngine
 import io.legado.app.model.jsSource.JsSourceUpsert
-import io.legado.app.utils.GSON
 import io.legado.app.utils.NetworkUtils
 import io.modelcontextprotocol.kotlin.sdk.server.ClientConnection
 import io.modelcontextprotocol.kotlin.sdk.server.Server
@@ -44,12 +37,10 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
@@ -209,66 +200,8 @@ object McpToolServer {
         }
     }
 
-    private suspend fun ClientConnection.sendCheckProgress(
-        sourcesByUrl: Map<String, BookSourcePart>,
-        results: Map<String, CheckSourceResult>,
-        reportedUrls: MutableSet<String>,
-        total: Int,
-        progressToken: RequestId?,
-    ) {
-        results.forEach { (url, result) ->
-            val source = sourcesByUrl[url] ?: return@forEach
-            if (reportedUrls.add(url)) {
-                val line = "[${reportedUrls.size}/$total] " +
-                    McpFormat.renderCheckResult(source, result)
-                sendProgressLine(
-                    line,
-                    reportedUrls.size,
-                    progressToken,
-                    total = total,
-                    logger = "legado.check_source",
-                )
-            }
-        }
-    }
 
     private fun registerTools(server: Server) {
-        server.addTool(
-            name = "save_source",
-            description = "保存单个书源。纯 JavaScript 单文件源传脚本原文；声明式源传 BookSource JSON 对象。" +
-                "同 bookSourceUrl 重复保存时保留启用、排序和权重；传入分组为空时保留已有分组。",
-            inputSchema = ToolSchema(
-                properties = buildJsonObject {
-                    put("source", stringProp("JS 脚本原文或 BookSource JSON 对象"))
-                    put("format", stringProp("js|json；缺省时自动识别"))
-                },
-                required = listOf("source"),
-            ),
-            toolAnnotations = openWorldWriteToolAnnotations,
-        ) { request ->
-            try {
-                val source = request.arguments.str("source")
-                    ?: return@addTool err("参数 source 不能为空")
-                val format = request.arguments.str("format") ?: McpFormat.detectFormat(source)
-                when (format) {
-                    "js" -> {
-                        val saved = BookSourceController.saveJsSource(source).dataOrThrow() as BookSource
-                        ok("已保存：${saved.bookSourceName}\nbookSourceUrl: ${saved.bookSourceUrl}")
-                    }
-
-                    "json" -> {
-                        val saved = McpSourceStore.saveDeclarative(source)
-                        ok("已保存：${saved.bookSourceName}\nbookSourceUrl: ${saved.bookSourceUrl}")
-                    }
-
-                    else -> err("参数 format 必须为 js 或 json")
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                err(error.localizedMessage ?: error.toString())
-            }
-        }
 
         server.addTool(
             name = "debug_source",
@@ -341,92 +274,8 @@ object McpToolServer {
             }
         }
 
-        server.addTool(
-            name = "list_sources",
-            description = "列出书源摘要，可按名称或 URL 子串过滤。",
-            inputSchema = ToolSchema(
-                properties = buildJsonObject {
-                    put("search", stringProp("名称或 URL 子串，大小写不敏感"))
-                },
-                required = emptyList(),
-            ),
-            toolAnnotations = localReadToolAnnotations,
-        ) { request ->
-            try {
-                val summaries = McpFormat.summarizeSources(
-                    appDb.bookSourceDao.all,
-                    request.arguments.str("search"),
-                )
-                ok("共 ${summaries.size} 条\n${McpFormat.truncate(McpFormat.toPrettyJson(summaries))}")
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                err(error.localizedMessage ?: error.toString())
-            }
-        }
 
-        server.addTool(
-            name = "get_source",
-            description = "按 bookSourceUrl 读取书源 JSON，超长内容最多返回 200000 字符。",
-            inputSchema = ToolSchema(
-                properties = buildJsonObject {
-                    put("url", stringProp("书源 bookSourceUrl"))
-                },
-                required = listOf("url"),
-            ),
-            toolAnnotations = localReadToolAnnotations,
-        ) { request ->
-            try {
-                val url = request.arguments.str("url")
-                    ?: return@addTool err("参数 url 不能为空")
-                val source = appDb.bookSourceDao.getBookSource(url)
-                    ?: return@addTool err("未找到书源，请检查书源地址")
-                ok(McpFormat.truncate(McpFormat.prettyJson(GSON.toJson(source)), 200_000))
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                err(error.localizedMessage ?: error.toString())
-            }
-        }
 
-        server.addTool(
-            name = "delete_sources",
-            description = "按 bookSourceUrl 删除一个或多个书源。",
-            inputSchema = ToolSchema(
-                properties = buildJsonObject {
-                    putJsonObject("urls") {
-                        put("type", "array")
-                        putJsonObject("items") { put("type", "string") }
-                        put("description", "bookSourceUrl 列表")
-                    }
-                },
-                required = listOf("urls"),
-            ),
-            toolAnnotations = localWriteToolAnnotations,
-        ) { request ->
-            try {
-                val urls = (request.arguments?.get("urls") as? JsonArray)
-                    ?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
-                    ?.filter { it.isNotBlank() }
-                    ?.distinct()
-                    .orEmpty()
-                if (urls.isEmpty()) {
-                    return@addTool err("参数 urls 不能为空")
-                }
-                JsSourceUpsert.withSaveLock {
-                    val existing = urls.mapNotNull(appDb.bookSourceDao::getBookSource)
-                    if (existing.isEmpty()) {
-                        return@withSaveLock ok("未找到可删除的书源")
-                    }
-                    SourceHelp.deleteBookSources(existing)
-                    ok("已删除 ${existing.size} 个书源")
-                }
-            } catch (error: CancellationException) {
-                throw error
-            } catch (error: Exception) {
-                err(error.localizedMessage ?: error.toString())
-            }
-        }
 
         server.addTool(
             name = "get_http_logs",
@@ -715,113 +564,5 @@ object McpToolServer {
             }
         }
 
-        server.addTool(
-            name = "check_source",
-            description = "按应用当前校验配置批量校验书源，独立保存本地检验状态、错误详情和响应时间，不修改书源分组或备注。" +
-                "单批最多 50 个；校验期间书源调试不可用，客户端取消请求不会中止应用内校验。",
-            inputSchema = ToolSchema(
-                properties = buildJsonObject {
-                    putJsonObject("urls") {
-                        put("type", "array")
-                        putJsonObject("items") { put("type", "string") }
-                        put("description", "要校验的 bookSourceUrl 列表，单批最多 50 个")
-                    }
-                },
-                required = listOf("urls"),
-            ),
-            toolAnnotations = openWorldWriteToolAnnotations,
-        ) { request ->
-            val urls = (request.arguments?.get("urls") as? JsonArray)
-                ?.mapNotNull { runCatching { it.jsonPrimitive.contentOrNull }.getOrNull() }
-                ?.filter { it.isNotBlank() }
-                ?.distinct()
-                .orEmpty()
-            if (urls.isEmpty()) return@addTool err("参数 urls 不能为空")
-            if (urls.size > 50) return@addTool err("单批最多校验 50 个书源")
-            val parts = urls.map { url ->
-                appDb.bookSourceDao.getBookSourcePart(url)
-                    ?: return@addTool err("未找到书源：$url")
-            }
-            if (!debugMutex.tryLock()) {
-                return@addTool err("调试通道占用中，请稍后重试")
-            }
-            var serviceRequested = false
-            var checkSessionId = 0L
-            var selectedSourcesKey: String? = null
-            try {
-                checkSessionId = Debug.tryStartCheckSession()
-                    ?: return@addTool err("调试通道占用中，请稍后重试")
-                selectedSourcesKey = CheckSource.start(appCtx, parts, checkSessionId)
-                serviceRequested = true
-                val progressToken = request.meta?.progressToken
-                val sourcesByUrl = parts.associateBy { it.bookSourceUrl }
-                val reportedUrls = hashSetOf<String>()
-
-                val started = withTimeoutOrNull(5_000L) {
-                    while (!Debug.isCheckServiceStarted(checkSessionId) &&
-                        Debug.isChecking(checkSessionId)
-                    ) {
-                        delay(100)
-                    }
-                    Debug.isCheckServiceStarted(checkSessionId)
-                } ?: Debug.isCheckServiceStarted(checkSessionId)
-                if (!started) {
-                    IntentData.get<Any>(selectedSourcesKey)
-                    if (Debug.isChecking(checkSessionId)) {
-                        runCatching { CheckSource.stop(appCtx, checkSessionId) }
-                        withTimeoutOrNull(5_000L) {
-                            while (Debug.isChecking(checkSessionId)) delay(100)
-                        }
-                        if (!Debug.isCheckServiceStarted(checkSessionId)) {
-                            Debug.finishChecking(checkSessionId)
-                        }
-                    }
-                    return@addTool err("校验服务未能启动，请将应用置于前台后重试")
-                }
-
-                while (Debug.isChecking(checkSessionId)) {
-                    sendCheckProgress(
-                        sourcesByUrl,
-                        Debug.getCheckSnapshot(checkSessionId, urls).results,
-                        reportedUrls,
-                        urls.size,
-                        progressToken,
-                    )
-                    delay(250)
-                }
-                val snapshot = Debug.takeCheckSnapshot(checkSessionId, urls)
-                sendCheckProgress(
-                    sourcesByUrl,
-                    snapshot.results,
-                    reportedUrls,
-                    urls.size,
-                    progressToken,
-                )
-                val summary = McpFormat.renderCheckSummary(
-                    parts,
-                    snapshot.results,
-                    snapshot.messages,
-                )
-                ok(McpFormat.truncate(summary))
-            } catch (error: CancellationException) {
-                if (!serviceRequested && checkSessionId > 0L) {
-                    IntentData.get<Any>(selectedSourcesKey)
-                    Debug.finishChecking(checkSessionId)
-                }
-                throw error
-            } catch (error: Exception) {
-                if (serviceRequested && checkSessionId > 0L &&
-                    Debug.isChecking(checkSessionId)
-                ) {
-                    runCatching { CheckSource.stop(appCtx, checkSessionId) }
-                } else if (checkSessionId > 0L) {
-                    IntentData.get<Any>(selectedSourcesKey)
-                    Debug.finishChecking(checkSessionId)
-                }
-                err(error.localizedMessage ?: error.toString())
-            } finally {
-                debugMutex.unlock()
-            }
-        }
     }
 }

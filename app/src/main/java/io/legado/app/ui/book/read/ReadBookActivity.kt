@@ -15,7 +15,6 @@ import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import androidx.activity.addCallback
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.view.menu.MenuItemImpl
 import androidx.core.view.doOnLayout
@@ -118,12 +117,11 @@ import io.legado.app.ui.book.read.page.provider.LayoutProgressListener
 import io.legado.app.ui.book.searchContent.SearchContentActivity
 import io.legado.app.ui.book.searchContent.SearchResult
 import io.legado.app.model.SourceCallBack
-import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.book.toc.rule.TxtTocRuleDialog
 import io.legado.app.ui.browser.WebViewActivity
-import io.legado.app.ui.dict.DictDialog
 import io.legado.app.ui.file.HandleFileContract
+import io.legado.app.ui.dict.DictDialog
 import io.legado.app.ui.highlight.HighlightRuleActivity
 import io.legado.app.ui.highlight.edit.HighlightRuleEditDialog
 import io.legado.app.ui.login.SourceLoginActivity
@@ -133,11 +131,11 @@ import io.legado.app.ui.widget.PopupAction
 import io.legado.app.ui.widget.dialog.PhotoDialog
 import io.legado.app.ui.widget.popupActionMenu
 import io.legado.app.utils.ACache
+import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.Debounce
 import io.legado.app.utils.LogUtils
 import io.legado.app.utils.NetworkUtils
-import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.dismissDialogFragment
 import io.legado.app.utils.dpToPx
@@ -172,12 +170,12 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.core.net.toUri
 import androidx.lifecycle.Lifecycle
 import com.script.rhino.runScriptWithContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
 import io.legado.app.ui.login.SourceLoginJsExtensions
-import io.legado.app.ui.association.ImportBookSourceDialog
 
 /**
  * 阅读界面
@@ -215,16 +213,6 @@ class ReadBookActivity : BaseReadBookActivity(),
                         .takeIf(String::isNotEmpty),
                     pdfPageIndex = (it[TocActivityResult.PDF_PAGE_INDEX] as Int).takeIf { page -> page >= 0 }
                 )
-            }
-        }
-    private val sourceEditActivity =
-        registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
-            if (it.resultCode == RESULT_OK) {
-                viewModel.upBookSource {
-                    resetReviewSummaryState()
-                    ReadBook.loadContent(resetPageOffset = false)
-                    upMenuView()
-                }
             }
         }
     private val replaceActivity =
@@ -356,7 +344,6 @@ class ReadBookActivity : BaseReadBookActivity(),
     @SuppressLint("ClickableViewAccessibility")
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         super.onActivityCreated(savedInstanceState)
-        viewModel.pendingSourceReimport.observe(this) { showPendingSourceReimport() }
         viewModel.resourceRefreshing.observe(this) { loading ->
             if (binding.readView.pageFactory.isRefreshingResources != loading) {
                 if (loading) binding.readView.updateScrollReadPosition()
@@ -487,18 +474,6 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun onPostResume() {
         super.onPostResume()
-        showPendingSourceReimport()
-    }
-
-    private fun showPendingSourceReimport() {
-        val pending = viewModel.pendingSourceReimport.value ?: return
-        if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) ||
-            supportFragmentManager.isStateSaved) return
-        viewModel.pendingSourceReimport.value = null
-        if (ReadBook.book?.bookUrl != pending.bookUrl || ReadBook.book?.origin != pending.sourceUrl) return
-        if (supportFragmentManager.findFragmentByTag("readerSourceReimport") != null) return
-        ImportBookSourceDialog(pending.json, reimportBookUrl = pending.bookUrl,
-            reimportSourceUrl = pending.sourceUrl).show(supportFragmentManager, "readerSourceReimport")
     }
 
     override fun onPause() {
@@ -577,8 +552,6 @@ class ReadBookActivity : BaseReadBookActivity(),
                     }
                     R.id.menu_manual_replace_rule -> item.isVisible = AppConfig.manualReplaceRule
                     R.id.menu_re_segment -> item.isChecked = book.getReSegment()
-
-                    R.id.menu_reimport_source -> item.isVisible = onLine
                     R.id.menu_reverse_content -> {
                         item.isVisible = onLine
                         item.isChecked = ReadBook.curTextChapter?.chapter?.takeIf {
@@ -845,7 +818,6 @@ class ReadBookActivity : BaseReadBookActivity(),
             R.id.menu_edit_content -> ContentEditDialog.newInstance()?.let {
                 showDialogFragment(it)
             }
-            R.id.menu_reimport_source -> viewModel.prepareSourceReimport()
             R.id.menu_update_toc -> ReadBook.book?.let {
                 if (it.isEpub) {
                     BookHelp.clearCache(it)
@@ -1785,14 +1757,6 @@ class ReadBookActivity : BaseReadBookActivity(),
             binding.readMenu.setAutoPage(false)
             dismissDialogFragment<AutoReadDialog>()
             upScreenTimeOut()
-        }
-    }
-
-    override fun openSourceEditActivity() {
-        ReadBook.bookSource?.let {
-            sourceEditActivity.launch {
-                putExtra("sourceUrl", it.bookSourceUrl)
-            }
         }
     }
 

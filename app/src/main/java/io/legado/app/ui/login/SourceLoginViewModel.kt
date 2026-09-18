@@ -56,7 +56,6 @@ class SourceLoginViewModel(application: Application) : BaseViewModel(application
                     val type = intent.getStringExtra("type")
                     source = when (type) {
                         "bookSource" ->  appDb.bookSourceDao.getBookSource(sourceKey)
-                        "rssSource" -> appDb.rssSourceDao.getByKey(sourceKey)
                         "httpTts" -> appDb.httpTTSDao.get(sourceKey.toLong())
                         "autoTask" -> AutoTask.get(sourceKey)?.let(AutoTask::buildSource)
                         else -> null

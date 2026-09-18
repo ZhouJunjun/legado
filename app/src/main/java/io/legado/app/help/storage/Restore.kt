@@ -17,7 +17,6 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookHighlight
 import io.legado.app.data.entities.BookMemo
-import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.Cache
 import io.legado.app.data.entities.Cookie
@@ -28,9 +27,6 @@ import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.data.entities.mergeRestoredReadRecord
 import io.legado.app.data.entities.ReplaceRule
-import io.legado.app.data.entities.RssSource
-import io.legado.app.data.entities.RssStar
-import io.legado.app.data.entities.RuleSub
 import io.legado.app.data.entities.SearchKeyword
 import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
@@ -331,30 +327,12 @@ object Restore {
             }
             appDb.bookGroupDao.insert(*groups.toTypedArray())
         }
-        fileToListT<BookSource>(path, "bookSource.json")?.let {
-            appDb.bookSourceDao.insert(*it.toTypedArray())
-        } ?: run {
-            val bookSourceFile = File(path, "bookSource.json")
-            if (bookSourceFile.exists()) {
-                val json = bookSourceFile.readText()
-                ImportOldData.importOldSource(json)
-            }
-        }
-        fileToListT<RssSource>(path, "rssSources.json")?.let {
-            appDb.rssSourceDao.insert(*it.toTypedArray())
-        }
-        fileToListT<RssStar>(path, "rssStar.json")?.let {
-            appDb.rssStarDao.insert(*it.toTypedArray())
-        }
         fileToListT<ReplaceRule>(path, "replaceRule.json")?.let {
             val insertedIds = appDb.replaceRuleDao.insert(*it.toTypedArray())
             ReplacePreviewConfig.saveImportedSamples(it, insertedIds, clearMissing = true)
         }
         fileToListT<SearchKeyword>(path, "searchHistory.json")?.let {
             appDb.searchKeywordDao.insert(*it.toTypedArray())
-        }
-        fileToListT<RuleSub>(path, "sourceSub.json")?.let {
-            appDb.ruleSubDao.insert(*it.toTypedArray())
         }
         fileToListT<TxtTocRule>(path, "txtTocRule.json")?.let {
             appDb.txtTocRuleDao.insert(*it.toTypedArray())

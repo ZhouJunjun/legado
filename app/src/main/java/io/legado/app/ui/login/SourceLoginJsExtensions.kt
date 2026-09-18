@@ -6,7 +6,7 @@ import io.legado.app.R
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.HttpTTS
 import io.legado.app.model.ReadAloud
-import io.legado.app.ui.rss.read.RssJsExtensions
+import io.legado.app.help.webView.SourceJsExtensions
 import io.legado.app.ui.widget.dialog.BottomWebViewDialog
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.sendToClip
@@ -23,7 +23,7 @@ class SourceLoginJsExtensions(
     source: BaseSource?,
     bookType: Int = 0,
     callback: Callback? = null
-) : RssJsExtensions(activity, source, bookType) {
+) : SourceJsExtensions(activity, source, bookType) {
     internal var customButtonKey: String? = null
     private val callbackRef: WeakReference<Callback> = WeakReference(callback)
     interface Callback {

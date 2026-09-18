@@ -23,7 +23,6 @@
 |baseUrl|当前url,String  |
 |result|上一步的结果|
 |book|[书籍类](https://github.com/LegadoTeam/legado/blob/master/app/src/main/java/io/legado/app/data/entities/Book.kt)|
-|rssArticle|[Article类](https://github.com/LegadoTeam/legado/blob/master/app/src/main/java/io/legado/app/data/entities/RssArticle.kt)|
 |chapter|[章节类](https://github.com/LegadoTeam/legado/blob/master/app/src/main/java/io/legado/app/data/entities/BookChapter.kt)|
 |source|[基础书源类](https://github.com/LegadoTeam/legado/blob/master/app/src/main/java/io/legado/app/data/entities/BaseSource.kt)|
 |cookie|[cookie操作类](https://github.com/LegadoTeam/legado/blob/master/app/src/main/java/io/legado/app/help/http/CookieStore.kt)| 
@@ -36,10 +35,9 @@
 ## 当前类对象的可使用的部分方法
 函数带有默认值的函数会自动重载，可以不填。  
 
-### [RssJsExtensions](https://github.com/LegadoTeam/legado/blob/main/app/src/main/java/io/legado/app/ui/rss/read/RssJsExtensions.kt)独有函数
-> 在订阅源`shouldOverrideUrlLoading`规则中使用  
-> 被下方`SourceLoginJsExtensions`类包含，也能使用这些函数  
-> 订阅添加跳转url拦截, js, 返回true拦截,js变量url,可以通过js打开url  
+### [SourceJsExtensions](https://github.com/LegadoTeam/legado/blob/main/app/src/main/java/io/legado/app/help/webView/SourceJsExtensions.kt)独有函数
+> 在书源`shouldOverrideUrlLoading`规则中使用  
+> 跳转url拦截, js, 返回true拦截, js变量url, 可以通过js打开url  
 > url跳转拦截规则不能执行耗时操作
 
 * 调用阅读搜索  
@@ -58,9 +56,8 @@ java.addBook(bookUrl: String)
 
 * 打开源界面  
 ```js
-* @param name 为"sort"打开订阅源分类界面、为"rss"打开订阅源正文界面、为"explore"打开书源发现界面、"search"打开书籍搜索界面、"login"打开源登录界面
-* @param url 为传递到界面的链接，"sort"时为分类链接、"rss"时为正文链接、"explore"时为发现链接，"search"、"login"时该参数无意义
-//特别说明，"sort"时url可以传序列化后的键值对用来打开多个分类界面
+* @param name 为"explore"打开书源发现界面、"search"打开书籍搜索界面、"login"打开源登录界面
+* @param url 为传递到界面的链接，"explore"时为发现链接，"search"、"login"时该参数无意义
 * @param title 为对应界面的标题，"search"时为搜索关键词，"login"时该参数无意义
 * @param origin 打开指定源界面的源地址
 java.open(name: String, url: String? = null, title: String? = null, origin: String? = null)

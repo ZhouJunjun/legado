@@ -4,12 +4,6 @@
     android:divider="@color/transparent"
     app:allowDividerBelow="false">
 
-    <io.legado.app.lib.prefs.Preference
-        android:icon="@drawable/ic_cfg_source"
-        android:key="bookSourceManage"
-        android:summary="@string/book_source_manage_desc"
-        android:title="@string/book_source_manage"
-        app:iconSpaceReserved="false" />
 
     <io.legado.app.lib.prefs.Preference
         android:icon="@drawable/ic_auto_page"

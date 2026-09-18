@@ -18,7 +18,7 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.ReviewRuleParser
 import io.legado.app.model.jsSource.JsSourceReview
-import io.legado.app.ui.rss.read.RssJsExtensions
+import io.legado.app.help.webView.SourceJsExtensions
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
 import kotlinx.coroutines.CancellationException
@@ -163,7 +163,7 @@ object ReviewController {
     private class LegacyReviewJsExtensions(
         source: BaseSource,
         private val onShowBrowser: (LegacyReviewBrowserPage) -> Unit = {},
-    ) : RssJsExtensions(null, source, BookType.text) {
+    ) : SourceJsExtensions(null, source, BookType.text) {
 
         override fun showBrowser(
             url: String,

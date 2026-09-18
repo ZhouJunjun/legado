@@ -57,7 +57,7 @@ internal fun selectedBackupFileNames(isEnabled: (String) -> Boolean): List<Strin
             addAll(listOf("bookmark.json", "highlight.json", "highlightRule.json"))
         }
         if (isEnabled(BackupConfig.sourceContentKey)) {
-            addAll(listOf("bookSource.json", "rssSources.json", "rssStar.json", "sourceSub.json"))
+            add("bookSource.json")
         }
         if (isEnabled(BackupConfig.cookieContentKey)) {
             add(BackupConfig.cookieFileName)
@@ -284,8 +284,6 @@ object Backup {
         )
         writeListToJson(appDb.bookGroupDao.all, "bookGroup.json", backupPath)
         writeListToJson(appDb.bookSourceDao.all, "bookSource.json", backupPath)
-        writeListToJson(appDb.rssSourceDao.all, "rssSources.json", backupPath)
-        writeListToJson(appDb.rssStarDao.all, "rssStar.json", backupPath)
         writeListToJson(
             ReplacePreviewConfig.withSamples(appDb.replaceRuleDao.all),
             "replaceRule.json",
@@ -298,7 +296,6 @@ object Backup {
             "readRecord.json", backupPath,
         )
         writeListToJson(appDb.searchKeywordDao.all, "searchHistory.json", backupPath)
-        writeListToJson(appDb.ruleSubDao.all, "sourceSub.json", backupPath)
         writeListToJson(appDb.txtTocRuleDao.all, "txtTocRule.json", backupPath)
         writeListToJson(appDb.httpTTSDao.all, "httpTTS.json", backupPath)
         writeListToJson(appDb.keyboardAssistsDao.all, "keyboardAssists.json", backupPath)

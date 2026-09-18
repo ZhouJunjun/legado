@@ -79,7 +79,6 @@ object BackupConfig {
         themeConfigKey,
         coverConfigKey,
         PreferKey.bookshelfLayout,
-        PreferKey.showRss,
         PreferKey.threadCount,
         localBookKey,
         cookieIgnoreKey,
@@ -93,7 +92,6 @@ object BackupConfig {
         appCtx.getString(R.string.theme_config),
         appCtx.getString(R.string.cover_config),
         appCtx.getString(R.string.bookshelf_layout),
-        appCtx.getString(R.string.show_rss),
         appCtx.getString(R.string.thread_count),
         appCtx.getString(R.string.local_book),
         appCtx.getString(R.string.backup_content_cookies),
@@ -184,7 +182,6 @@ object BackupConfig {
             ignoreCoverConfig && coverPrefKeys.contains(key) -> false
             PreferKey.themeMode == key && ignoreThemeMode -> false
             PreferKey.bookshelfLayout == key && ignoreBookshelfLayout -> false
-            PreferKey.showRss == key && ignoreShowRss -> false
             PreferKey.threadCount == key && ignoreThreadCount -> false
             else -> true
         }
@@ -200,8 +197,6 @@ object BackupConfig {
         get() = ignoreConfig[coverConfigKey] == true
     private val ignoreBookshelfLayout: Boolean
         get() = ignoreConfig[PreferKey.bookshelfLayout] == true
-    private val ignoreShowRss: Boolean
-        get() = ignoreConfig[PreferKey.showRss] == true
     private val ignoreThreadCount: Boolean
         get() = ignoreConfig[PreferKey.threadCount] == true
     val ignoreLocalBook: Boolean

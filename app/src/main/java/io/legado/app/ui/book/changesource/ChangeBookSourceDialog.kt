@@ -34,18 +34,14 @@ import io.legado.app.lib.theme.elevation
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.book.read.ReadBookActivity
-import io.legado.app.ui.book.source.edit.BookSourceEditActivity
-import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ColorUtils
-import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getCompatDrawable
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.setLayout
-import io.legado.app.utils.startActivity
 import io.legado.app.utils.transaction
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
@@ -78,11 +74,6 @@ class ChangeBookSourceDialog() : BaseDialogFragment(R.layout.dialog_book_change_
     private var adapterDataObserver: RecyclerView.AdapterDataObserver? = null
     private var autoScrollCurrentSource = true
     private val adapter by lazy { ChangeBookSourceAdapter(requireContext(), viewModel, this) }
-    private val editSourceResult =
-        registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
-            val origin = it.data?.getStringExtra("origin") ?: return@registerForActivityResult
-            viewModel.startSearch(origin)
-        }
     override fun onStart() {
         super.onStart()
         setLayout(1f, ViewGroup.LayoutParams.MATCH_PARENT)
@@ -402,7 +393,6 @@ class ChangeBookSourceDialog() : BaseDialogFragment(R.layout.dialog_book_change_
             }
 
             R.id.menu_start_stop -> viewModel.startOrStopSearch()
-            R.id.menu_source_manage -> startActivity<BookSourceActivity>()
             R.id.menu_close -> dismissAllowingStateLoss()
             R.id.menu_refresh_list -> viewModel.startRefreshList()
             else -> if (item?.groupId == R.id.source_group && !item.isChecked) {
@@ -465,12 +455,6 @@ class ChangeBookSourceDialog() : BaseDialogFragment(R.layout.dialog_book_change_
 
     override fun bottomSource(searchBook: SearchBook) {
         viewModel.bottomSource(searchBook)
-    }
-
-    override fun editSource(searchBook: SearchBook) {
-        editSourceResult.launch {
-            putExtra("sourceUrl", searchBook.origin)
-        }
     }
 
     override fun disableSource(searchBook: SearchBook) {

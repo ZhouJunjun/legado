@@ -1,6 +1,7 @@
 package io.legado.app.data
 
 import androidx.room.DeleteColumn
+import androidx.room.DeleteTable
 import androidx.room.migration.AutoMigrationSpec
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
@@ -586,5 +587,27 @@ object DatabaseMigrations {
             update.close()
         }
     }
+
+    /**
+     * 书源校验状态表随书源管理功能一并移除。
+     */
+    @Suppress("ClassName")
+    @DeleteTable.Entries(
+        DeleteTable(tableName = "book_source_check_states")
+    )
+    class Migration_111_112 : AutoMigrationSpec
+
+    /**
+     * RSS 及其订阅规则功能整体移除，相关数据表一并删除。
+     */
+    @Suppress("ClassName")
+    @DeleteTable.Entries(
+        DeleteTable(tableName = "rssSources"),
+        DeleteTable(tableName = "rssArticles"),
+        DeleteTable(tableName = "rssStars"),
+        DeleteTable(tableName = "rssReadRecords"),
+        DeleteTable(tableName = "ruleSubs"),
+    )
+    class Migration_112_113 : AutoMigrationSpec
 
 }

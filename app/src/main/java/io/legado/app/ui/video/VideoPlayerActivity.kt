@@ -36,7 +36,6 @@ import io.legado.app.constant.EventBus
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.RssSource
 import io.legado.app.databinding.ActivityVideoPlayerBinding
 import io.legado.app.help.GlideImageGetter
 import io.legado.app.help.TextViewTagHandler
@@ -53,21 +52,16 @@ import io.legado.app.help.webView.WebJsExtensions.Companion.nameSource
 import io.legado.app.help.webView.WebViewPool
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.model.VideoPlay
 import io.legado.app.service.VideoPlayService
 import io.legado.app.ui.about.AppLogDialog
 import io.legado.app.model.SourceCallBack
 import io.legado.app.ui.association.OnLineImportActivity
-import io.legado.app.ui.book.source.edit.BookSourceEditActivity
 import io.legado.app.ui.book.toc.TocActivityResult
 import io.legado.app.ui.login.SourceLoginActivity
-import io.legado.app.ui.rss.favorites.RssFavoritesDialog
-import io.legado.app.ui.rss.source.edit.RssSourceEditActivity
 import io.legado.app.ui.video.config.SettingsDialog
 import io.legado.app.ui.widget.dialog.PhotoDialog
 import io.legado.app.ui.widget.text.ScrollTextView
-import io.legado.app.utils.StartActivityContract
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
@@ -78,7 +72,6 @@ import io.legado.app.utils.openUrl
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setHtml
 import io.legado.app.utils.setMarkdown
-import io.legado.app.utils.setTintMutate
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
@@ -94,11 +87,10 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlayerViewModel>(),
-    SettingsDialog.CallBack,RssFavoritesDialog.Callback {
+    SettingsDialog.CallBack {
     override val binding by viewBinding(ActivityVideoPlayerBinding::inflate)
     override val viewModel by viewModels<VideoPlayerViewModel>()
     private val playerView: VideoPlayer by lazy { binding.playerView }
-    private var starMenuItem: MenuItem? = null
     private var isIntroTextViewAttached = false
     private val introTextView by lazy {
         val inflater = LayoutInflater.from(this)
@@ -137,20 +129,6 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     private var isFullScreen = false
     private var orientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
     private var menuCustomBtn: MenuItem? = null
-    private val bookSourceEditResult =
-        registerForActivityResult(StartActivityContract(BookSourceEditActivity::class.java)) {
-            if (it.resultCode == RESULT_OK) {
-                viewModel.upSource {
-                    menuCustomBtn?.isVisible = (VideoPlay.source as? BookSource)?.customButton == true
-                }
-            }
-        }
-    private val rssSourceEditResult =
-        registerForActivityResult(StartActivityContract(RssSourceEditActivity::class.java)) {
-            if (it.resultCode == RESULT_OK) {
-                viewModel.upSource()
-            }
-        }
     private val tocActivityResult = registerForActivityResult(TocActivityResult()) {
         it?.let {
             if (it[2] as Boolean) {
@@ -231,7 +209,6 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
     }
 
     private fun initView() {
-        viewModel.upStarMenuData.observe(this) { upStarMenu() }
         binding.root.setBackgroundColor(backgroundColor)
         val book = VideoPlay.book
         if (book == null) {
@@ -616,25 +593,7 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
         menuCustomBtn = menu.findItem(R.id.menu_custom_btn)?.also {
             it.isVisible = (VideoPlay.source as? BookSource)?.customButton == true
         }
-        starMenuItem = menu.findItem(R.id.menu_rss_star)
-        upStarMenu()
         return super.onPrepareOptionsMenu(menu)
-    }
-
-    private fun upStarMenu() {
-        if (VideoPlay.rssStar != null) {
-            starMenuItem?.isVisible = true
-            starMenuItem?.setIcon(R.drawable.ic_star)
-            starMenuItem?.setTitle(R.string.in_favorites)
-            starMenuItem?.icon?.setTintMutate(primaryTextColor)
-        } else if(VideoPlay.rssRecord != null) {
-            starMenuItem?.isVisible = true
-            starMenuItem?.setIcon(R.drawable.ic_star_border)
-            starMenuItem?.setTitle(R.string.out_favorites)
-            starMenuItem?.icon?.setTintMutate(primaryTextColor)
-        } else {
-            starMenuItem?.isVisible = false
-        }
     }
 
     override fun onMenuOpened(featureId: Int, menu: Menu): Boolean {
@@ -658,23 +617,12 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
                     }
                 }
             }
-            R.id.menu_rss_star -> viewModel.addFavorite {
-                VideoPlay.rssStar?.let { showDialogFragment(RssFavoritesDialog(it)) }
-            }
             R.id.menu_float_window -> startFloatingWindow()
             R.id.menu_config_settings -> showDialogFragment(SettingsDialog(this))
-            R.id.menu_login -> VideoPlay.source?.let {s ->
-               when (s) {
-                    is BookSource -> {
-                        startActivity<SourceLoginActivity> {
-                            putExtra("bookType", BookType.video)
-                        }
-                    }
-                    is RssSource -> {
-                        startActivity<SourceLoginActivity> {
-                            putExtra("type", "rssSource")
-                            putExtra("key", s.getKey())
-                        }
+            R.id.menu_login -> VideoPlay.source?.let { s ->
+                if (s is BookSource) {
+                    startActivity<SourceLoginActivity> {
+                        putExtra("bookType", BookType.video)
                     }
                 }
             }
@@ -710,17 +658,6 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
                 }
                 startActivity(intent)
             }
-            R.id.menu_edit_source -> VideoPlay.source?.let {s  ->
-                when (s) {
-                    is BookSource -> bookSourceEditResult.launch {
-                        putExtra("sourceUrl", s.getKey())
-                    }
-                    is RssSource -> rssSourceEditResult.launch {
-                        putExtra("sourceUrl", s.getKey())
-                    }
-                }
-            }
-
             R.id.menu_log -> showDialogFragment<AppLogDialog>()
         }
         return super.onCompatOptionsItemSelected(item)
@@ -781,14 +718,6 @@ class VideoPlayerActivity : VMBaseActivity<ActivityVideoPlayerBinding, VideoPlay
 
     private fun callBackBookEnd() {
         SourceCallBack.callBackBook(SourceCallBack.END_READ, VideoPlay.source as BookSource?, VideoPlay.book, VideoPlay.chapter)
-    }
-
-    override fun updateFavorite(title: String?, group: String?) {
-        viewModel.updateFavorite(title, group)
-    }
-
-    override fun deleteFavorite() {
-        viewModel.delFavorite()
     }
 
     override fun onStart() {

@@ -703,7 +703,6 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
     private fun showMenu(binding: ItemFindBookBinding, position: Int): Boolean {
         val source = getItem(position) ?: return true
         popupActionMenu(context) {
-            item(context.getString(R.string.edit), "edit")
             item(context.getString(R.string.to_top), "top")
             item(context.getString(R.string.login), "login", source.hasLoginUrl)
             item(context.getString(R.string.search), "search")
@@ -712,7 +711,6 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
             danger("delete")
         }.show(binding.llTitle) { action ->
             when (action) {
-                "edit" -> callBack.editSource(source.bookSourceUrl)
                 "top" -> callBack.toTop(source)
                 "search" -> callBack.searchBook(source)
                 "login" -> context.startActivity<SourceLoginActivity> {
@@ -732,7 +730,6 @@ class ExploreAdapter(context: Context, val callBack: CallBack) :
         val scope: CoroutineScope
         fun scrollTo(pos: Int)
         fun openExplore(sourceUrl: String, title: String, exploreUrl: String?)
-        fun editSource(sourceUrl: String)
         fun toTop(source: BookSourcePart)
         fun deleteSource(source: BookSourcePart)
         fun searchBook(bookSource: BookSourcePart)

@@ -28,7 +28,6 @@ import io.legado.app.ui.about.AboutActivity
 import io.legado.app.ui.about.ReadRecordActivity
 import io.legado.app.ui.autoTask.AutoTaskActivity
 import io.legado.app.ui.book.bookmark.AllBookmarkActivity
-import io.legado.app.ui.book.source.manage.BookSourceActivity
 import io.legado.app.ui.book.toc.rule.TxtTocRuleActivity
 import io.legado.app.ui.config.ConfigActivity
 import io.legado.app.ui.config.ConfigTag
@@ -250,7 +249,6 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
                 "myMore" -> startActivity<ConfigActivity> { putExtra("configTag", ConfigTag.MY_MORE) }
                 "check_update" -> checkAppUpdate()
                 "check_beta_update" -> checkAppUpdate(beta = true)
-                "bookSourceManage" -> startActivity<BookSourceActivity>()
                 "autoTaskManage" -> startActivity<AutoTaskActivity>()
                 "replaceManage" -> startActivity<ReplaceRuleActivity>()
                 "dictRuleManage" -> startActivity<DictRuleActivity>()

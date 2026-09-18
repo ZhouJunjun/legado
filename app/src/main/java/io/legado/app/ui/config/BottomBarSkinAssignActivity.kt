@@ -48,11 +48,10 @@ class BottomBarSkinAssignActivity : BaseActivity<ActivityBottomBarSkinAssignBind
 
     private val thumbSizePx by lazy { 56.dpToPx() }
 
-    /** 4 个按钮的槽位与标题(顺序 = 底栏 Tab 顺序) */
+    /** 3 个按钮的槽位与标题(顺序 = 底栏 Tab 顺序) */
     private val slotLabels = linkedMapOf(
         "bookshelf" to R.string.bookshelf,
         "home" to R.string.discovery,
-        "notes" to R.string.rss,
         "settings" to R.string.my,
     )
 

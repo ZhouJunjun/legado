@@ -950,7 +950,6 @@ class CodeEditActivity :
     override fun helpActions(): List<SelectItem<String>> {
         return arrayListOf(
             SelectItem("书源教程", "ruleHelp"),
-            SelectItem("订阅源教程", "rssRuleHelp"),
             SelectItem("js教程", "jsHelp"),
             SelectItem("正则教程", "regexHelp")
         )
@@ -959,7 +958,6 @@ class CodeEditActivity :
     override fun onHelpActionSelect(action: String) {
         when (action) {
             "ruleHelp" -> showHelp("ruleHelp")
-            "rssRuleHelp" -> showHelp("rssRuleHelp")
             "jsHelp" -> showHelp("jsHelp")
             "regexHelp" -> showHelp("regexHelp")
         }

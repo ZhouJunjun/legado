@@ -14,7 +14,6 @@ import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.RssArticle
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.CacheManager
 import io.legado.app.help.JsExtensions
@@ -67,7 +66,6 @@ class AnalyzeRule(
 ) : JsExtensions {
 
     private val book get() = ruleData as? BaseBook
-    private val rssArticle get() = ruleData as? RssArticle
 
     private var chapter: BookChapter? = null
     private var nextChapterUrl: String? = null
@@ -906,7 +904,6 @@ class AnalyzeRule(
             bindings["title"] = chapter?.title
             bindings["src"] = content
             bindings["nextChapterUrl"] = nextChapterUrl
-            bindings["rssArticle"] = rssArticle
             bindings["fromBookInfo"] = isFromBookInfo
             localBindings["paraIndex"]?.let { bindings["paraIndex"] = it }
             localBindings["paraData"]?.let { bindings["paraData"] = it }

@@ -9,7 +9,6 @@ import androidx.room.Transaction
 import androidx.room.Update
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.BookSourceCheckState
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.utils.cnCompare
 import io.legado.app.utils.splitNotBlank
@@ -264,19 +263,9 @@ interface BookSourceDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     fun insertSources(vararg bookSource: BookSource)
 
-    @Insert(onConflict = OnConflictStrategy.REPLACE)
-    fun saveCheckStates(vararg states: BookSourceCheckState)
-
-    @Query("select * from book_source_check_states")
-    fun allCheckStates(): List<BookSourceCheckState>
-
-    @Query("select * from book_source_check_states where bookSourceUrl = :url")
-    fun getCheckState(url: String): BookSourceCheckState?
-
     @Transaction
     fun insert(vararg bookSource: BookSource) {
         insertSources(*bookSource)
-        saveCheckStates(*bookSource.map { BookSourceCheckState(it.bookSourceUrl) }.toTypedArray())
     }
 
     @Update
@@ -284,45 +273,7 @@ interface BookSourceDao {
 
     @Transaction
     fun update(vararg bookSource: BookSource) {
-        for (source in bookSource) {
-            val current = getBookSource(source.bookSourceUrl) ?: continue
-            updateSources(source)
-            if (current.checkContent() != source.checkContent()) {
-                saveCheckStates(BookSourceCheckState(source.bookSourceUrl))
-            }
-        }
-    }
-
-    /** Commit the entire queue before starting any network request. */
-    @Transaction
-    fun beginCheck(sources: List<BookSourcePart>): List<BookSourcePart> = sources.map { selected ->
-        val current = getBookSourcePart(selected.bookSourceUrl)
-        if (current == null || current.lastUpdateTime != selected.lastUpdateTime ||
-            current.checkRevision != selected.checkRevision) {
-            selected.copy()
-        } else {
-            val state = BookSourceCheckState(selected.bookSourceUrl, sourceRevision = current.sourceRevision)
-            saveCheckStates(state)
-            selected.copy(checkStatus = state.status, checkRevision = state.revision,
-                checkedAt = 0, checkDetail = "")
-        }
-    }
-
-    @Query("""update book_source_check_states set status = :status, detail = :detail,
-        checkedAt = :checkedAt where bookSourceUrl = :url and revision = :revision and status = 'NEEDS_CHECK'""")
-    fun finishCheck(url: String, revision: String, status: String, detail: String, checkedAt: Long): Int
-
-    @Query("update book_sources set respondTime = :respondTime where bookSourceUrl = :url")
-    fun updateRespondTime(url: String, respondTime: Long)
-
-    @Transaction
-    fun completeCheck(selected: BookSourcePart, passed: Boolean, detail: String, respondTime: Long): Boolean {
-        val updated = finishCheck(selected.bookSourceUrl, selected.checkRevision,
-            if (passed) BookSourceCheckState.PASSED else BookSourceCheckState.FAILED,
-            detail, System.currentTimeMillis())
-        if (updated == 0) return false
-        updateRespondTime(selected.bookSourceUrl, respondTime)
-        return true
+        updateSources(*bookSource)
     }
 
     @Delete

@@ -11,8 +11,6 @@ import android.database.MatrixCursor
 import android.net.Uri
 import com.google.gson.Gson
 import io.legado.app.api.controller.BookController
-import io.legado.app.api.controller.BookSourceController
-import io.legado.app.api.controller.RssSourceController
 import kotlinx.coroutines.runBlocking
 
 /**
@@ -49,8 +47,6 @@ class ReaderProvider : ContentProvider() {
         dispatchReaderProviderDelete(
             requestCode,
             selection,
-            deleteBookSources = { BookSourceController.deleteSources(it) },
-            deleteRssSources = { RssSourceController.deleteSources(it) },
         )
         return 0
     }
@@ -64,10 +60,6 @@ class ReaderProvider : ContentProvider() {
                 requestCode,
                 values?.getAsString(postBodyKey),
                 valuesPresent = values != null,
-                saveBookSource = { BookSourceController.saveSource(it) },
-                saveBookSources = { BookSourceController.saveSources(it) },
-                saveRssSource = { RssSourceController.saveSource(it) },
-                saveRssSources = { RssSourceController.saveSources(it) },
                 saveBook = { BookController.saveBook(it) },
                 saveBookProgress = { BookController.saveBookProgress(it) },
             )
@@ -94,10 +86,6 @@ class ReaderProvider : ContentProvider() {
             dispatchReaderProviderQuery(
                 requestCode,
                 map,
-                getBookSource = { BookSourceController.getSource(it) },
-                getBookSources = { BookSourceController.sources },
-                getRssSource = { RssSourceController.getSource(it) },
-                getRssSources = { RssSourceController.sources },
                 getBookshelf = { BookController.bookshelf },
                 getBookContent = { BookController.getBookContent(it) },
                 refreshToc = { BookController.refreshToc(it) },

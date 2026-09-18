@@ -5,7 +5,6 @@ import com.script.SharedGlobalStateHandle
 import io.legado.app.constant.SourceType
 import io.legado.app.data.entities.BaseSource
 import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.RssSource
 import io.legado.app.model.SharedJsScope
 import io.legado.app.utils.MD5Utils
 import kotlin.coroutines.CoroutineContext
@@ -37,7 +36,6 @@ fun clearSharedGlobalStateBySourceKey(
 fun BaseSource.getSourceType(): Int {
     return when (this) {
         is BookSource -> SourceType.book
-        is RssSource -> SourceType.rss
         else -> error("unknown source type: ${this::class.simpleName}.")
     }
 }
