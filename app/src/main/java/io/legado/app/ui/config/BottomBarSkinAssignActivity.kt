@@ -33,7 +33,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 
 /**
- * 分配图集页:导入 zip 后,用户给 4 个底栏按钮各选「选中(必)/未选(可空)」图,保存为一套图集。
+ * 分配图集页:导入 zip 后,用户给每个底栏按钮各选「选中(必)/未选(可空)」图,保存为一套图集。
  * 图片素材取自 [BottomBarSkinManager] 的暂存目录,缩略图预解码缓存在 [thumbs]。
  */
 class BottomBarSkinAssignActivity : BaseActivity<ActivityBottomBarSkinAssignBinding>() {
@@ -48,10 +48,9 @@ class BottomBarSkinAssignActivity : BaseActivity<ActivityBottomBarSkinAssignBind
 
     private val thumbSizePx by lazy { 56.dpToPx() }
 
-    /** 3 个按钮的槽位与标题(顺序 = 底栏 Tab 顺序) */
+    /** 2 个按钮的槽位与标题(顺序 = 底栏 Tab 顺序) */
     private val slotLabels = linkedMapOf(
         "bookshelf" to R.string.bookshelf,
-        "home" to R.string.discovery,
         "settings" to R.string.my,
     )
 

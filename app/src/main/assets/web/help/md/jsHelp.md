@@ -56,8 +56,6 @@ java.addBook(bookUrl: String)
 
 * 打开源界面  
 ```js
-* @param name 为"explore"打开书源发现界面、"search"打开书籍搜索界面、"login"打开源登录界面
-* @param url 为传递到界面的链接，"explore"时为发现链接，"search"、"login"时该参数无意义
 * @param title 为对应界面的标题，"search"时为搜索关键词，"login"时该参数无意义
 * @param origin 打开指定源界面的源地址
 java.open(name: String, url: String? = null, title: String? = null, origin: String? = null)

@@ -13,8 +13,8 @@ object BottomBarSkinFormat {
 
     private val invalidFileChars = Regex("[\\u0000-\\u001F\\u007F\\\\/:*?\"<>|]")
 
-    /** 被底栏使用的 3 个槽位(对应 3 个 Tab) */
-    val MAPPED_SLOTS = listOf("bookshelf", "home", "settings")
+    /** 被底栏使用的 2 个槽位(对应 2 个 Tab) */
+    val MAPPED_SLOTS = listOf("bookshelf", "settings")
 
     /** 允许的图片后缀(小写,不含点) */
     val IMAGE_EXTS = listOf("png", "jpg", "jpeg", "webp", "bmp", "gif", "svg")

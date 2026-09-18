@@ -16,7 +16,6 @@ import io.legado.app.model.VideoPlay
 import io.legado.app.model.analyzeRule.AnalyzeRule
 import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setChapter
 import io.legado.app.ui.association.AddToBookshelfDialog
-import io.legado.app.ui.book.explore.ExploreShowActivity
 import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.ui.login.SourceLoginActivity
 import io.legado.app.ui.login.createSourceLoginRoute
@@ -137,21 +136,6 @@ open class SourceJsExtensions(
                             }
                         }
                         searchBook(it)
-                    }
-                }
-
-                "explore" -> {
-                    if (url.isNullOrBlank()) return@launch
-                    val toSource = origin?.let { o ->
-                        appDb.bookSourceDao.getBookSource(o)
-                    } ?: (source as? BookSource) ?: return@launch
-                    val sourceUrl = toSource.bookSourceUrl
-                    withContext(Main) {
-                        activity.startActivity<ExploreShowActivity> {
-                            putExtra("exploreName", title)
-                            putExtra("sourceUrl", sourceUrl)
-                            putExtra("exploreUrl", url)
-                        }
                     }
                 }
             }

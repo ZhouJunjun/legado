@@ -6,7 +6,7 @@ import io.legado.app.constant.BookType
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.rule.ExploreKind
-import io.legado.app.ui.main.explore.ExploreAdapter.Companion.exploreInfoMapList
+import io.legado.app.help.source.ExploreInfoStore.exploreInfoMapList
 import io.legado.app.utils.ACache
 import io.legado.app.utils.GSON
 import io.legado.app.utils.InfoMap

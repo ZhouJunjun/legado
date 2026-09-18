@@ -34,7 +34,6 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
     /** menu id -> 默认矢量图标; applySkin(null) 时据此还原 */
     private val defaultIcons = mapOf(
         R.id.menu_bookshelf to R.drawable.ic_bottom_books,
-        R.id.menu_discovery to R.drawable.ic_bottom_explore,
         R.id.menu_my_config to R.drawable.ic_bottom_person,
     )
 

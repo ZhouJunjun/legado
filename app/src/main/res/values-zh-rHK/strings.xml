@@ -390,12 +390,7 @@
     <string name="imm_navigation_bar">沉浸式导航栏</string>
     <string name="imm_navigation_bar_s">导航栏颜色透明</string>
     <string name="add_to_bookshelf">放入書架</string>
-    <string name="add_loaded_books_to_bookshelf">將已載入結果加入書架</string>
-    <string name="add_loaded_books_to_bookshelf_message">是否將目前已載入的 %1$d 項結果加入書架？已存在和重複的書籍會自動略過。</string>
-    <string name="add_loaded_books_to_bookshelf_result">已加入 %1$d 本，略過 %2$d 本</string>
     <string name="add_loaded_books_to_bookshelf_failed">批次加入書架失敗</string>
-    <string name="add_loaded_books_to_bookshelf_in_progress">正在批次加入書架</string>
-    <string name="no_loaded_books_to_add">暫無已載入的書籍</string>
     <string name="continue_read">繼續閲讀</string>
     <string name="cover_path">封面地址</string>
     <string name="page_anim_cover">覆蓋</string>
@@ -502,7 +497,6 @@
     <string name="sure_del_file">確定刪除文件嗎?</string>
     <string name="files_tree">手機目錄</string>
     <string name="intelligent_import">智能導入</string>
-    <string name="discovery">發現</string>
     <string name="switch_display_style">切換顯示樣式</string>
     <string name="import_per">導入本地書籍需存儲權限</string>
     <string name="night_theme">夜間模式</string>
@@ -630,7 +624,6 @@
     <string name="web_dav_account">WebDav 賬號</string>
     <string name="web_dav_account_s">輸入你的 WebDav 賬號</string>
     <string name="screen">篩選</string>
-    <string name="screen_find">篩選發現源</string>
     <string name="dur_pos">當前位置：</string>
     <string name="precision_search">精準搜索</string>
     <string name="service_starting">正在啟動服務</string>
@@ -852,7 +845,6 @@
     <string name="share_selected_source">分享選中源</string>
     <string name="sort_by_lastUpdateTime">更新時間排序</string>
     <string name="search_content">全文搜索</string>
-    <string name="explore_empty">目前沒有發現源!</string>
     <string name="page_key_set_help">將焦點放到輸入框按下物理按鍵會自動輸入鍵值,多個按鍵會自動用英文逗號隔開.</string>
     <string name="theme_name">主題名</string>
     <string name="auto_clear_expired">自動清除過期搜尋資料</string>
@@ -933,7 +925,6 @@
     <string name="diy_edit_source_group">輸入自訂源分組名稱</string>
     <string name="reverse_toc">反轉目錄</string>
     <string name="expand_toc">目錄展開</string>
-    <string name="show_discovery">顯示發現</string>
     <string name="style">樣式</string>
     <string name="group_style">分組樣式</string>
     <string name="export_file_name">導出文件名</string>
@@ -1321,7 +1312,6 @@
     <string name="reader_menu_zone_more">更多選單</string>
     <string name="live_update_notifications">即時更新通知</string>
     <string name="live_update_notifications_summary">在 Android 16 上將系統允許的進度通知提升為即時更新</string>
-    <string name="show_explore_categories">顯示全部分類</string>
     <string name="book_memo">備忘</string>
     <string name="show_book_memo">顯示備忘入口</string>
     <string name="show_book_memo_summary">在閱讀底部選單增加備忘按鈕</string>

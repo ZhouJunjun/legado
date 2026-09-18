@@ -490,7 +490,6 @@
     <string name="sure_del_file">Bạn có chắc chắn muốn xóa tệp này không?</string>
     <string name="files_tree">Thư mục</string>
     <string name="intelligent_import">Nhập thông minh</string>
-    <string name="discovery">Khám phá</string>
     <string name="switch_display_style">Chuyển đổi kiểu hiển thị</string>
     <string name="import_per">Nhập sách cục bộ cần quyền truy cập bộ nhớ</string>
     <string name="night_theme">Chủ đề tối</string>
@@ -609,7 +608,6 @@
     <string name="web_dav_account">Tài khoản WebDav</string>
     <string name="web_dav_account_s">Nhập tài khoản WebDav của bạn</string>
     <string name="screen">Bộ lọc</string>
-    <string name="screen_find">Search Discovery sources</string>
     <string name="dur_pos">Vị trí hiện tại：</string>
     <string name="precision_search">Tìm kiếm chính xác</string>
     <string name="service_starting">Đang khởi động dịch vụ</string>
@@ -792,7 +790,6 @@
     <string name="sort_by_lastUpdateTime">Sắp xếp theo thời gian cập nhật</string>
     <string name="sort_by_respondTime">Sắp xếp theo thời gian phản hồi</string>
     <string name="search_content">Tìm kiếm nội dung</string>
-    <string name="explore_empty">Hiện tại trống!</string>
     <string name="page_key_set_help">Tập trung vào hộp nhập và nhấn một phím vật lý sẽ tự động nhập giá trị của phím, và nhiều phím sẽ được tự động phân tách bằng dấu phẩy.</string>
     <string name="theme_name">Tên chủ đề</string>
     <string name="auto_clear_expired">Tự động xóa lịch sử tìm kiếm đã hết hạn</string>
@@ -867,7 +864,6 @@
     <string name="hide">Ẩn</string>
     <string name="hide_when_status_bar_show">Ẩn khi thanh trạng thái hiển thị</string>
     <string name="reverse_toc">Đảo ngược mục lục</string>
-    <string name="show_discovery">Hiển thị Khám phá</string>
     <string name="style">Kiểu</string>
     <string name="group_style">Kiểu nhóm</string>
     <string name="export_file_name">Xuất tên tệp</string>

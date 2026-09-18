@@ -259,7 +259,6 @@ class BottomBarSkinActivity : BaseActivity<ActivityBottomBarSkinBinding>() {
                 if (item.isDefault) {
                     intArrayOf(
                         R.drawable.ic_bottom_books,
-                        R.drawable.ic_bottom_explore,
                         R.drawable.ic_bottom_person,
                     ).forEach { res ->
                         val iv = makeIconView()

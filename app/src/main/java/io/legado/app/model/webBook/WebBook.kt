@@ -20,7 +20,7 @@ import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
 import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.analyzeRule.RuleData
 import io.legado.app.model.jsSource.JsSourceBook
-import io.legado.app.ui.main.explore.ExploreAdapter.Companion.exploreInfoMapList
+import io.legado.app.help.source.ExploreInfoStore.exploreInfoMapList
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers

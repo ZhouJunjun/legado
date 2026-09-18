@@ -53,7 +53,6 @@ import io.legado.app.ui.association.ImportTxtTocRuleDialog
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
-import io.legado.app.ui.main.explore.ExploreFragment
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.ui.widget.text.BadgeView
@@ -91,19 +90,16 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private val idBookshelf = 0
     private val idBookshelf1 = 11
     private val idBookshelf2 = 12
-    private val idExplore = 1
-    private val idMy = 3
+    private val idMy = 1
     private var exitTime: Long = 0
     private var bookshelfReselected: Long = 0
-    private var exploreReselected: Long = 0
     private var pagePosition = 0
     private val fragmentMap = hashMapOf<Int, Fragment>()
-    private var bottomMenuCount = 3
+    private var bottomMenuCount = 2
     private val EXIT_INTERVAL = 2000L
-    private val realPositions = arrayOf(idBookshelf, idExplore, idMy)
+    private val realPositions = arrayOf(idBookshelf, idMy)
     private val menuIdToSlot = linkedMapOf(
         R.id.menu_bookshelf to "bookshelf",
-        R.id.menu_discovery to "home",
         R.id.menu_my_config to "settings",
     )
     private val adapter by lazy {
@@ -200,9 +196,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             R.id.menu_bookshelf ->
                 viewPagerMain.setCurrentItem(0, false)
 
-            R.id.menu_discovery ->
-                viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
-
             R.id.menu_my_config ->
                 viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
         }
@@ -219,13 +212,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                 }
             }
 
-            R.id.menu_discovery -> {
-                if (System.currentTimeMillis() - exploreReselected > 300) {
-                    exploreReselected = System.currentTimeMillis()
-                } else {
-                    (fragmentMap[1] as? ExploreFragment)?.compressExplore()
-                }
-            }
         }
     }
 
@@ -462,18 +448,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     }
 
     private fun upBottomMenu() {
-        val showDiscovery = AppConfig.showDiscovery
-        binding.bottomNavigationView.menu.let { menu ->
-            menu.findItem(R.id.menu_discovery).isVisible = showDiscovery
-        }
-        var index = 0
-        if (showDiscovery) {
-            index++
-            realPositions[index] = idExplore
-        }
-        index++
-        realPositions[index] = idMy
-        bottomMenuCount = index + 1
+        realPositions[0] = idBookshelf
+        realPositions[1] = idMy
+        bottomMenuCount = realPositions.size
         adapter.notifyDataSetChanged()
     }
 
@@ -573,11 +550,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     private fun upHomePage() {
         when (AppConfig.defaultHomePage) {
-            "bookshelf" -> {}
-            "explore" -> if (AppConfig.showDiscovery) {
-                binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idExplore), false)
-            }
-
             "my" -> binding.viewPagerMain.setCurrentItem(realPositions.indexOf(idMy), false)
         }
     }
@@ -613,7 +585,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             val fragmentId = getId(position)
             if ((fragmentId == idBookshelf1 && any is BookshelfFragment1)
                 || (fragmentId == idBookshelf2 && any is BookshelfFragment2)
-                || (fragmentId == idExplore && any is ExploreFragment)
                 || (fragmentId == idMy && any is MyFragment)
             ) {
                 return POSITION_UNCHANGED
@@ -625,7 +596,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             return when (getId(position)) {
                 idBookshelf1 -> BookshelfFragment1(position)
                 idBookshelf2 -> BookshelfFragment2(position)
-                idExplore -> ExploreFragment(position)
                 else -> MyFragment(position)
             }
         }

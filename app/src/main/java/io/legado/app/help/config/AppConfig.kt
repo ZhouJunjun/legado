@@ -361,16 +361,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             }
         }
 
-    val showDiscovery: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showDiscovery, true)
-
-    val showDiscoveryFastScroller: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showDiscoveryFastScroller, false)
-
-    var showExploreCategories: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showExploreCategories, false)
-        set(value) = appCtx.putPrefBoolean(PreferKey.showExploreCategories, value)
-
     val autoRefreshBook: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.autoRefresh)
 

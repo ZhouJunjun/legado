@@ -492,7 +492,6 @@
     <string name="sure_del_file">¿Está seguro de que desea borrar este archivo?</string>
     <string name="files_tree">Carpeta</string>
     <string name="intelligent_import">Importación inteligente</string>
-    <string name="discovery">Descubrir</string>
     <string name="switch_display_style">Cambiar modo de visualización</string>
     <string name="import_per">La importación de libros locales requiere permiso de almacenamiento</string>
     <string name="night_theme">Tema nocturno</string>
@@ -611,7 +610,6 @@
     <string name="web_dav_account">Cuenta WebDav</string>
     <string name="web_dav_account_s">Ingrese su cuenta WebDav</string>
     <string name="screen">Filtro</string>
-    <string name="screen_find">Search Discovery sources</string>
     <string name="dur_pos">Ubicación actual:</string>
     <string name="precision_search">Búsqueda precisa</string>
     <string name="service_starting">Iniciando servicio</string>
@@ -793,7 +791,6 @@
     <string name="select_theme">Cambiar tema predeterminado</string>
     <string name="sort_by_lastUpdateTime">Ordenar por hora de actualización</string>
     <string name="search_content">Contenido de búsqueda</string>
-    <string name="explore_empty">Actualmente no hay una fuente para Descubrir!</string>
     <string name="page_key_set_help">将焦点放到输入框按下物理按键会自动录入键值,多个按键会自动用英文逗号隔开.</string>
     <string name="theme_name">Nombre del tema</string>
     <string name="auto_clear_expired">Limpiar automáticamente los datos de búsqueda caducados</string>
@@ -863,7 +860,6 @@
     <string name="hide">Ocultar</string>
     <string name="hide_when_status_bar_show">Ocultar cuando se muestra la barra de estado</string>
     <string name="reverse_toc">TOC inverso</string>
-    <string name="show_discovery">Mostrar</string>
     <string name="style">Formato</string>
     <string name="group_style">Formato de grupo</string>
     <string name="export_file_name">Exportar nombre de archivo</string>

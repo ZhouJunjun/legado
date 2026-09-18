@@ -522,9 +522,6 @@ object Restore {
             ) {
                 edit.putBoolean(PreferKey.showReadTitleChapterNameOnly, false)
             }
-            if (PreferKey.showExploreCategories !in map) {
-                edit.putBoolean(PreferKey.showExploreCategories, false)
-            }
             if (BackupConfig.keyIsNotIgnore(PreferKey.coverTitleAdaptive) &&
                 PreferKey.coverTitleAdaptive !in map
             ) {
