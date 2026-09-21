@@ -50,6 +50,7 @@ import io.legado.app.ui.association.ImportDictRuleDialog
 import io.legado.app.ui.association.ImportHttpTtsDialog
 import io.legado.app.ui.association.ImportReplaceRuleDialog
 import io.legado.app.ui.association.ImportTxtTocRuleDialog
+import io.legado.app.ui.main.bookshelf.AloudMiniBar
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
@@ -109,12 +110,17 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     private var lastPassphraseText: String? = null
     private var pendingPassphraseRead = false
     private var passphraseReadGeneration = 0
+    private val aloudMiniBar by lazy {
+        AloudMiniBar(this, binding.aloudMiniBarContainer)
+    }
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         upBottomMenu()
         initView()
         upHomePage()
         upBottomBarSkin()
+        aloudMiniBar.init()
+        upAloudMiniBar()
         onBackPressedDispatcher.addCallback(this) {
             if (pagePosition != 0) {
                 binding.viewPagerMain.currentItem = 0
@@ -168,6 +174,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     override fun onResume() {
         super.onResume()
+        upAloudMiniBar()
         if (SourceSharePassphraseImportPolicy.shouldScheduleOnResume(
                 privacyPolicyOk = LocalConfig.privacyPolicyOk
             )
@@ -434,6 +441,16 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         observeEvent<String>(EventBus.BOTTOM_BAR_SKIN) {
             upBottomBarSkin()
         }
+        observeEvent<Int>(EventBus.ALOUD_STATE) {
+            aloudMiniBar.onAloudStateChanged(it)
+            upAloudMiniBar()
+        }
+        observeEvent<Int>(EventBus.TTS_PROGRESS) {
+            upAloudMiniBar()
+        }
+        observeEvent<Boolean>(EventBus.READ_ALOUD_FOLLOW) {
+            upAloudMiniBar()
+        }
         observeEvent<String>(PreferKey.threadCount) {
             viewModel.upPool()
         }
@@ -452,6 +469,17 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         realPositions[1] = idMy
         bottomMenuCount = realPositions.size
         adapter.notifyDataSetChanged()
+    }
+
+    /**
+     * 朗读迷你条只在书架 tab 显示(番茄式交互), 切到「我的」页则隐藏。
+     */
+    private fun upAloudMiniBar() {
+        if (pagePosition != realPositions.indexOf(idBookshelf)) {
+            aloudMiniBar.hideBar()
+            return
+        }
+        aloudMiniBar.upState()
     }
 
     private fun scheduleSourceSharePassphraseRead(delayMillis: Long) {
@@ -567,6 +595,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         override fun onPageSelected(position: Int) {
             pagePosition = position
             binding.bottomNavigationView.menu[realPositions[position]].isChecked = true
+            upAloudMiniBar()
         }
 
     }

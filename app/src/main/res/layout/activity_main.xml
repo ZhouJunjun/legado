@@ -13,6 +13,12 @@
         android:layout_weight="1"
         tools:ignore="SpeakableTextPresentCheck" />
 
+    <include
+        android:id="@+id/aloud_mini_bar_container"
+        layout="@layout/view_aloud_mini_bar"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content" />
+
     <io.legado.app.lib.theme.view.ThemeBottomNavigationVIew
         android:id="@+id/bottom_navigation_view"
         android:layout_width="match_parent"

@@ -78,12 +78,21 @@ object ReadAloud {
         aloudClass = getReadAloudClass()
     }
 
+    /**
+     * 启动朗读会话。
+     * 起点默认值取调用时刻的当前书/当前位置; `ReadBook.readAloud()` 会显式传入快照值,
+     * 服务端以 `chapterPos` 为权威锚点, `pageIndex` 仅在锚点不可用时兜底。
+     */
     fun play(
         context: Context,
         play: Boolean = true,
         pageIndex: Int = ReadBook.durPageIndex,
         startPos: Int = 0,
-        rewindToSentenceStart: Boolean = false
+        rewindToSentenceStart: Boolean = false,
+        bookUrl: String? = ReadBook.book?.bookUrl,
+        chapterIndex: Int = ReadBook.durChapterIndex,
+        chapterPos: Int = ReadBook.durChapterPos,
+        allowBookSwitch: Boolean = false
     ) {
         if (!BaseReadAloudService.isRun) {
             restoreReadAloudFollow()
@@ -94,6 +103,14 @@ object ReadAloud {
         intent.putExtra("pageIndex", pageIndex)
         intent.putExtra("startPos", startPos)
         intent.putExtra("rewindToSentenceStart", rewindToSentenceStart)
+        // 起点在调用时刻快照并随 Intent 传递: 服务不再事后读全局 ReadBook,
+        // 避免异步准备期间被其他写入(进度跟随/事件回放/换书)改掉起点。
+        intent.putExtra("bookUrl", bookUrl)
+        intent.putExtra("chapterIndex", chapterIndex)
+        intent.putExtra("chapterPos", chapterPos)
+        // 显式发起的会话(点朗读/从此处朗读)才允许把正在朗读的会话切到另一本书;
+        // 隐式重启(换书后阅读页加载完成)必须被服务拒绝, 否则朗读会串到新书。
+        intent.putExtra("allowBookSwitch", allowBookSwitch)
         LogUtils.d("ReadAloud", intent.toString())
         try {
             context.startForegroundServiceCompat(intent)

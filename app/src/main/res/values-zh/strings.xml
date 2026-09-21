@@ -179,6 +179,12 @@
     <string name="resume">继续</string>
     <string name="set_timer">定时</string>
     <string name="read_aloud_pause">朗读暂停</string>
+    <string name="read_aloud_continue_background">朗读已在后台继续</string>
+    <string name="read_aloud_listen_this_chapter">听此章</string>
+    <string name="read_aloud_back_to_text">看原文</string>
+    <string name="read_aloud_not_started">暂无听书进度</string>
+    <string name="read_aloud_controls_realtime">跟随朗读位置</string>
+    <string name="read_aloud_controls_realtime_summary">边看边听时，自动翻回正在朗读的页面</string>
     <string name="read_aloud_timer">正在朗读（还剩 %d 分钟）</string>
     <string name="read_aloud_timer_chapter">正在朗读（还剩 %d 章）</string>
     <string name="playing_timer">正在播放（还剩 %d 分钟）</string>

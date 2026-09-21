@@ -207,7 +207,8 @@ class HttpReadAloudService : BaseReadAloudService(),
         if (!requestFocus()) return
         if (contentList.isEmpty()) {
             AppLog.putDebug("朗读列表为空")
-            ReadBook.readAloud()
+            // 隐式重启: 不得把正在朗读的会话切到当前打开的书
+            ReadBook.readAloud(allowBookSwitch = false)
         } else {
             super.play()
             if (AppConfig.streamReadAloudAudio) {

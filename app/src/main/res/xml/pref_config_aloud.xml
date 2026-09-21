@@ -63,9 +63,11 @@
             android:entryValues="@array/read_aloud_start_values"
             app:iconSpaceReserved="false" />
 
-        <io.legado.app.lib.prefs.Preference
-            android:key="readAloudControls"
-            android:title="@string/read_aloud_controls"
+        <io.legado.app.lib.prefs.SwitchPreference
+            android:defaultValue="true"
+            android:key="readAloudControlsRealtime"
+            android:summary="@string/read_aloud_controls_realtime_summary"
+            android:title="@string/read_aloud_controls_realtime"
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference

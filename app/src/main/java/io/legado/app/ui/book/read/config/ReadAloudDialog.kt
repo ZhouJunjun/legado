@@ -24,6 +24,7 @@ import io.legado.app.ui.widget.dialog.SleepTimerDialog
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
 import io.legado.app.utils.*
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import kotlin.math.roundToInt
 
 
 class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
@@ -86,6 +87,12 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
             ivEngine.setColorFilter(textColor)
             tvEngineName.setTextColor(textColor)
             ivEngineArrow.setColorFilter(textColor)
+            ivAloudBook.setColorFilter(textColor)
+            tvAloudBookName.setTextColor(textColor)
+            tvAloudBookChapter.setTextColor(textColor)
+            tvAloudBookPercent.setTextColor(textColor)
+            tvAloudBackToSpeech.setTextColor(textColor)
+            tvAloudReadFromHere.setTextColor(textColor)
         }
         initData()
         initEvent()
@@ -95,12 +102,81 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
         upPlayState()
         upEngineName()
         upStopText()
+        upAloudBookInfo()
+        upAloudPositionActions()
         cbTtsFollowSys.isChecked = requireContext().getPrefBoolean("ttsFollowSys", true)
         upTtsSpeechRateEnabled(!cbTtsFollowSys.isChecked)
         upSeekTimer()
     }
 
+    /**
+     * 顶部「正在朗读」信息行: 书名 + 朗读章节 + 本章进度百分比(纯展示)。
+     *
+     * 数据一律取自朗读服务自持快照, 与书架迷你条同源 —— 不使用 ReadBook.book /
+     * curTextChapter, 否则用户换书后这里会显示成当前打开的书, 而不是正在朗读的书。
+     */
+    private fun upAloudBookInfo() = binding.run {
+        if (!BaseReadAloudService.isRun) {
+            llAloudBook.visible(false)
+            vAloudBookDivider.visible(false)
+            return@run
+        }
+        val book = BaseReadAloudService.aloudBookSnapshot ?: ReadBook.book
+        if (book == null) {
+            llAloudBook.visible(false)
+            vAloudBookDivider.visible(false)
+            return@run
+        }
+        llAloudBook.visible(true)
+        // 分隔线跟随本行显隐, 避免出现「没有内容却有横线」的孤立分隔线。
+        vAloudBookDivider.visible(true)
+        tvAloudBookName.text = book.name
+        tvAloudBookChapter.text = BaseReadAloudService.readAloudChapterTitle
+            ?.takeIf { it.isNotBlank() }
+            ?: book.config.aloudChapterTitle?.takeIf { it.isNotBlank() }
+            ?: getString(R.string.read_aloud_t)
+        val pos = BaseReadAloudService.readAloudChapterStart
+        val length = BaseReadAloudService.readAloudChapterLength
+        tvAloudBookPercent.visible(pos >= 0 && length > 0)
+        if (pos >= 0 && length > 0) {
+            val percent = (pos * 100f / length).roundToInt().coerceIn(0, 100)
+            tvAloudBookPercent.text = "$percent%"
+        }
+    }
+
+    /**
+     * 第二行操作区: 【回到朗读位置】|【从此处朗读】(从阅读页迁入)。
+     *
+     * 两个按钮始终占位在这第二行(布局稳定, 不因状态跳动)。
+     * 仅「朗读服务未运行」时整行隐藏 —— 此时两个动作都没有意义。
+     * 处于跟随态时【回到朗读位置】是空操作(阅读页本身就在朗读处), 置灰并禁用,
+     * 既保留了用户对「这两个动作存在」的认知, 又不会被误点。
+     */
+    private fun upAloudPositionActions() = binding.run {
+        if (!BaseReadAloudService.isRun) {
+            llAloudPositionActions.visible(false)
+            // 第 2 行隐藏时, 它下面的分隔线也没必要留一条孤立的横线。
+            vAloudActionsDivider.visible(false)
+            return@run
+        }
+        llAloudPositionActions.visible(true)
+        vAloudActionsDivider.visible(true)
+        val canBackToSpeech = !ReadAloud.followReadAloudPosition
+        tvAloudBackToSpeech.isEnabled = canBackToSpeech
+        tvAloudBackToSpeech.alpha = if (canBackToSpeech) 1f else 0.4f
+    }
+
     private fun initEvent() = binding.run {
+        tvAloudBackToSpeech.setOnClickListener {
+            // 跟随态下该动作无意义(阅读页已在朗读处); 置灰之外再拦一道, 防止误点。
+            if (ReadAloud.followReadAloudPosition) return@setOnClickListener
+            callBack?.backToSpeakingPosition()
+            dismissAllowingStateLoss()
+        }
+        tvAloudReadFromHere.setOnClickListener {
+            callBack?.readAloudFromVisiblePage()
+            dismissAllowingStateLoss()
+        }
         llMainMenu.setOnClickListener {
             callBack?.showMenuBar()
             dismissAllowingStateLoss()
@@ -280,7 +356,17 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
     }
 
     override fun observeLiveBus() {
-        observeEvent<Int>(EventBus.ALOUD_STATE) { upPlayState() }
+        observeEvent<Int>(EventBus.ALOUD_STATE) {
+            upPlayState()
+            upAloudBookInfo()
+            upAloudPositionActions()
+        }
+        observeEvent<Boolean>(EventBus.READ_ALOUD_FOLLOW) {
+            upAloudPositionActions()
+        }
+        observeEvent<Int>(EventBus.TTS_PROGRESS) {
+            upAloudBookInfo()
+        }
         observeEvent<Int>(EventBus.READ_ALOUD_DS) {
             binding.seekTimer.progress = it
             upStopText()
@@ -296,6 +382,9 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
         fun openChapterList()
         fun onClickReadAloud()
         fun backToSpeakingPosition()
+
+        /** 以当前可见页第一句为新起点重启朗读(操作行已从阅读页迁到本对话框)。 */
+        fun readAloudFromVisiblePage()
         fun finish()
     }
 }

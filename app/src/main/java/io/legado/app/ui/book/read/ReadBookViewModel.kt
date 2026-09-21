@@ -114,6 +114,10 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
             }
             val index = intent.getIntExtra("index", -1)
             val chapterPos = intent.getIntExtra("chapterPos", -1)
+            // 「看原文」: 从通知/迷你条进入, 定位到朗读进度(不动阅读进度)
+            val openAloudPos = intent.getBooleanExtra("openAloudPos", false)
+            val aloudChapterIndex = intent.getIntExtra("aloudChapterIndex", -1)
+            val aloudChapterPos = intent.getIntExtra("aloudChapterPos", -1)
             val highlightLayoutTitleLength = intent.takeIf { hasHighlightTarget }
                 ?.getIntExtra(TocActivityResult.EXTRA_HIGHLIGHT_LAYOUT_TITLE_LENGTH, -1)
             val highlightAnchorText = intent.takeIf { hasHighlightTarget }
@@ -127,6 +131,15 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
                 }
                 ReadBook.saveCurrentBookProgress() //启用恢复进度提示
                 openChapter(index, chapterPos, highlightLayoutTitleLength, highlightAnchorText)
+            } else if (openAloudPos && aloudChapterIndex >= 0) {
+                // 从通知「看原文」进入: 跳到朗读所在位置, 阅读进度 durChapter* 不动
+                intent.removeExtra("openAloudPos")
+                intent.removeExtra("aloudChapterIndex")
+                intent.removeExtra("aloudChapterPos")
+                ReadBook.openAloudPosition(
+                    aloudChapterIndex,
+                    aloudChapterPos.coerceAtLeast(0),
+                )
             }
         }.onSuccess {
             success?.invoke()
@@ -144,6 +157,9 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
         if (isSameBook) {
             ReadBook.upData(book)
         } else {
+            // 换书隔离: 朗读正在读的是另一本书时, 只让阅读页脱离跟随,
+            // 朗读服务保持不动, 继续静默朗读原书; 绝不能把朗读内容换成新书。
+            detachAloudFollowIfReadingOtherBook(book)
             ReadBook.resetData(book)
         }
         isInitFinish = true
@@ -682,6 +698,23 @@ class ReadBookViewModel(application: Application) : BaseViewModel(application) {
                 appDb.bookSourceDao.update(it)
             }
         }
+    }
+
+    /**
+     * 换书时保证朗读不被牵连。
+     *
+     * 朗读服务自持 `aloudBook` 快照; 当它正在读的书与即将打开的书不是同一本时:
+     * - 让阅读页脱离跟随(进而在新书上显示行内「回到朗读位置｜从此处朗读」),
+     * - 但**不停止、不重启**朗读服务, 朗读继续静默读原书。
+     *
+     * 服务侧另有 `allowBookSwitch = false` 的二次防线: 换书后 `loadContent` 完成
+     * 触发的隐式会话重启会被拒绝, 避免朗读内容被换成新书。
+     */
+    private fun detachAloudFollowIfReadingOtherBook(newBook: Book) {
+        if (!BaseReadAloudService.isRun) return
+        val aloudBookUrl = BaseReadAloudService.aloudBookSnapshot?.bookUrl ?: return
+        if (aloudBookUrl == newBook.bookUrl) return
+        ReadAloud.detachReadAloudFollow()
     }
 
     override fun onCleared() {

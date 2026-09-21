@@ -518,7 +518,16 @@ data class Book(
         var playSpeed: Float = 1.0f,     //音频播放速度
         var useGlobalAudioSkip: Boolean = false,
         // 阅读页手动选择的替换规则；旧书籍配置缺失时保持空集合。
-        var manualReplaceRuleIds: List<Long> = emptyList()
+        var manualReplaceRuleIds: List<Long> = emptyList(),
+        // ---- 朗读(听书)独立进度：与阅读进度 durChapterIndex/durChapterPos 完全分离 ----
+        // 朗读所在章节索引；-1 表示从未朗读过
+        var aloudChapterIndex: Int = -1,
+        // 朗读在章内的字符偏移
+        var aloudChapterPos: Int = 0,
+        // 朗读章节标题（首页迷你条/通知展示用）
+        var aloudChapterTitle: String? = null,
+        // 朗读进度最后更新时间，用于「继续听书」判定
+        var aloudUpdatedAt: Long = 0L
     ) : Parcelable
 
     class Converters {

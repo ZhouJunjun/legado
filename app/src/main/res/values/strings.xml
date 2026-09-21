@@ -181,6 +181,23 @@
     <string name="resume">Resume</string>
     <string name="set_timer">Timer</string>
     <string name="read_aloud_pause">Speak Paused</string>
+    <string name="read_aloud_continue_background">Speech continues in background</string>
+    <string name="read_aloud_listen_this_chapter">Listen to this chapter</string>
+    <string name="read_aloud_back_to_text">Read text</string>
+    <string name="read_aloud_not_started">No listening progress yet</string>
+    <string name="read_aloud_controls_realtime">Follow the spoken position</string>
+    <string name="read_aloud_controls_realtime_summary">Turn back to the spoken page automatically while reading along</string>
+    <string name="read_aloud_start">首次朗读起始设置</string>
+    <string name="read_aloud_start_page">页首开始朗读</string>
+    <string name="read_aloud_start_sentence">句首开始朗读</string>
+    <string-array name="read_aloud_start_entries">
+        <item>@string/read_aloud_start_page</item>
+        <item>@string/read_aloud_start_sentence</item>
+    </string-array>
+    <string-array name="read_aloud_start_values" translatable="false">
+        <item>page</item>
+        <item>sentence</item>
+    </string-array>
     <string name="read_aloud_timer">Speaking(%d min left)</string>
     <string name="read_aloud_timer_chapter">Speaking(%d chapters left)</string>
     <string name="playing_timer">Playing(%d min left)</string>

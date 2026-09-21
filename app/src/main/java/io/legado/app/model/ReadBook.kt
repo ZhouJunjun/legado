@@ -92,6 +92,9 @@ internal fun resolveHighlightChapterPosition(
 // ponytail: fixed 64-character anchor; use contextual matching if sources rewrite larger spans.
 private const val REFRESH_POSITION_ANCHOR_LENGTH = 64
 
+/** 听书进度落库节流间隔(毫秒)，避免朗读时每句话都写库。 */
+private const val ALOUD_PROGRESS_SAVE_INTERVAL = 10_000L
+
 internal fun resolveLayoutBodyPosition(source: String, position: Int, target: String): Int? {
     if (source == target) return position.coerceIn(0, target.length)
     val sourceParagraphs = source.split('\n')
@@ -212,6 +215,9 @@ object ReadBook : CoroutineScope by MainScope() {
     fun resetData(book: Book) {
         val positionAnchor = pendingHighlightAnchor
         releaseAndCancel()
+        // 换书: 清掉上一本书遗留的朗读定位豁免与阅读位置备份(同 upData)。
+        speechSelfPositioningChapter = -1
+        aloudReadingBackup = null
         synchronized(readRecordLock) {
             ReadBook.book = book
             resetReadRecord(book)
@@ -638,6 +644,11 @@ object ReadBook : CoroutineScope by MainScope() {
 
     fun upData(book: Book) {
         releaseAndCancel()
+        // 换书/重载: 上一本书遗留的朗读定位豁免与阅读位置备份都失效了。
+        // 若不清, 新书的章节索引可能恰好命中旧豁免, 让该次加载被误判为「朗读自身定位」
+        // 从而跳过朗读会话重启; 备份同理, 会把上一本书的阅读位置还原到新书上。
+        speechSelfPositioningChapter = -1
+        aloudReadingBackup = null
         synchronized(readRecordLock) {
             if (readRecord.bookName != book.name || readRecord.author != book.author) {
                 upReadTime()
@@ -1086,6 +1097,28 @@ object ReadBook : CoroutineScope by MainScope() {
         }
     }
 
+    /**
+     * 「朗读自身定位」豁免的章节索引; -1 表示无豁免。
+     *
+     * 用于「回到朗读位置」「看原文」这类**由朗读位置驱动**的章节定位: 打开前通常不处于
+     * 跟随态, 但加载完成前后 `restoreAloudFollowOnVisiblePage()` 可能把跟随态恢复回来,
+     * 于是 `curPageChanged()` 判定 `shouldSyncSpeechNavigation()` 为真而**再起一次朗读会话** ——
+     * 新会话开头会 `cancel + playStop` 掉正在播放的那一路, 用户看到的就是
+     * 「回到朗读位置时朗读被中断, 并从阅读页重读」。
+     *
+     * 该标记在 `openChapter(speechInitiated = true)` 时置为要打开的章节索引,
+     * 由 `curPageChanged()` 在该章节加载完成时一次性消费, 保证这次加载只负责把阅读页
+     * 挪到朗读位置, 不产生任何新的朗读会话。用章节索引而非布尔值, 是为了避免被
+     * 加载期间的其他 `curPageChanged()` 调用抢先消费掉。
+     */
+    private var speechSelfPositioningChapter = -1
+
+    /**
+     * 打开章节。
+     *
+     * @param speechInitiated 本次打开是否由朗读位置驱动(回到朗读位置/看原文)。
+     *   为 true 时: 保留朗读跟随态、备份并保持阅读进度、且加载完成不重启朗读会话。
+     */
     fun openChapter(
         index: Int,
         durChapterPos: Int = 0,
@@ -1093,10 +1126,28 @@ object ReadBook : CoroutineScope by MainScope() {
         highlightLayoutTitleLength: Int? = null,
         highlightAnchorText: String? = null,
         pdfPageIndex: Int? = null,
+        speechInitiated: Boolean = false,
         success: (() -> Unit)? = null
     ) {
-        if (BaseReadAloudService.isRun) {
-            ReadAloud.detachReadAloudFollow()
+        if (speechInitiated) {
+            // 朗读自身定位: 保留跟随态(不 detach), 并标记本次加载不得重启朗读会话。
+            // 章节不存在时立即清标记, 避免残留到后续无关加载上。
+            speechSelfPositioningChapter = if (index < chapterSize) index else -1
+            // 备份/跟随只对「已有会话」有意义: 无会话时可没有进度需要还原,
+            // 也不存在跟随态可切。此处若强行备份, 反而会被 saveRead() 的
+            // 「无会话即还原」兜底逻辑立即消费掉, 干扰随后的起读快照。
+            if (BaseReadAloudService.isRun) {
+                backupReadingPositionForAloud(force = true)
+                // 立刻恢复到跟随态: 从「改写 durChapterIndex/Pos」到「加载完成」的整个窗口内,
+                // saveRead() 都会被跟随门控拦住, 朗读位置不可能趁机落库成阅读进度。
+                ReadAloud.restoreReadAloudFollow()
+            }
+        } else {
+            // 普通定位(用户翻目录/跳转): 本次加载不享受豁免。
+            speechSelfPositioningChapter = -1
+            if (BaseReadAloudService.isRun) {
+                ReadAloud.detachReadAloudFollow()
+            }
         }
         if (index < chapterSize) {
             clearTextChapter()
@@ -1127,13 +1178,60 @@ object ReadBook : CoroutineScope by MainScope() {
             pendingPdfJump = pdfPageIndex?.takeIf { it >= 0 && it / PdfFile.PAGE_SIZE == index }?.let { page ->
                 book?.takeIf { it.isPdf }?.let { PendingPdfJump(it.bookUrl, index, page) }
             }
-            if (pendingHighlightJump == null) {
+            // 朗读自身定位: 这里改的是「可见位置」, 阅读进度已在进入前备份,
+            // 不能落库, 否则用户的阅读进度会被朗读位置顶掉。
+            if (pendingHighlightJump == null && !speechInitiated) {
                 saveRead()
             }
             loadContent(resetPageOffset = true) {
                 success?.invoke()
             }
         }
+    }
+
+    /**
+     * 「看原文」: 把阅读页定位到朗读位置, 但**不修改阅读进度**。
+     * 用于从通知/书架迷你条跳回朗读所在位置查看原文。
+     */
+    fun openAloudPosition(chapterIndex: Int, chapterPos: Int, success: (() -> Unit)? = null) {
+        if (chapterIndex !in 0..<simulatedChapterSize) return
+        val sameChapter = curTextChapter?.chapter?.index == chapterIndex
+        if (sameChapter) {
+            // 同章: 只挪动可见位置并挂上朗读高亮, 不落库。
+            // 先把阅读位置备份并进入跟随态, 使 saveRead() 在此窗口内被门控拦住,
+            // 保证 durChapterPos 的这次临时改写不会落库成阅读进度。
+            backupReadingPositionForAloud(force = true)
+            ReadAloud.restoreReadAloudFollow()
+            durChapterPos = chapterPos
+            curTextChapter?.let {
+                val pageIndex = it.getPageIndexByCharIndex(chapterPos)
+                val aloudSpanStart = chapterPos - it.getReadLength(pageIndex)
+                it.getPage(pageIndex)?.upPageAloudSpan(aloudSpanStart)
+            }
+            callBack?.upContent()
+            success?.invoke()
+            return
+        }
+        // 跨章: 走 openChapter 定位, 但标记为「朗读自身定位」——
+        // 该路径会备份阅读位置且不落库、不重启朗读会话, 因此无需在这里手工存取读数。
+        openChapter(chapterIndex, chapterPos, speechInitiated = true, success = {
+            ReadAloud.restoreReadAloudFollow()
+            upTextChapterAloudSpan(chapterPos)
+            success?.invoke()
+        })
+    }
+
+    /**
+     * 在已加载章节上绘制朗读高亮(不落库)。
+     */
+    private fun upTextChapterAloudSpan(chapterStart: Int) {
+        if (chapterStart < 0) return
+        val textChapter = curTextChapter ?: return
+        val pageIndex = textChapter.getPageIndexByCharIndex(chapterStart)
+        if (pageIndex < 0) return
+        val aloudSpanStart = chapterStart - textChapter.getReadLength(pageIndex)
+        textChapter.getPage(pageIndex)?.upPageAloudSpan(aloudSpanStart)
+        callBack?.upContent()
     }
 
     /**
@@ -1146,8 +1244,17 @@ object ReadBook : CoroutineScope by MainScope() {
         updateReadAloud: Boolean = true
     ) {
         callBack?.pageChanged()
+        // 朗读自身定位(回到朗读位置/看原文)的豁免: 这次加载只负责把阅读页挪到朗读位置,
+        // 绝不能重启朗读会话 —— 否则正在播放的那一路会被新会话的 cancel + playStop 掐断,
+        // 表现为「回到朗读位置时朗读被中断并从页首重读」。
+        // 用章节索引匹配后一次性清除, 避免被加载期间的无关 curPageChanged() 提前消费。
+        val speechPositioning = speechSelfPositioningChapter >= 0 &&
+                speechSelfPositioningChapter == curTextChapter?.chapter?.index
+        if (speechPositioning) {
+            speechSelfPositioningChapter = -1
+        }
         curTextChapter?.let {
-            if (updateReadAloud && BaseReadAloudService.isRun && it.isCompleted) {
+            if (!speechPositioning && updateReadAloud && BaseReadAloudService.isRun && it.isCompleted) {
                 if (!syncReadAloudFollow) {
                     if (!restartReadAloudFromVisiblePage) {
                         ReadAloud.detachReadAloudFollow()
@@ -1155,13 +1262,17 @@ object ReadBook : CoroutineScope by MainScope() {
                     }
                 }
                 if (restartReadAloudFromVisiblePage) {
-                    readAloud(!BaseReadAloudService.pause)
+                    // 手动翻页策略下的随页重启: 起点就是当前可见页, 是用户主动行为,
+                    // 允许切书(用户点朗读时可能已换了书)。
+                    readAloud(!BaseReadAloudService.pause, allowBookSwitch = true)
                 } else {
                     val scrollPageAnim = pageAnim() == 3
                     if (scrollPageAnim && pageChanged) {
                         ReadAloud.pause(appCtx)
                     } else {
-                        readAloud(!BaseReadAloudService.pause)
+                        // 隐式重启(loadContent 完成/翻页触发): 不得把朗读内容换成
+                        // 当前这本书 —— 换书后台续播时必须继续读原书。
+                        readAloud(!BaseReadAloudService.pause, allowBookSwitch = false)
                     }
                 }
             }
@@ -1172,22 +1283,42 @@ object ReadBook : CoroutineScope by MainScope() {
 
     /**
      * 朗读
+     *
+     * 起点一律在调用时刻快照(书 + 章 + 章内字符位)并随会话传递, 服务端以它为权威起点,
+     * 不再事后从 `durChapterPos` 反查 —— 该值会被进度跟随改写, 不能当权威起点用。
+     *
+     * @param allowBookSwitch 是否允许把正在朗读的会话切到当前书。
+     *   显式点击(朗读按钮/从此处朗读)为 true; 隐式的随页重启为 false,
+     *   避免换书后阅读页加载完成时把朗读内容换成新书。
+     * @param anchorChapterPos 只给本次朗读用的章内起点。传入时以它为准, 但**不写回**
+     *   `durChapterPos` —— 「从此处朗读」的起点属于朗读进度, 不应改动阅读进度。
      */
     fun readAloud(
         play: Boolean = true,
         startPos: Int = 0,
-        rewindToSentenceStart: Boolean = false
+        rewindToSentenceStart: Boolean = false,
+        allowBookSwitch: Boolean = true,
+        anchorChapterPos: Int? = null
     ) {
-        book ?: return
+        val book = book ?: return
         val textChapter = curTextChapter ?: return
-        if (textChapter.isCompleted) {
-            ReadAloud.play(
-                appCtx,
-                play,
-                startPos = startPos,
-                rewindToSentenceStart = rewindToSentenceStart
-            )
-        }
+        if (!textChapter.isCompleted) return
+        // 隐式重启(随页/加载完成触发)在会话准备窗口内必须丢弃:
+        // 否则会用尚未更新的 durChapterPos 覆盖掉刚确定的起点,
+        // 表现为「从此处朗读」1~2 秒后跳回原先进度。
+        // 显式点击不受限, 用户可以随时改主意。
+        if (!allowBookSwitch && BaseReadAloudService.isSessionPreparing()) return
+        ReadAloud.play(
+            appCtx,
+            play,
+            pageIndex = durPageIndex,
+            startPos = startPos,
+            rewindToSentenceStart = rewindToSentenceStart,
+            bookUrl = book.bookUrl,
+            chapterIndex = durChapterIndex,
+            chapterPos = anchorChapterPos ?: durChapterPos,
+            allowBookSwitch = allowBookSwitch
+        )
     }
 
     /**
@@ -1809,7 +1940,77 @@ object ReadBook : CoroutineScope by MainScope() {
         saveRead()
     }
 
+    private var lastAloudProgressSavedAt = 0L
+
+    /** 听书会话开始时备份的阅读位置(bookUrl, 章索引, 章内偏移), 会话结束时原样还原。 */
+    private var aloudReadingBackup: Triple<String, Int, Int>? = null
+
+    /**
+     * 进入听书态前调用: 备份当前阅读位置。
+     * 只在尚无备份(本会话首次)时记录, 避免朗读跟随期间被已污染的 durChapterPos 覆盖。
+     *
+     * @param force 忽略已有备份, 强制以当前值重建。
+     *   「回到朗读位置」这类朗读自身定位会在打开章节**之前**调用一次, 此刻
+     *   `durChapterIndex/durChapterPos` 仍确切是用户的阅读位置 —— 用它覆盖可能已过期
+     *   或已被清空的历史备份, 会话结束时才能正确还原阅读进度。
+     */
+    fun backupReadingPositionForAloud(force: Boolean = false) {
+        if (!force && aloudReadingBackup != null) return
+        val bookUrl = book?.bookUrl ?: return
+        aloudReadingBackup = Triple(bookUrl, durChapterIndex, durChapterPos)
+    }
+
+    /**
+     * 用户手动导航时调用: 阅读位置重新归用户所有, 此后不再做会话结束还原,
+     * 否则用户手动翻到的位置会被还原逻辑连同后续落库一起抹掉。
+     */
+    fun clearAloudReadingBackup() {
+        aloudReadingBackup = null
+    }
+
+    /**
+     * 听书会话结束时调用: 把内存中的阅读位置还原成听书前的值。
+     * 朗读跟随期间会临时改写 durChapterPos/durChapterIndex(用于页面高亮跟随), 若不还原,
+     * 后续任意一次 saveRead() 都会把听书位置误存成阅读进度。
+     */
+    fun restoreReadingPositionAfterAloud() {
+        val backup = aloudReadingBackup ?: return
+        aloudReadingBackup = null
+        val (bookUrl, chapterIndex, chapterPos) = backup
+        // 用户已切到别的书: 不还原, 避免污染当前书
+        val currentBookUrl = book?.bookUrl ?: return
+        if (currentBookUrl != bookUrl) return
+        if (curTextChapter?.chapter?.index == chapterIndex) {
+            // 同章: 只还原章内偏移, 不打断当前排版
+            durChapterIndex = chapterIndex
+            durChapterPos = chapterPos
+            callBack?.upContent(resetPageOffset = false)
+        } else if (callBack != null) {
+            // 章节也变了且阅读页还在: 定位回阅读所在章节(此时朗读已结束, 落库即阅读进度)
+            openChapter(chapterIndex, chapterPos, upContent = true)
+        } else {
+            durChapterIndex = chapterIndex
+            durChapterPos = chapterPos
+        }
+    }
+
+    /**
+     * 用户手动导航(脱离朗读跟随)时调用。
+     */
+    fun onAloudFollowDetached() {
+        clearAloudReadingBackup()
+    }
+
     fun saveRead(pageChanged: Boolean = false) {
+        // 朗读驱动的推进(跟随朗读中由服务发起的翻页/换章)不落库阅读进度,
+        // 阅读进度保持用户上次手动阅读的位置; 听书进度由朗读服务写入
+        // book.config.aloud*, 两条进度完全分离。
+        //
+        // 判据用「是否正在跟随朗读」而非单纯的「服务是否运行」: 用户手动翻页时会
+        // detach 脱离跟随, 此时即便朗读仍在播放, 阅读进度也应照常保存。
+        if (BaseReadAloudService.isRun && ReadAloud.followReadAloudPosition) return
+        // 兜底: 服务被系统回收等未走 onDestroy 的情况, 补一次阅读位置还原
+        if (!BaseReadAloudService.isRun) restoreReadingPositionAfterAloud()
         if (pendingPdfJump?.let { it.bookUrl == book?.bookUrl && it.chapterIndex == durChapterIndex } == true) return
         if (hasPendingHighlightJump()) return
         val book = book ?: return
@@ -1838,6 +2039,43 @@ object ReadBook : CoroutineScope by MainScope() {
                 book.update()
             }.onFailure {
                 AppLog.put("保存书籍阅读进度信息出错\n$it", it)
+            }
+        }
+    }
+
+    /**
+     * 保存听书(朗读)进度到 book.config.aloud*，与阅读进度完全分离。
+     * 节流（默认 10 秒），换章时通过 force=true 立即落库。
+     * @param overrideBook 朗读服务自持的书籍快照；阅读页销毁后仍可正确落库。
+     * @param overrideChapterIndex/overrideChapterPos 朗读游标(优先于阅读游标)。
+     */
+    fun saveAloudProgress(
+        force: Boolean = false,
+        overrideBook: Book? = null,
+        overrideChapterIndex: Int? = null,
+        overrideChapterPos: Int? = null,
+        overrideChapterTitle: String? = null
+    ) {
+        val targetBook = overrideBook ?: book ?: return
+        val chapterIndex = overrideChapterIndex ?: durChapterIndex
+        val chapterPos = overrideChapterPos ?: durChapterPos
+        if (chapterIndex < 0) return
+        val now = System.currentTimeMillis()
+        if (!force && now - lastAloudProgressSavedAt < ALOUD_PROGRESS_SAVE_INTERVAL) return
+        lastAloudProgressSavedAt = now
+        val chapterTitle = overrideChapterTitle
+            ?: curTextChapter?.chapter?.title
+            ?: targetBook.durChapterTitle
+        executor.execute {
+            kotlin.runCatching {
+                val config = targetBook.config
+                config.aloudChapterIndex = chapterIndex
+                config.aloudChapterPos = chapterPos
+                config.aloudChapterTitle = chapterTitle
+                config.aloudUpdatedAt = now
+                appDb.bookDao.updateReadConfigJson(targetBook.bookUrl, GSON.toJson(config))
+            }.onFailure {
+                AppLog.put("保存听书进度出错\n$it", it)
             }
         }
     }

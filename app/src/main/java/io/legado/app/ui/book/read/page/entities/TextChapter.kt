@@ -71,6 +71,16 @@ data class TextChapter(
 
     val lastReadLength: Int get() = getReadLength(lastIndex)
 
+    /**
+     * 章节正文总长度(字符)。末页起始位置 + 末页长度, 用于计算朗读进度百分比。
+     * 布局未完成时会是 0, 调用方需自行兜底。
+     */
+    val totalReadLength: Int
+        get() {
+            val last = pages.lastOrNull() ?: return 0
+            return last.chapterPosition + last.charSize
+        }
+
     val pageSize: Int get() = pages.size
 
     var listener: LayoutProgressListener? = null

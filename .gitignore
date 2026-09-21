@@ -22,5 +22,6 @@ package-lock.json
 # 本地签名材料（勿提交）
 *.jks
 *.keystore
+*.p12
 !/.github/workflows/legado.jks
 keystore.properties

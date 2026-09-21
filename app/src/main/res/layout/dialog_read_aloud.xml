@@ -12,6 +12,134 @@
     android:paddingRight="16dp"
     android:paddingBottom="6dp">
 
+    <!--
+      正在朗读的书名行(纯展示, 不可点击)。
+      数据取自朗读服务自持快照(BaseReadAloudService.aloudBookSnapshot / readAloudChapter*),
+      与书架迷你条同源; 不用 ReadBook.book —— 换书后那会显示成错误的书。
+      仅在朗读服务运行时显示。
+    -->
+    <LinearLayout
+        android:id="@+id/ll_aloud_book"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:gravity="center_vertical"
+        android:minHeight="40dp"
+        android:orientation="horizontal"
+        android:paddingHorizontal="8dp">
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/iv_aloud_book"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:importantForAccessibility="no"
+            android:src="@drawable/ic_volume_up" />
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:layout_weight="1"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/tv_aloud_book_name"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:textSize="14sp"
+                tools:text="小说名" />
+
+            <TextView
+                android:id="@+id/tv_aloud_book_chapter"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:ellipsize="end"
+                android:singleLine="true"
+                android:textSize="12sp"
+                tools:text="第一章 开始" />
+
+        </LinearLayout>
+
+        <TextView
+            android:id="@+id/tv_aloud_book_percent"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="8dp"
+            android:textSize="12sp"
+            tools:text="42%" />
+
+    </LinearLayout>
+
+    <!-- 第 1 行(正在朗读)与第 2 行(定位操作)之间的分隔线 -->
+    <View
+        android:id="@+id/v_aloud_book_divider"
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="@color/divider" />
+
+    <!--
+      操作行(第二行): 【回到朗读位置】|【从此处朗读】。
+      从阅读页正文与页脚之间迁到此处 —— 阅读页只负责显示, 操作集中到朗读设置里。
+
+      · 回到朗读位置: 只在「已脱离朗读位置」时可点(跟随态下阅读页本就在朗读处,
+        该动作无意义), 故跟随态时隐藏该按钮。
+      · 从此处朗读: 以当前可见页第一句为新起点重启朗读, 始终可用。
+      整个操作行仅在朗读服务运行时显示。
+    -->
+    <LinearLayout
+        android:id="@+id/ll_aloud_position_actions"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="4dp"
+        android:gravity="center_vertical"
+        android:minHeight="44dp"
+        android:orientation="horizontal">
+
+        <TextView
+            android:id="@+id/tv_aloud_back_to_speech"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minHeight="44dp"
+            android:text="@string/back_to_speaking_position"
+            android:textColor="@color/primaryText"
+            android:textSize="14sp" />
+
+        <View
+            android:id="@+id/v_aloud_position_divider"
+            android:layout_width="1dp"
+            android:layout_height="18dp"
+            android:background="@color/divider" />
+
+        <TextView
+            android:id="@+id/tv_aloud_read_from_here"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minHeight="44dp"
+            android:text="@string/read_aloud_from_here"
+            android:textColor="@color/primaryText"
+            android:textSize="14sp" />
+
+    </LinearLayout>
+
+    <!-- 第 2 行(定位操作)与第 3 行起(原有设置)之间的分隔线 -->
+    <View
+        android:id="@+id/v_aloud_actions_divider"
+        android:layout_width="match_parent"
+        android:layout_height="0.5dp"
+        android:background="@color/divider" />
+
     <LinearLayout
         android:id="@+id/ll_engine"
         android:layout_width="match_parent"

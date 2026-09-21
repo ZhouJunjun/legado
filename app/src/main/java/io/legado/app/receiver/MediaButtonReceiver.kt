@@ -111,13 +111,14 @@ class MediaButtonReceiver : BroadcastReceiver() {
                 else -> if (AppConfig.mediaButtonOnExit || LifecycleHelp.activitySize() > 0 || !isMediaKey) {
                     ReadAloud.upReadAloudClass()
                     if (ReadBook.book != null) {
-                        ReadBook.readAloud()
+                        // 服务此前未运行(显式起读), 允许在当前书上开始朗读
+                        ReadBook.readAloud(allowBookSwitch = true)
                     } else {
                         appDb.bookDao.lastReadBook?.let {
                             ReadBook.resetData(it)
                             ReadBook.clearTextChapter()
                             ReadBook.loadContent(false) {
-                                ReadBook.readAloud()
+                                ReadBook.readAloud(allowBookSwitch = true)
                             }
                         }
                     }
