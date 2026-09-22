@@ -18,6 +18,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.barBorderBackground
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.elevation
 import io.legado.app.lib.theme.getSecondaryTextColor
@@ -43,7 +44,8 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
         if (transparentNavBar) {
             setBackgroundColor(Color.TRANSPARENT)
         } else {
-            setBackgroundColor(bgColor)
+            // 上边线 1dp 实心灰: 底栏是屏幕最底部的一条独立栏位, 与上方内容需要明确分界。
+            background = context.barBorderBackground(bgColor, atTop = true)
             elevation = context.elevation
         }
         val textIsDark = ColorUtils.isColorLight(bgColor)

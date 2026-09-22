@@ -33,11 +33,10 @@ import io.legado.app.help.source.getSourceType
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.barBorderBackground
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.buttonDisabledColor
 import io.legado.app.lib.theme.getPrimaryTextColor
-import io.legado.app.lib.theme.primaryColor
-import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.model.SourceCallBack
 import io.legado.app.service.BaseReadAloudService
@@ -176,15 +175,27 @@ class ReadMenu @JvmOverloads constructor(
         if (immersiveMenu) {
             val lightTextColor = ColorUtils.withAlpha(ColorUtils.lightenColor(textColor), 0.75f)
             titleBar.setTextColor(textColor)
-            titleBar.setBackgroundColor(bgColor)
+            // 下边线 1dp 实心灰: 顶栏与正文之间需要明确分界(沉浸模式下正文就贴在栏下方)。
+            titleBar.background = context.barBorderBackground(bgColor, atTop = false)
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(lightTextColor)
             tvChapterUrl.setTextColor(lightTextColor)
-        } else if (reset) {
-            val bgColor = context.primaryColor
-            val textColor = context.primaryTextColor
+        } else {
+            // 非沉浸式: 顶部栏与底栏同色(原来是 primaryColor 彩色, 与底栏割裂)。
+            // 文字色按实际底色反推, 自定义主题下也保证对比度。
+            //
+            // 这里**不能**只在 reset 时执行。该 TitleBar 在布局里带 `app:opaque="true"`,
+            // 于是 TitleBar.automaticForeground 为 false, `applyForegroundColor()` 直接
+            // return —— 头部标题文字与右侧三点按钮(overflow 图标)的着色**只能靠这里**。
+            // 首次显示时 reset=false, 原先若放在 `else if (reset)` 分支里就会整段跳过:
+            // Toolbar 的 `android:theme="?attr/actionBarStyle"` 会按 **primaryColor 明暗**
+            // 选 AppBarOverlay.Light/Dark(见 BaseActivity.initTheme), 与顶栏实际底色
+            // (bottomBackground)不同源 —— 默认棕色 primary 偏暗 → 选到 Dark overlay
+            // → 亮色主题下标题文字与三点按钮发白(用户 2026-09-22 反馈)。
+            val bgColor = context.bottomBackground
+            val textColor = context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
             titleBar.setTextColor(textColor)
-            titleBar.setBackgroundColor(bgColor)
+            titleBar.background = context.barBorderBackground(bgColor, atTop = false)
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(textColor)
             tvChapterUrl.setTextColor(textColor)
@@ -197,7 +208,8 @@ class ReadMenu @JvmOverloads constructor(
             titleBar.setBackgroundResource(R.drawable.bg_eink_border_bottom)
             llBottomBg.setBackgroundResource(R.drawable.bg_eink_border_top)
         } else {
-            llBottomBg.setBackgroundColor(bgColor)
+            // 阅读菜单尾(底部设置栏)上边线 1dp 实心灰, 与顶栏的下边线呼应。
+            llBottomBg.background = context.barBorderBackground(bgColor, atTop = true)
         }
         fabSearch.backgroundTintList = bottomBackgroundList
         fabSearch.setColorFilter(textColor)
@@ -247,10 +259,15 @@ class ReadMenu @JvmOverloads constructor(
         initView(true)
     }
 
+    /**
+     * 菜单 inflate 完成后重新给顶栏着色。
+     *
+     * 必须**不分沉浸/非沉浸都执行**: 三点按钮(overflow)是 `ActionMenuView` 在菜单 inflate
+     * 时创建的, `ReadMenu` 构造期(`initView`)它还不存在, 那一次着色落空。这里由
+     * `ReadBookActivity.onCompatCreateOptionsMenu` 调用, 是三点按钮的第一个可靠着色点。
+     */
     fun refreshMenuColorFilter() {
-        if (immersiveMenu) {
-            binding.titleBar.setColorFilter(textColor)
-        }
+        binding.titleBar.setColorFilter(textColor)
     }
 
     private fun upColorConfig() {

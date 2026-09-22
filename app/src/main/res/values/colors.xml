@@ -8,6 +8,24 @@
 
     <color name="divider">#66666666</color>
 
+    <!--
+      顶栏 / 底栏 / 弹出面板 的统一底色与分隔线(亮色主题规格)。
+      栏位底色由 ThemeConfig.applyTheme 写入 ThemeStore.bottomBackground(默认取 bar_background),
+      分隔线用于各栏位的贴边 1dp 实线(bg_bar_top_border / bg_bar_bottom_border)。
+    -->
+    <color name="bar_background">#F6F6F6</color>
+    <color name="bar_border">#898989</color>
+
+    <!--
+      「栏位颜色」偏好项(colorBottomBackground / colorBottomBackgroundNight)的默认值。
+
+      **必须是固定色, 不能引用 @color/bar_background** —— 后者在 values-night 下会变成 #303030,
+      而日间/夜间两个键在同一个设置页里都会绑定, ColorPreference.onSetInitialValue 又会无条件
+      把默认值持久化; 若在暗色模式下打开设置页, 深色就会被写进"日间"键, 亮色主题的栏位变黑。
+    -->
+    <color name="bar_background_pref_default">#F6F6F6</color>
+    <color name="bar_background_pref_default_night">#303030</color>
+
     <color name="lightBlue_color">#FF578FCC</color>
 
     <color name="error">#eb4333</color>
@@ -17,7 +35,7 @@
 
     <color name="background">@color/md_grey_50</color>
     <color name="background_card">@color/md_grey_100</color>
-    <color name="background_menu">@color/md_grey_200</color>
+    <color name="background_menu">@color/bar_background</color>
     <color name="background_prefs">#7fffffff</color>
 
     <color name="transparent">#00000000</color>

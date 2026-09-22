@@ -1031,6 +1031,7 @@
     <string name="empty_msg_import_book">点击右上角文件夹图标，选择文件夹</string>
     <string name="scan_folder">智能扫描</string>
     <string name="import_file_name">导入文件名</string>
+    <string name="decompress_to_current_folder">压缩包解压到当前文件夹</string>
     <string name="copy_book_url">拷贝书籍 URL</string>
     <string name="copy_toc_url">拷贝目录 URL</string>
     <string name="no_book">没有书籍</string>

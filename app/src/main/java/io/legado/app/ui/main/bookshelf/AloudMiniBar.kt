@@ -12,6 +12,11 @@ import io.legado.app.model.ReadBook
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.utils.startActivity
 import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.lib.theme.barBorderBackground
+import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.getSecondaryTextColor
+import io.legado.app.utils.ColorUtils
 import kotlin.math.roundToInt
 
 /**
@@ -36,6 +41,7 @@ class AloudMiniBar(
         get() = binding.root.visibility == View.VISIBLE
 
     fun init() {
+        applyThemeColors()
         binding.root.setOnClickListener { openReaderAtAloudPosition() }
         binding.ivAloudMiniPlay.setOnClickListener {
             if (BaseReadAloudService.pause) {
@@ -52,6 +58,31 @@ class AloudMiniBar(
     }
 
     /**
+     * 统一迷你条配色。
+     *
+     * 之前只设了 `android:src`, 图标颜色被 drawable 里硬编码的色值决定
+     * (暂停/播放图标是纯白 #FFFFFFFF、关闭图标是黑色), 在浅色底上表现不一致;
+     * 文字也全部漏设 textColor(走系统默认色)。这里按主题统一成一套:
+     * 背景跟随底栏色, 标题/百分比/图标用主文字色, 副标题用次级文字色,
+     * 与朗读设置面板(ReadAloudDialog)的取色方式保持一致, 且能跟随换肤。
+     */
+    private fun applyThemeColors() = binding.run {
+        val bg = context.bottomBackground
+        val isLight = ColorUtils.isColorLight(bg)
+        val primaryText = context.getPrimaryTextColor(isLight)
+        val secondaryText = context.getSecondaryTextColor(isLight)
+        // 上边线 1dp 实心灰: 迷你条夹在书架列表与底栏之间, 需要一条线把自己与列表分开。
+        root.background = context.barBorderBackground(bg, atTop = true)
+        tvAloudMiniTitle.setTextColor(primaryText)
+        tvAloudMiniSubtitle.setTextColor(secondaryText)
+        tvAloudMiniPercent.setTextColor(primaryText)
+        // 图标统一染色: 覆盖 drawable 内的硬编码色(白色暂停/播放、黑色关闭)。
+        ivAloudMiniIcon.setColorFilter(primaryText)
+        ivAloudMiniPlay.setColorFilter(primaryText)
+        ivAloudMiniClose.setColorFilter(primaryText)
+    }
+
+    /**
      * 刷新迷你条可见性与文案。朗读服务未运行或未点击状态变化时隐藏。
      */
     @MainThread
@@ -62,6 +93,8 @@ class AloudMiniBar(
         }
         // 书名优先取朗读服务自持快照: 阅读页退出后 ReadBook.book 可能已换书/被重置。
         val book = aloudBook() ?: ReadBook.book ?: return hideBar()
+        // 深浅主题可能已切换: 每次刷新重算配色(开销极小, 但能保证换肤后文字/图标不残留旧色)。
+        applyThemeColors()
         binding.root.visibility = View.VISIBLE
         binding.tvAloudMiniTitle.text = book.name
         binding.tvAloudMiniSubtitle.text = aloudChapterTitle()
@@ -70,6 +103,10 @@ class AloudMiniBar(
         binding.tvAloudMiniPercent.text = percent?.let { "$it%" }.orEmpty()
         binding.ivAloudMiniPlay.setImageResource(
             if (BaseReadAloudService.pause) R.drawable.ic_play_24dp else R.drawable.ic_pause_24dp
+        )
+        // setImageResource 之后必须重新染色: 新 drawable 自带硬编码色(纯白), 会覆盖掉 init 时设的 tint。
+        binding.ivAloudMiniPlay.setColorFilter(
+            context.getPrimaryTextColor(ColorUtils.isColorLight(context.bottomBackground))
         )
         binding.ivAloudMiniPlay.contentDescription =
             context.getString(if (BaseReadAloudService.pause) R.string.resume else R.string.pause)

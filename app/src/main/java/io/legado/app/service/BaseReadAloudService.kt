@@ -59,7 +59,6 @@ import io.legado.app.utils.LogUtils
 import io.legado.app.utils.activityPendingIntent
 import io.legado.app.utils.broadcastPendingIntent
 import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.observeEvent
 import io.legado.app.utils.observeSharedPreferences
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
@@ -341,19 +340,6 @@ abstract class BaseReadAloudService : BaseService(),
     }
 
     fun observeLiveBus() {
-        observeEvent<Bundle>(EventBus.READ_ALOUD_PLAY) {
-            val play = it.getBoolean("play")
-            val pageIndex = it.getInt("pageIndex")
-            val startPos = it.getInt("startPos")
-            val rewindToSentenceStart = it.getBoolean("rewindToSentenceStart")
-            newReadAloud(
-                play = play,
-                pageIndex = pageIndex,
-                startPos = startPos,
-                rewindToSentenceStart = rewindToSentenceStart,
-                allowBookSwitch = true
-            )
-        }
         observeSharedPreferences { _, key ->
             when (key) {
                 PreferKey.ignoreAudioFocus,
@@ -795,12 +781,17 @@ abstract class BaseReadAloudService : BaseService(),
 
     /**
      * 更新媒体状态
+     *
+     * 位置传 0: 朗读的进度单位是段落序号, 不是时间, 传给系统只会被解释成「播放到 0 秒」,
+     * 并在通知/媒体控件上画出一条没有意义的进度条(用户反馈的「中间那条横条」)。
+     * 配合 [MediaHelp.READ_ALOUD_MEDIA_SESSION_ACTIONS] 去掉 SEEK_TO, 系统不再渲染 seek 控件。
+     * 这里只保留播放状态(播放/暂停)供系统显示正确的按钮。
      */
     private fun upMediaSessionPlaybackState(state: Int) {
         mediaSessionCompat.setPlaybackState(
             PlaybackStateCompat.Builder()
-                .setActions(MediaHelp.MEDIA_SESSION_ACTIONS)
-                .setState(state, nowSpeak.toLong(), 1f)
+                .setActions(MediaHelp.READ_ALOUD_MEDIA_SESSION_ACTIONS)
+                .setState(state, 0L, 0f)
                 // 为系统媒体控件添加定时按钮
                 .addCustomAction(
                     "ACTION_ADD_TIMER",
@@ -989,6 +980,9 @@ abstract class BaseReadAloudService : BaseService(),
             .setVibrate(null)
             .setSound(null)
             .setLights(0, 0, 0)
+            // 显式声明「不显示进度条」: max=0 且 indeterminate=false 时系统的 hasProgress() 为 false,
+            // 不会渲染进度条。配合 upMediaSessionPlaybackState 里不做 seek 定位, 双保险。
+            .setProgress(0, 0, false)
         builder.setLargeIcon(cover)
         // 按钮定义：上一章、播放、停止、下一章、定时
         builder.addAction(

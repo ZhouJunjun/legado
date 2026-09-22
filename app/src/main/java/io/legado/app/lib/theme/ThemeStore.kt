@@ -8,6 +8,7 @@ import androidx.annotation.CheckResult
 import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.core.content.ContextCompat
+import io.legado.app.R
 import io.legado.app.utils.ColorUtils
 import splitties.init.appCtx
 import androidx.core.graphics.toColorInt
@@ -301,13 +302,46 @@ private constructor(private val mContext: Context) {
             )
         }
 
+        /**
+         * 旧版本「栏位颜色」的默认值 md_grey_200 = #EEEEEE。
+         *
+         * 它是一个**固定亮色值**(没有 values-night 变体), 且被 [io.legado.app.lib.prefs.ColorPreference]
+         * 的 `onSetInitialValue` 无条件持久化过 —— 用户只要打开过一次主题设置页, 该值就会盖掉
+         * `bar_background` 的新默认值, 于是亮色主题下栏位一直是 #EEEEEE(与弹出面板/半屏面板的
+         * #F6F6F6 不一致), 暗色主题下栏位还会是浅灰。
+         * 见 [normalizeBottomBackground]。
+         */
+        internal val LEGACY_BOTTOM_BACKGROUND = 0xFFEEEEEE.toInt()
+
+        /**
+         * 把「恰好等于旧默认值」的残留 pref 归一到 [fallback]。
+         *
+         * 只归一旧默认值本身, 用户自定义的其它颜色原样保留。
+         *
+         * [fallback] 必须由调用方显式给出(而不是在这里取 `R.color.bar_background`):
+         * `ThemeConfig.applyTheme` 跑在 `initNightMode()` **之前**, 此时 resources 的 uiMode 还是
+         * 上一个主题的值, 在这里取带 night 变体的资源会拿到错误颜色并被写进 pref。
+         */
+        @CheckResult
+        @ColorInt
+        internal fun normalizeBottomBackground(
+            @ColorInt color: Int,
+            @ColorInt fallback: Int
+        ): Int {
+            return if (color == LEGACY_BOTTOM_BACKGROUND) fallback else color
+        }
+
         @CheckResult
         @ColorInt
         fun bottomBackground(context: Context = appCtx): Int {
-            return prefs(context).getInt(
-                ThemeStorePrefKeys.KEY_BOTTOM_BACKGROUND,
-                ThemeUtils.resolveColor(context, android.R.attr.colorBackground)
-            )
+            // 默认取 bar_background: 亮色 #F6F6F6 / 暗色 #303030。
+            // 顶栏、底栏、书架朗读迷你条、阅读菜单头尾、半屏设置面板**共用**这一个值,
+            // 所以改这里就能让这些栏位整体统一成同一底色(用户 2026-09-21 的规格)。
+            // 注意用 ContextCompat.getColor 而非 ThemeUtils.resolveColor —— 后者收的是 attr 资源。
+            // 这里是**渲染期**调用, uiMode 已是当前主题, 所以取带 night 变体的资源是正确的。
+            val fallback = ContextCompat.getColor(context, R.color.bar_background)
+            val color = prefs(context).getInt(ThemeStorePrefKeys.KEY_BOTTOM_BACKGROUND, fallback)
+            return normalizeBottomBackground(color, fallback)
         }
 
         @CheckResult

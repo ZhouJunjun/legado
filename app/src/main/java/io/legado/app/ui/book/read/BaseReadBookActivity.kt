@@ -31,7 +31,6 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
-import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.CacheBook
 import io.legado.app.model.ReadBook
@@ -214,8 +213,18 @@ abstract class BaseReadBookActivity :
         }
         upSystemUiVisibilityO(isInMultiWindow, toolBarHide)
         if (toolBarHide) {
+            // 无菜单(纯阅读): 状态栏图标由阅读页自己的"深色状态栏图标"开关决定。
             setLightStatusBar(ReadBookConfig.durConfig.curStatusIconDark())
         } else {
+            // 菜单展开: 状态栏区域正压在阅读菜单顶栏上, 图标明暗必须跟**顶栏实际底色**走。
+            //
+            // 判据与 ReadMenu.initView 保持同源:
+            // - 沉浸式(readBarStyleFollowPage 且纯色背景): 顶栏 = 阅读背景色 → 取 bgMeanColor;
+            // - 非沉浸式: ReadMenu 顶栏恒用 bottomBackground(不受 transparentNavBar 偏好影响)。
+            //
+            // 原实现取 ThemeStore.statusBarColor()(= primaryColor) 判亮度, 与顶栏底色不同源:
+            // 默认棕色 primary 偏暗会判成"深底"→ 给白色图标, 而顶栏其实是浅灰 → 图标看不见。
+            // (用户 2026-09-21 反馈: "换主题时也要根据首尾切换状态栏图标的颜色才对")
             val statusBarColor =
                 if (AppConfig.readBarStyleFollowPage
                     && ReadBookConfig.durConfig.curBgType() == 0
@@ -223,7 +232,7 @@ abstract class BaseReadBookActivity :
                 ) {
                     ReadBookConfig.bgMeanColor
                 } else {
-                    ThemeStore.statusBarColor(this, AppConfig.isTransparentStatusBar)
+                    bottomBackground
                 }
             setLightStatusBar(ColorUtils.isColorLight(statusBarColor))
         }

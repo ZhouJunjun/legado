@@ -34,6 +34,14 @@ import splitties.systemservices.layoutInflater
 class PopupAction(private val context: Context) :
     PopupWindow(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT) {
 
+    companion object {
+        /**
+         * 垂直菜单单行最小高度(dp)。上游原值为 48dp, 现按要求行距减半。
+         * 注意这只是**最小高度**(floor): 字体放大时行高仍会随内容自动撑开, 不会裁切文字。
+         */
+        private const val ITEM_MIN_HEIGHT_DP = 24
+    }
+
     val binding = PopupActionBinding.inflate(context.layoutInflater)
     val adapter by lazy {
         Adapter(context).apply {
@@ -47,6 +55,7 @@ class PopupAction(private val context: Context) :
     private var actionItems: List<PopupActionItem> = emptyList()
     private var reserveIconColumn = false
     private var reserveCheckColumn = false
+    private val itemMinHeight: Int = ITEM_MIN_HEIGHT_DP.dpToPx()
     private val measureRow by lazy {
         ItemPopupActionBinding.inflate(context.layoutInflater).apply {
             textView.setPadding(0, 0, 0, 0)
@@ -213,14 +222,14 @@ class PopupAction(private val context: Context) :
                 textView.text = item.title
                 if (isVertical) {
                     root.updateLayoutParams { width = ViewGroup.LayoutParams.MATCH_PARENT }
-                    root.minimumHeight = 48.dpToPx()
+                    root.minimumHeight = itemMinHeight
                     root.setPadding(16.dpToPx(), 0, 16.dpToPx(), 0)
                     root.setBackgroundResource(selectableItemBackgroundResId())
                     textView.updateLayoutParams<LinearLayout.LayoutParams> {
                         width = 0
                         weight = 1f
                     }
-                    textView.minHeight = 48.dpToPx()
+                    textView.minHeight = itemMinHeight
                     textView.minWidth = 0
                     textView.gravity = Gravity.CENTER_VERTICAL
                     textView.setPadding(0, 0, 0, 0)

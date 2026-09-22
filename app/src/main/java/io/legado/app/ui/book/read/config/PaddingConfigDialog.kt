@@ -63,12 +63,21 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
     override fun onStart() {
         super.onStart()
         dialog?.window?.run {
-            clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setBackgroundDrawableResource(android.R.color.transparent)
             decorView.setPadding(0, 0, 0, 0)
             attributes = attributes.apply {
-                dimAmount = 0.0f
                 gravity = Gravity.CENTER
+                // 保留背景遮罩, 与同在「界面」面板里打开的其它子面板(信息 TipConfigDialog /
+                // 缩进 AndroidAlertBuilder.selector)保持一致。
+                // 0.6f 即系统对话框主题的 android:backgroundDimAmount 默认值。
+                //
+                // 原实现在这里 clearFlags(FLAG_DIM_BEHIND) 且 dimAmount=0f, 本面板因此
+                // **没有遮罩**, 而同级其它子面板有 —— 2026-09-22 反馈
+                // "边距按钮打开的弹出面板下面没有遮罩，但信息/缩进等按钮打开的有"。
+                // 那两句本意应是配合 ghostWindow() 半透明预览(拖 SeekBar 时把窗口 alpha 降到
+                // 0.25 看正文), 但窗口 alpha 与遮罩互不相干, 去掉不影响预览效果。
+                dimAmount = 0.6f
+                flags = flags or WindowManager.LayoutParams.FLAG_DIM_BEHIND
             }
         }
         setLayout(0.9f, ViewGroup.LayoutParams.WRAP_CONTENT)

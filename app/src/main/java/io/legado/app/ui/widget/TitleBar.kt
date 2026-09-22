@@ -10,9 +10,11 @@ import android.graphics.drawable.Drawable
 import android.util.AttributeSet
 import android.view.Menu
 import android.view.View
+import android.view.ViewGroup
 import android.widget.ImageView
 import androidx.annotation.ColorInt
 import androidx.annotation.StyleRes
+import androidx.appcompat.widget.ActionMenuView
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.Toolbar
 import androidx.core.graphics.alpha
@@ -24,9 +26,10 @@ import com.google.android.material.tabs.TabLayout
 import io.legado.app.R
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.barBorderBackground
+import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.elevation
-import io.legado.app.lib.theme.getToolbarTextColor
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.transparentNavBar
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.activity
@@ -203,7 +206,10 @@ class TitleBar @JvmOverloads constructor(
             } else if (!opaque && context.transparentNavBar) {
                 setBackgroundColor(Color.TRANSPARENT)
             } else {
-                setBackgroundColor(context.primaryColor)
+                // 顶部栏统一用底栏背景色(取代原来的 primaryColor 彩色).
+                // 下边线 1dp 实心灰(bar_border): 顶栏与内容区之间需要一条明确的分界,
+                // 靠 elevation 阴影在浅色主题下几乎看不出来。
+                setBackground(context.barBorderBackground(context.bottomBackground, atTop = false))
                 elevation = context.elevation
             }
 
@@ -224,9 +230,33 @@ class TitleBar @JvmOverloads constructor(
         get() = automaticForeground && context.transparentNavBar &&
             !AppConfig.isEInkMode && background?.alpha == 0
 
+    /**
+     * 顶部栏实际底色。透明顶栏时露出的是页面背景色, 否则就是我们自己设的底栏色。
+     */
+    private val barBackgroundColor: Int
+        get() = when {
+            AppConfig.isEInkMode -> context.backgroundColor
+            usesTransparentForeground -> context.backgroundColor
+            else -> context.bottomBackground
+        }
+
+    /**
+     * 按顶部栏实际底色反推前景色(标题/副标题/导航图标/溢出图标/搜索框/标签页)。
+     *
+     * 只处理 `automaticForeground`(themeMode=0 且非 opaque)的顶栏:
+     * - 透明顶栏: 底色是页面背景色, 取页面背景反推(与旧行为一致);
+     * - 不透明顶栏: 底色现在取自 bottomBackground, 与主题 overlay 的判据(primaryColor 明暗)
+     *   不再同源, 自定义主题下可能出现深底深字, 所以也按实际底色重算。
+     *
+     * themeMode="dark"(如音频播放/详情页)和 opaque 的顶栏不走这里 —— 它们由布局/代码
+     * 自己指定颜色(白色文字配半透明深底), 保持原样。
+     * 布局里显式指定的颜色(titleTextColor/subtitleTextColor 属性)不会被覆盖。
+     */
     fun applyForegroundColor() {
-        if (!usesTransparentForeground) return
-        val color = context.getToolbarTextColor(true)
+        if (!automaticForeground) return
+        val color = context.getPrimaryTextColor(
+            ColorUtils.isColorLight(barBackgroundColor)
+        )
         if (!titleTextColorFromAttrs) {
             setTitleTextColor(color)
         }
@@ -238,7 +268,7 @@ class TitleBar @JvmOverloads constructor(
         toolbar.overflowIcon?.colorFilter = colorFilter
         toolbar.findViewById<SearchView>(R.id.search_view)?.applyTint(color)
         val tabUnselectedColor = context.getCompatColor(
-            if (ColorUtils.isColorLight(context.backgroundColor)) {
+            if (ColorUtils.isColorLight(barBackgroundColor)) {
                 R.color.md_light_secondary
             } else {
                 R.color.md_dark_secondary
@@ -292,6 +322,41 @@ class TitleBar @JvmOverloads constructor(
         toolbar.menu.children.forEach {
             it.icon?.colorFilter = colorFilter
         }
+        tintOverflowButton(colorFilter)
+    }
+
+    /**
+     * 给三点按钮(overflow)着色。
+     *
+     * 它**不是** `toolbar.menu` 里的 item, 而是 `ActionMenuView` 内一个
+     * `isOverflowButton == true` 的 ImageView; `toolbar.overflowIcon` 默认是 null,
+     * 对着 null 设 colorFilter 是无效操作。图标实际颜色由 Toolbar 的
+     * `android:theme="?attr/actionBarStyle"`(→ `AppBarOverlay.Light/Dark`)决定,
+     * 而那个 overlay 是按 **`primaryColor` 明暗**选的(见 `BaseActivity.initTheme`),
+     * 与顶栏实际底色(`bottomBackground`)不同源 —— 默认棕色 primary 偏暗 → 选到 Dark overlay
+     * → 亮色主题下三点是**白色**, 在浅灰顶栏上看不见(用户 2026-09-22 反馈:
+     * "亮主题下的设置头部文字还是白的, 三点按钮也是白的")。
+     *
+     * 所以这里直接按栏位前景色覆盖它。用 `post` 是因为 `ActionMenuView` 的 overflow
+     * 按钮要在布局后才存在(与 `installMd3OverflowMenu` 的做法一致)。
+     */
+    private fun tintOverflowButton(colorFilter: PorterDuffColorFilter) {
+        post {
+            findOverflowButton(toolbar)?.colorFilter = colorFilter
+        }
+    }
+
+    private fun findOverflowButton(view: View): ImageView? {
+        if (view is ImageView) {
+            val lp = view.layoutParams
+            if (lp is ActionMenuView.LayoutParams && lp.isOverflowButton) return view
+        }
+        if (view is ViewGroup) {
+            for (i in 0 until view.childCount) {
+                findOverflowButton(view.getChildAt(i))?.let { return it }
+            }
+        }
+        return null
     }
 
     override fun setBackgroundColor(color: Int) {

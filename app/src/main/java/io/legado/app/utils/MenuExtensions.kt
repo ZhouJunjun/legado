@@ -15,8 +15,9 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.view.forEach
 import io.legado.app.R
 import io.legado.app.constant.Theme
-import io.legado.app.lib.theme.getToolbarTextColor
-import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.getPrimaryTextColor
 import java.lang.reflect.Method
 
 @SuppressLint("RestrictedApi")
@@ -107,20 +108,33 @@ inline fun Menu.transaction(block: (Menu) -> Unit) {
 
 object MenuExtensions {
 
+    /**
+     * 菜单/图标的前景色。
+     *
+     * 原来非透明分支返回 `context.primaryTextColor` —— 那是**按 primaryColor 推导**的
+     * (`isDarkTheme = isColorLight(primaryColor)`)。该推导成立的前提是"栏底色 == primaryColor",
+     * 但顶栏底色早已改成 `bottomBackground`(浅色), 前提不成立:
+     * 默认主题 primaryColor 是棕色系(偏暗) → 它返回 **白色 #FFFFFFFF**,
+     * 于是栏底改亮了、图标和文字却还是白的(用户反馈的现象)。
+     *
+     * 现在改成按**栏位真实底色**判定深浅, 与 [io.legado.app.ui.widget.TitleBar.applyForegroundColor]
+     * 的判据统一, 两个入口不会再互相覆盖出白字。
+     */
     fun getMenuColor(
         context: Context,
         theme: Theme = Theme.Auto,
         requiresOverflow: Boolean = false,
         transparentBar: Boolean = false
     ): Int {
-        val defaultTextColor = context.getCompatColor(R.color.primaryText)
-        if (requiresOverflow)
-            return defaultTextColor
-        val primaryTextColor = context.primaryTextColor
         return when (theme) {
             Theme.Dark -> context.getCompatColor(R.color.md_white_1000)
             Theme.Light -> context.getCompatColor(R.color.md_black_1000)
-            else -> if (transparentBar) context.getToolbarTextColor(true) else primaryTextColor
+            else -> {
+                // 栏位实际底色: 透明栏露出的是页面背景, 否则是底栏色。
+                val barColor =
+                    if (transparentBar) context.backgroundColor else context.bottomBackground
+                context.getPrimaryTextColor(ColorUtils.isColorLight(barColor))
+            }
         }
     }
 

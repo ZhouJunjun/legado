@@ -3032,6 +3032,20 @@ class ReadBookActivity : BaseReadBookActivity(),
         observeEvent<Boolean>(EventBus.UPDATE_READ_ACTION_BAR) {
             readMenu.reset()
         }
+        observeEvent<String>(EventBus.RECREATE) {
+            // 主题/换肤变化: 阅读菜单头尾(顶栏下边线 + 底部设置栏上边线)与状态栏图标
+            // 都依赖栏位底色, 必须重算 —— 否则残留旧底色/旧图标色(用户 2026-09-21 反馈
+            // "主题切换时也有问题")。
+            //
+            // 刻意不 recreate: 阅读页重建会重新加载章节, 代价过大且可能扰动阅读位置。
+            // 若换肤伴随 uiMode 变化, 系统本身已重建本页(manifest 未声明 uiMode),
+            // 此时这里只是一次幂等重算; 仅改栏位色(无 uiMode 变化)时才是真正的刷新路径。
+            // 加 isInitFinish 门控: 重建过程中 binding 可能尚未完成初始化。
+            if (isInitFinish) {
+                binding.readMenu.reset()
+                upSystemUiVisibility()
+            }
+        }
         observeEvent<Boolean>(EventBus.UP_SEEK_BAR) {
             readMenu.upSeekBar()
         }

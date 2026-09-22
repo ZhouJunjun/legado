@@ -29,6 +29,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.isTopBarLight
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.ui.widget.TitleBar
 import io.legado.app.utils.ColorUtils
@@ -252,10 +253,16 @@ abstract class BaseActivity<VB : ViewBinding>(
         val isTransparentStatusBar = AppConfig.isTransparentStatusBar
         val statusBarColor = ThemeStore.statusBarColor(this, isTransparentStatusBar)
         setStatusBarColorAuto(statusBarColor, isTransparentStatusBar, fullScreen)
-        if (toolBarTheme == Theme.Dark) {
-            setLightStatusBar(false)
-        } else if (toolBarTheme == Theme.Light) {
-            setLightStatusBar(true)
+        when (toolBarTheme) {
+            Theme.Dark -> setLightStatusBar(false)
+            Theme.Light -> setLightStatusBar(true)
+            else -> {
+                // 顶栏底色已从 primaryColor 改成 bottomBackground, 状态栏图标必须跟着顶栏底色走。
+                // 原实现由 setStatusBarColorAuto 按 statusBarColor(= primaryColor) 推导,
+                // 判据与顶栏底色不同源 —— 默认棕色 primary 偏暗会得出白色图标, 而顶栏是浅灰,
+                // 结果状态栏图标"看不见"。这里显式按顶栏实际底色重算(用户 2026-09-21 反馈)。
+                setLightStatusBar(isTopBarLight)
+            }
         }
         upNavigationBarColor()
     }

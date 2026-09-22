@@ -104,14 +104,20 @@ class ImportBookViewModel(application: Application) : BaseViewModel(application)
     fun addToBookshelf(
         bookList: HashSet<ImportBook>,
         groupName: String? = null,
+        decompressToCurrentFolder: Boolean = false,
         onSuccess: (Set<Uri>) -> Unit,
     ) {
         val fileUris = bookList.map { it.file.uri }
+        // 解压压缩包的目标文件夹: 当前所在目录(用户浏览到的这一层)
+        val currentFolder = if (decompressToCurrentFolder) {
+            subDocs.lastOrNull() ?: rootDoc
+        } else null
         execute {
             if (groupName != null && !appDb.bookGroupDao.canAddGroup) {
                 throw NoStackTraceException(context.getString(R.string.book_group_limit))
             }
-            val (importedUris, importedBooks) = LocalBook.importFiles(fileUris)
+            val (importedUris, importedBooks) =
+                LocalBook.importFiles(fileUris, folderDoc = currentFolder)
             val groupError = groupName?.let { name ->
                 kotlin.runCatching {
                     appDb.runInTransaction {

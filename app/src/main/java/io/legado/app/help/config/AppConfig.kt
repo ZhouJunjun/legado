@@ -206,7 +206,9 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefInt(PreferKey.showBooknameLayout, value)
         }
     var bookshelfMargin: Int
-        get() = appCtx.getPrefInt(PreferKey.bookshelfMargin, 12)
+        // 默认间距由 12 减半为 6: 网格下相邻两项的间距会叠加(ItemDecoration 左右各一份),
+        // 再加上 item 自身 padding 与封面 margin, 12 时列间实际间隙约 40dp, 封面被挤得偏小。
+        get() = appCtx.getPrefInt(PreferKey.bookshelfMargin, 6)
         set(value) {
             appCtx.putPrefInt(PreferKey.bookshelfMargin, value)
         }
@@ -394,6 +396,19 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             } else {
                 appCtx.putPrefString("importBookPath", value)
             }
+        }
+
+    /**
+     * 添加本地书籍时, 压缩包是否解压到「当前所在文件夹」(以压缩包名建子目录)再导入。
+     *
+     * 默认 true(用户需求): 解压到当前文件夹, 书籍文件留在用户自己的目录里, 方便查看/替换/备份。
+     * 关闭后回到旧行为 —— 解压到缓存目录, 把书拷进书籍保存目录(那种方式下书被删掉可以
+     * 靠「压缩包重新解压」恢复)。
+     */
+    var localBookDecompressToCurrentFolder: Boolean
+        get() = appCtx.getPrefBoolean(PreferKey.localBookDecompressToCurrentFolder, true)
+        set(value) {
+            appCtx.putPrefBoolean(PreferKey.localBookDecompressToCurrentFolder, value)
         }
 
     var ttsFlowSys: Boolean

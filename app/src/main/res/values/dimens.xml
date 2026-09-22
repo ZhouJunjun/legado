@@ -19,6 +19,16 @@
 
     <dimen name="toolbar_elevation">4dp</dimen>
 
+    <!--
+      顶部栏(TitleBar)的最小高度。
+      原来是主题里的 ?attr/actionBarSize = 56dp, 偏高; 这里压到 44dp。
+      用 minHeight 而不是固定 layout_height: 阅读页标题栏带两行章节信息时
+      仍可自然撑高, 不会被裁掉。
+    -->
+    <dimen name="title_bar_min_height">44dp</dimen>
+    <!-- 栏位贴边分隔线粗细(顶栏下边线 / 底栏上边线 / 半屏面板上边线) -->
+    <dimen name="bar_border_width">1dp</dimen>
+
     <dimen name="fastscroll_bubble_radius">44dp</dimen>
     <dimen name="fastscroll_bubble_size">88dp</dimen>
     <dimen name="fastscroll_bubble_textsize">48sp</dimen>

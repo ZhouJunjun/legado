@@ -404,6 +404,32 @@ object LocalBook {
         }
     }
 
+    /**
+     * 解压压缩包到当前文件夹, 再导入解压出来的书籍。
+     *
+     * 与 [importArchiveFile] 的区别: 书籍文件留在用户自己的目录里(以压缩包名命名的子目录),
+     * 而不是被拷进 App 的书籍保存目录。这样用户能在文件管理器里直接看到、替换、备份这些书;
+     * 书被删掉后也没法再用「压缩包重新解压」恢复, 所以这类书**不打** archive 标记
+     * (打了就会去书籍保存目录找压缩包, 找不到)。
+     *
+     * @param folderDoc 解压目标文件夹(用户可见目录)
+     * @return 成功导入的书籍
+     */
+    fun importArchiveFileIntoFolder(
+        archiveFileUri: Uri,
+        folderDoc: FileDoc,
+        filter: ((String) -> Boolean)? = null,
+    ): List<Book> {
+        val archiveFileDoc = FileDoc.fromUri(archiveFileUri, false)
+        val extractedFiles = ArchiveUtils.deCompressIntoFolder(archiveFileDoc, folderDoc, filter)
+        if (extractedFiles.isEmpty()) {
+            throw NoStackTraceException(appCtx.getString(R.string.unsupport_archivefile_entry))
+        }
+        return extractedFiles.map { fileDoc ->
+            importFile(fileDoc.uri)
+        }
+    }
+
     /* 批量导入 支持自动导入压缩包的支持书籍 */
     fun importFiles(uri: Uri): List<Book> {
         val books = mutableListOf<Book>()
@@ -420,19 +446,38 @@ object LocalBook {
         return books
     }
 
-    fun importFiles(uris: List<Uri>, previews: Map<Uri, Book> = emptyMap()): Pair<Set<Uri>, List<Book>> {
+    /**
+     * @param folderDoc 非 null 时, 压缩包会**解压到这个文件夹**(用户可见目录)后再导入,
+     *                  而不是解压到缓存目录再拷进书籍保存目录。见 [importArchiveFileIntoFolder]
+     */
+    fun importFiles(
+        uris: List<Uri>,
+        previews: Map<Uri, Book> = emptyMap(),
+        folderDoc: FileDoc? = null
+    ): Pair<Set<Uri>, List<Book>> {
         val importedUris = linkedSetOf<Uri>()
         val importedBooks = mutableListOf<Book>()
         var firstError: Throwable? = null
         uris.forEach { uri ->
             kotlin.runCatching {
                 val fileDoc = FileDoc.fromUri(uri, false)
-                if (ArchiveUtils.isArchive(fileDoc.name)) {
-                    importArchiveFile(uri, onBookImported = importedBooks::add) {
-                        it.matches(AppPattern.bookFileRegex)
+                when {
+                    // 压缩包 + 指定了当前文件夹: 解压到当前文件夹再导入
+                    ArchiveUtils.isArchive(fileDoc.name) && folderDoc != null -> {
+                        importedBooks.addAll(
+                            importArchiveFileIntoFolder(uri, folderDoc) {
+                                it.matches(AppPattern.bookFileRegex)
+                            }
+                        )
                     }
-                } else {
-                    importedBooks.add(importFile(uri, previews[uri]))
+
+                    ArchiveUtils.isArchive(fileDoc.name) -> {
+                        importArchiveFile(uri, onBookImported = importedBooks::add) {
+                            it.matches(AppPattern.bookFileRegex)
+                        }
+                    }
+
+                    else -> importedBooks.add(importFile(uri, previews[uri]))
                 }
             }.onSuccess {
                 importedUris.add(uri)

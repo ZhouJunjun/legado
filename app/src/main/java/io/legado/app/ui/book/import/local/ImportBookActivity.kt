@@ -93,6 +93,8 @@ class ImportBookActivity : BaseImportBookActivity<ImportBookViewModel>(),
         menu.findItem(R.id.menu_sort_name)?.isChecked = viewModel.sort == 0
         menu.findItem(R.id.menu_sort_size)?.isChecked = viewModel.sort == 1
         menu.findItem(R.id.menu_sort_time)?.isChecked = viewModel.sort == 2
+        menu.findItem(R.id.menu_decompress_to_folder)?.isChecked =
+            AppConfig.localBookDecompressToCurrentFolder
         return super.onMenuOpened(featureId, menu)
     }
 
@@ -101,6 +103,13 @@ class ImportBookActivity : BaseImportBookActivity<ImportBookViewModel>(),
             R.id.menu_select_folder -> selectFolder.launch()
             R.id.menu_scan_folder -> scanFolder()
             R.id.menu_import_file_name -> alertImportFileName()
+            R.id.menu_decompress_to_folder -> {
+                // 以配置为准取反(不读 item.isChecked): 有些版本的菜单框架会先自动翻转勾选,
+                // 那样再取反就会把状态原地翻回去, 表现为「点了没反应」。
+                val checked = !AppConfig.localBookDecompressToCurrentFolder
+                AppConfig.localBookDecompressToCurrentFolder = checked
+                item.isChecked = checked
+            }
             R.id.menu_local_book_save_path -> AlertDialog.Builder(this)
                 .setTitle(R.string.local_book_save_path)
                 .setMessage(AppConfig.defaultBookTreeUri ?: File(filesDir, "books").path)
@@ -154,11 +163,20 @@ class ImportBookActivity : BaseImportBookActivity<ImportBookViewModel>(),
     }
 
     private fun addToBookshelf(selected: HashSet<ImportBook>, groupName: String? = null) {
-        viewModel.addToBookshelf(selected, groupName) { importedUris ->
+        val decompressToFolder = AppConfig.localBookDecompressToCurrentFolder
+        viewModel.addToBookshelf(
+            selected,
+            groupName,
+            decompressToCurrentFolder = decompressToFolder
+        ) { importedUris ->
             selected.filter { it.file.uri in importedUris }.forEach {
                 it.isOnBookShelf = true
             }
             adapter.selectAll(false)
+            // 解压到当前文件夹会产生新文件, 刷新一下让解压出来的书立刻出现在列表里
+            if (decompressToFolder && selected.any { ArchiveUtils.isArchive(it.name) }) {
+                upPath()
+            }
         }
     }
 

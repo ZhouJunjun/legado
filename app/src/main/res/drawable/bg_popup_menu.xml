@@ -1,9 +1,18 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  弹出菜单(长按菜单 / 溢出菜单)背景: 纯底色 + 一圈 1dp 实心灰线。
+
+  原来只有 solid + 2dp 圆角, 弹出后与底下内容边界不清。
+  规格: 面板底色 #F6F6F6、边框 1px #898989(暗色主题自动走 values-night 的 bar_* 色)。
+  按用户要求去掉圆角。
+-->
 <shape xmlns:android="http://schemas.android.com/apk/res/android"
        android:shape="rectangle">
 
     <solid android:color="@color/background_menu"/>
 
-    <corners android:radius="2dp"/>
+    <stroke
+        android:width="@dimen/bar_border_width"
+        android:color="@color/bar_border"/>
 
 </shape>

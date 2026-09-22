@@ -6,9 +6,13 @@
 
     <color name="disabled">@color/md_dark_disabled</color>
 
+    <!-- 暗色主题下的栏位底色/分隔线(对应亮色的 bar_background / bar_border) -->
+    <color name="bar_background">#303030</color>
+    <color name="bar_border">#5A5A5A</color>
+
     <color name="background">@color/md_grey_900</color>
     <color name="background_card">@color/md_grey_850</color>
-    <color name="background_menu">@color/md_grey_800</color>
+    <color name="background_menu">@color/bar_background</color>
     <color name="background_prefs">#10303030</color>
 
     <color name="night_mask">#69000000</color>

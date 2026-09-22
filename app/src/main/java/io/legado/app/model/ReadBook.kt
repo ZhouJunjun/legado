@@ -648,7 +648,21 @@ object ReadBook : CoroutineScope by MainScope() {
         // 若不清, 新书的章节索引可能恰好命中旧豁免, 让该次加载被误判为「朗读自身定位」
         // 从而跳过朗读会话重启; 备份同理, 会把上一本书的阅读位置还原到新书上。
         speechSelfPositioningChapter = -1
-        aloudReadingBackup = null
+        // 例外: 朗读跟随中重开「正在朗读的这本书」(后台朗读后回到阅读页)。
+        // 此时内存里的 durChapterIndex/durChapterPos 是朗读游标, 而 DB 行里的
+        // durChapter* 是阅读进度(跟随期间 saveRead 被门控, 不随朗读推进)。
+        // 若照常清掉备份并用 DB 值覆盖游标, 后续加载会因为章节被清空而触发一次
+        // 隐式朗读重启, 且起点取的是这份旧值 —— 表现为朗读进度跳回开始朗读的地方。
+        val followAloudSameBook = BaseReadAloudService.isRun &&
+                ReadAloud.followReadAloudPosition &&
+                BaseReadAloudService.aloudBookSnapshot?.bookUrl == book.bookUrl
+        aloudReadingBackup = if (followAloudSameBook) {
+            // 备份重建为 DB 里的真实阅读位置: 跟随期间它是唯一未被朗读游标污染的
+            // 阅读进度来源, 会话结束时据此还原阅读进度。
+            Triple(book.bookUrl, book.durChapterIndex, book.durChapterPos)
+        } else {
+            null
+        }
         synchronized(readRecordLock) {
             if (readRecord.bookName != book.name || readRecord.author != book.author) {
                 upReadTime()
@@ -664,10 +678,37 @@ object ReadBook : CoroutineScope by MainScope() {
         } else {
             chapterSize
         }
-        if (durChapterIndex != book.durChapterIndex) {
-            durChapterIndex = book.durChapterIndex
-            durChapterPos = book.durChapterPos
-            clearTextChapter()
+        if (followAloudSameBook) {
+            // 朗读跟随中重开本书: 内存游标是朗读位置, 阅读进度只存在于 DB 行里。
+            // 绝不能像普通重载那样用 DB 值覆盖游标并清空章节 —— 那会让后续加载
+            // 触发一次隐式朗读重启, 而重启起点正是这份旧值,
+            // 表现为「朗读进度跳回开始朗读的地方」。
+            // 服务静态游标比内存更权威(它随朗读推进持续更新), 优先采用。
+            val aloudChapterIndex = BaseReadAloudService.readAloudChapterIndex
+            val aloudChapterStart = BaseReadAloudService.readAloudChapterStart
+            if (aloudChapterIndex >= 0 && aloudChapterStart >= 0) {
+                if (durChapterIndex != aloudChapterIndex) {
+                    durChapterIndex = aloudChapterIndex
+                    durChapterPos = aloudChapterStart
+                    clearTextChapter()
+                    // 跨章才会真正重载章节, 也只有这时需要豁免:
+                    // 把本次加载标记为「朗读自身定位」, 由 curPageChanged() 消费后
+                    // 跳过朗读会话重启 —— 正在运行的会话已持有正确起点, 重启只会用
+                    // 跟随期间被改写的游标覆盖它。阅读页只做可见位置镜像。
+                    // 标记按章节索引匹配, 未被消费时会被后续 openChapter 改写/清除, 不会长期残留。
+                    speechSelfPositioningChapter = aloudChapterIndex
+                } else {
+                    // 同章: 不重载、不产生 curPageChanged, 只把可见位置对齐到朗读处。
+                    durChapterPos = aloudChapterStart
+                }
+            }
+        } else {
+            if (durChapterIndex != book.durChapterIndex) {
+                durChapterIndex = book.durChapterIndex
+                durChapterPos = book.durChapterPos
+                clearTextChapter()
+            }
+            speechSelfPositioningChapter = -1
         }
         if (curTextChapter?.isCompleted == false) {
             curTextChapter = null
@@ -1955,8 +1996,17 @@ object ReadBook : CoroutineScope by MainScope() {
      *   或已被清空的历史备份, 会话结束时才能正确还原阅读进度。
      */
     fun backupReadingPositionForAloud(force: Boolean = false) {
-        if (!force && aloudReadingBackup != null) return
         val bookUrl = book?.bookUrl ?: return
+        // 跟随朗读期间内存位置会被朗读游标镜像改写(重开阅读页时更是直接被对齐到朗读处),
+        // 此时当前值不再代表阅读进度。已存在的同书备份(会话开始时的真实阅读位置、
+        // 或重开时从 DB 行重建的阅读进度)比当前值可信, 即便是 force 请求也不能覆盖它,
+        // 否则会话结束时会用朗读位置还原阅读进度。
+        // 反向也成立: 用户手动导航会先 detach 并清空备份, 那时备份为 null,
+        // force 能正常按当前值重建 —— 「回到朗读位置」「从此处朗读」的语义不受影响。
+        if (aloudReadingBackup?.first == bookUrl &&
+            BaseReadAloudService.isRun && ReadAloud.followReadAloudPosition
+        ) return
+        if (!force && aloudReadingBackup != null) return
         aloudReadingBackup = Triple(bookUrl, durChapterIndex, durChapterPos)
     }
 

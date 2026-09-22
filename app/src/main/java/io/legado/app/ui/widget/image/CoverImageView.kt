@@ -3,9 +3,11 @@ package io.legado.app.ui.widget.image
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Outline
 import android.graphics.Paint
 import android.graphics.Typeface
+import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.text.Layout
 import android.text.SpannableString
@@ -29,7 +31,6 @@ import io.legado.app.constant.AppPattern
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.help.glide.OkHttpModelLoader
-import io.legado.app.lib.theme.accentColor
 import io.legado.app.model.BookCover
 import io.legado.app.model.CoverFontSizes
 import io.legado.app.utils.textHeight
@@ -39,7 +40,6 @@ import androidx.collection.LruCache
 import androidx.core.graphics.createBitmap
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.SearchBook
-import io.legado.app.lib.theme.backgroundColor
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -49,9 +49,23 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
-import splitties.init.appCtx
 
 private const val HORIZONTAL_TITLE_MAX_LINES = 4
+
+/** 无封面书籍的封面底色(纯色), 去掉默认占位图后使用 */
+private const val NAME_COVER_BACKGROUND_COLOR = "#FEECE0"
+
+/** 无封面书籍的封面文字色(纯色), 不再做描边 */
+private const val NAME_COVER_TEXT_COLOR = "#95735E"
+
+private val nameCoverBackgroundColor: Int by lazy { Color.parseColor(NAME_COVER_BACKGROUND_COLOR) }
+private val nameCoverTextColor: Int by lazy { Color.parseColor(NAME_COVER_TEXT_COLOR) }
+
+/** 纯色封面绘制时让底色铺满整个封面(文字不越出), 避免露出底下被盖掉的占位图 */
+private const val NAME_COVER_EDGE_EPSILON = 2f
+
+/** 无封面书籍的兜底纯色 drawable: 用于「关闭显示书名」时仍保持纯色封面而非空白 */
+private val nameCoverColorDrawable: ColorDrawable by lazy { ColorDrawable(nameCoverBackgroundColor) }
 
 internal fun normalizeCoverText(value: String?, keepPunctuation: Boolean): String? =
     value?.let { text ->
@@ -156,8 +170,10 @@ class CoverImageView @JvmOverloads constructor(
         val currentName = this.name ?: return
         if (AppConfig.useDefaultCover || needNameBitmap[bitmapPath.toString()] == true) {
             val currentAuthor = this.author
-            val backgroundColor = appCtx.backgroundColor
-            val accentColor = appCtx.accentColor
+            // 无封面书籍统一使用纯色封面: 底色 #FEECE0、文字 #95735E 且无描边,
+            // 不再跟随主题的 backgroundColor / accentColor。
+            val backgroundColor = nameCoverBackgroundColor
+            val accentColor = nameCoverTextColor
             val fontSizes = BookCover.fontSizes
             val fontTypeface = BookCover.fontTypeface
             val fontCacheKey = BookCover.fontCacheKey
@@ -208,8 +224,8 @@ class CoverImageView @JvmOverloads constructor(
     private fun drawNameAuthor(
         name: String,
         author: String?,
-        backgroundColor: Int = appCtx.backgroundColor,
-        accentColor: Int = appCtx.accentColor,
+        backgroundColor: Int = nameCoverBackgroundColor,
+        accentColor: Int = nameCoverTextColor,
         asyncAwait: Boolean = true,
         fontSizes: CoverFontSizes? = BookCover.fontSizes,
         fontTypeface: Typeface? = BookCover.fontTypeface,
@@ -322,6 +338,8 @@ class CoverImageView @JvmOverloads constructor(
         val viewHeight = renderHeight.toFloat()
         val bitmap = createBitmap(renderWidth, renderHeight)
         val bitmapCanvas = Canvas(bitmap)
+        // 纯色底色: 整张封面铺满, 保证不露出下方被盖住的默认占位图
+        bitmapCanvas.drawColor(backgroundColor)
         var startX = renderWidth * 0.2f
         var startY = viewHeight * 0.2f
         if (horizontal) {
@@ -329,7 +347,6 @@ class CoverImageView @JvmOverloads constructor(
                 bitmapCanvas,
                 name,
                 author,
-                backgroundColor,
                 accentColor,
                 drawAuthor,
                 viewWidth,
@@ -353,12 +370,7 @@ class CoverImageView @JvmOverloads constructor(
                 namePaint.textSize = fontSizes?.let { viewWidth / 7 * it.titleSmall / 100f }
                     ?: (viewWidth / 9)
             }
-            namePaint.strokeWidth = namePaint.textSize / 6
             name.forEachIndexed { index, char ->
-                if (fontSizes != null) namePaint.strokeWidth = namePaint.textSize / 6
-                namePaint.color = backgroundColor
-                namePaint.style = Paint.Style.STROKE
-                bitmapCanvas.drawText(char, startX, startY, namePaint)
                 namePaint.color = accentColor
                 namePaint.style = Paint.Style.FILL
                 bitmapCanvas.drawText(char, startX, startY, namePaint)
@@ -404,14 +416,10 @@ class CoverImageView @JvmOverloads constructor(
                     authorPaint.textSize = viewWidth / 10 * it.authorSmall / 100f
                 }
             }
-            authorPaint.strokeWidth = authorPaint.textSize / 5
-            startX = renderWidth * 0.8f
+            startX = (renderWidth * 0.8f).coerceAtMost(viewWidth - NAME_COVER_EDGE_EPSILON)
             var startY = viewHeight * 0.95f - author.size * authorPaint.textHeight
             startY = maxOf(startY, viewHeight * 0.3f)
             author.forEach {
-                authorPaint.color = backgroundColor
-                authorPaint.style = Paint.Style.STROKE
-                bitmapCanvas.drawText(it, startX, startY, authorPaint)
                 authorPaint.color = accentColor
                 authorPaint.style = Paint.Style.FILL
                 bitmapCanvas.drawText(it, startX, startY, authorPaint)
@@ -428,7 +436,6 @@ class CoverImageView @JvmOverloads constructor(
         canvas: Canvas,
         name: String?,
         author: String?,
-        backgroundColor: Int,
         accentColor: Int,
         drawAuthor: Boolean,
         viewWidth: Float,
@@ -447,14 +454,12 @@ class CoverImageView @JvmOverloads constructor(
                 textAlign = Paint.Align.LEFT
                 textSize = viewWidth / 7
                 fontSizes?.let { textSize *= it.titleLarge / 100f }
-                strokeWidth = textSize / 6
             }
             var titleLayout = horizontalTitleLayout(title, titlePaint, titleWidth)
             if (titleLayout.lineCount > 1 || titlePaint.measureText(title) > titleWidth) {
                 val firstLineEnd = titleLayout.getLineEnd(0)
                 titlePaint.textSize = fontSizes?.let { viewWidth / 7 * it.titleSmall / 100f }
                     ?: (viewWidth / 9)
-                titlePaint.strokeWidth = titlePaint.textSize / 6
                 val displayTitle = if (adaptiveTitle) title else SpannableString(title).apply {
                     val ratio = fontSizes?.let { it.titleLarge.toFloat() / it.titleSmall } ?: (9f / 7f)
                     setSpan(RelativeSizeSpan(ratio), 0, firstLineEnd, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
@@ -465,9 +470,6 @@ class CoverImageView @JvmOverloads constructor(
             val titleY = viewHeight * 0.1f
             canvas.save()
             canvas.translate(titleX, titleY)
-            titlePaint.color = backgroundColor
-            titlePaint.style = Paint.Style.STROKE
-            titleLayout.draw(canvas)
             titlePaint.color = accentColor
             titlePaint.style = Paint.Style.FILL
             titleLayout.draw(canvas)
@@ -482,21 +484,18 @@ class CoverImageView @JvmOverloads constructor(
                 textAlign = Paint.Align.RIGHT
                 textSize = viewWidth / 10
                 fontSizes?.let { textSize *= it.authorLarge / 100f }
-                strokeWidth = textSize / 5
             }
             val smallSize = fontSizes?.let { viewWidth / 10 * it.authorSmall / 100f } ?: (viewWidth / 16)
             if (fontSizes != null && authorPaint.measureText(authorText) > authorWidth &&
                 smallSize > authorPaint.textSize
             ) {
                 authorPaint.textSize = smallSize
-                authorPaint.strokeWidth = authorPaint.textSize / 5
             }
             while (authorPaint.textSize > smallSize &&
                 authorPaint.measureText(authorText) > authorWidth
             ) {
                 authorPaint.textSize = if (fontSizes == null) authorPaint.textSize - 0.5f
                     else maxOf(smallSize, authorPaint.textSize - 0.5f)
-                authorPaint.strokeWidth = authorPaint.textSize / 5
             }
             val displayAuthor = TextUtils.ellipsize(
                 authorText,
@@ -504,11 +503,8 @@ class CoverImageView @JvmOverloads constructor(
                 authorWidth,
                 TextUtils.TruncateAt.END
             ).toString()
-            val authorX = viewWidth * 0.9f
+            val authorX = (viewWidth * 0.9f).coerceAtMost(viewWidth - NAME_COVER_EDGE_EPSILON)
             val authorY = viewHeight * 0.92f
-            authorPaint.color = backgroundColor
-            authorPaint.style = Paint.Style.STROKE
-            canvas.drawText(displayAuthor, authorX, authorY, authorPaint)
             authorPaint.color = accentColor
             authorPaint.style = Paint.Style.FILL
             canvas.drawText(displayAuthor, authorX, authorY, authorPaint)
@@ -622,10 +618,10 @@ class CoverImageView @JvmOverloads constructor(
                 .into(this)
         } else {
             if (currentPath == null) {
+                // 无封面书籍: 不再加载默认占位图, 直接由 onDraw 绘制纯色封面,
+                // 否则占位图会在文字之外的区域露出来。
                 needNameBitmap.put(currentPath.toString(), true)
-                ImageLoader.load(context, BookCover.defaultDrawable)
-                    .centerCrop()
-                    .into(this)
+                setImageDrawable(nameCoverColorDrawable)
                 invalidate()
                 onLoadFinish?.invoke()
                 return

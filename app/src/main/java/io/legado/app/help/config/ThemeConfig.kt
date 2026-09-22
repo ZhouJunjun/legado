@@ -323,7 +323,15 @@ object ThemeConfig {
         val background =
             context.getPrefInt(PreferKey.cBackground, context.getCompatColor(R.color.md_grey_100))
         val bBackground =
-            context.getPrefInt(PreferKey.cBBackground, context.getCompatColor(R.color.md_grey_200))
+            ThemeStore.normalizeBottomBackground(
+                context.getPrefInt(
+                    PreferKey.cBBackground,
+                    // 固定浅色: 该函数可能在 uiMode 尚未切换时被调用(getDurConfig),
+                    // 取带 night 变体的资源会拿到错误的主题颜色。
+                    context.getCompatColor(R.color.bar_background_pref_default)
+                ),
+                context.getCompatColor(R.color.bar_background_pref_default)
+            )
         val transparentNavBar =
             context.getPrefBoolean(PreferKey.tNavBar, false)
         val bgImgPath =
@@ -363,7 +371,14 @@ object ThemeConfig {
         val background =
             context.getPrefInt(PreferKey.cNBackground, context.getCompatColor(R.color.md_grey_900))
         val bBackground =
-            context.getPrefInt(PreferKey.cNBBackground, context.getCompatColor(R.color.md_grey_850))
+            ThemeStore.normalizeBottomBackground(
+                context.getPrefInt(
+                    PreferKey.cNBBackground,
+                    // 固定深色, 理由同上。
+                    context.getCompatColor(R.color.bar_background_pref_default_night)
+                ),
+                context.getCompatColor(R.color.bar_background_pref_default_night)
+            )
         val transparentNavBar =
             context.getPrefBoolean(PreferKey.tNavBarN, false)
         val bgImgPath =
@@ -414,8 +429,22 @@ object ThemeConfig {
                     background = getCompatColor(R.color.md_grey_900)
                     putPrefInt(PreferKey.cNBackground, background)
                 }
-                val bBackground =
-                    getPrefInt(PreferKey.cNBBackground, getCompatColor(R.color.md_grey_850))
+                var bBackground =
+                    ThemeStore.normalizeBottomBackground(
+                        getPrefInt(
+                            PreferKey.cNBBackground,
+                            // 用**固定深色**而非 @color/bar_background:
+                            // applyTheme 跑在 initNightMode() 之前, 此时 resources 的 uiMode 还是旧值,
+                            // 取带 night 变体的资源会拿到"上个主题"的颜色并被写进 pref(切主题串色)。
+                            getCompatColor(R.color.bar_background_pref_default_night)
+                        ),
+                        getCompatColor(R.color.bar_background_pref_default_night)
+                    )
+                // 旧默认值 #EEEEEE 曾被 ColorPreference 无条件持久化, 这里回写让旧数据自愈,
+                // 否则设置页的色块会显示 #EEEEEE 而实际栏位是 bar_background(两者不同色)。
+                if (bBackground != getPrefInt(PreferKey.cNBBackground, bBackground)) {
+                    putPrefInt(PreferKey.cNBBackground, bBackground)
+                }
                 val transparentNavBar =
                     getPrefBoolean(PreferKey.tNavBarN, false)
                 ThemeStore.editTheme(this)
@@ -438,8 +467,19 @@ object ThemeConfig {
                     background = getCompatColor(R.color.md_grey_100)
                     putPrefInt(PreferKey.cBackground, background)
                 }
-                val bBackground =
-                    getPrefInt(PreferKey.cBBackground, getCompatColor(R.color.md_grey_200))
+                var bBackground =
+                    ThemeStore.normalizeBottomBackground(
+                        getPrefInt(
+                            PreferKey.cBBackground,
+                            // 同上: 固定浅色, 避免 applyTheme 早于 initNightMode 时取到夜间值。
+                            getCompatColor(R.color.bar_background_pref_default)
+                        ),
+                        getCompatColor(R.color.bar_background_pref_default)
+                    )
+                // 同夜间分支: 回写归一结果, 让设置页色块与实际栏位保持一致。
+                if (bBackground != getPrefInt(PreferKey.cBBackground, bBackground)) {
+                    putPrefInt(PreferKey.cBBackground, bBackground)
+                }
                 val transparentNavBar =
                     getPrefBoolean(PreferKey.tNavBar, false)
                 ThemeStore.editTheme(this)

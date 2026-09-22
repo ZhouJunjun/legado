@@ -46,6 +46,12 @@
         app:showAsAction="never" />
 
     <item
+        android:id="@+id/menu_decompress_to_folder"
+        android:checkable="true"
+        android:title="@string/decompress_to_current_folder"
+        app:showAsAction="never" />
+
+    <item
         android:id="@+id/menu_import_file_name"
         android:title="@string/import_file_name"
         app:showAsAction="never" />

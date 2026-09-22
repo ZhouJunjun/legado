@@ -14,6 +14,7 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogReadAloudBinding
 import io.legado.app.help.config.AppConfig
+import io.legado.app.lib.theme.borderedDialogBackground
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadAloud
@@ -62,7 +63,8 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
         val isLight = ColorUtils.isColorLight(bg)
         val textColor = requireContext().getPrimaryTextColor(isLight)
         binding.run {
-            rootView.setBackgroundColor(bg)
+            // 顶部 1dp 实心灰线(无圆角): 与正文分隔开(原为纯色底, 弹出后与下方内容糊在一起)。
+            rootView.background = requireContext().borderedDialogBackground
             tvPre.setTextColor(textColor)
             tvNext.setTextColor(textColor)
             ivPlayPrev.setColorFilter(textColor)

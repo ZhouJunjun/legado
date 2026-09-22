@@ -122,7 +122,7 @@
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.ColorPreference
-            android:defaultValue="@color/md_grey_200"
+            android:defaultValue="@color/bar_background_pref_default"
             android:key="colorBottomBackground"
             android:summary="@string/day_navbar_color"
             android:title="@string/navbar_color"
@@ -185,7 +185,7 @@
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.ColorPreference
-            android:defaultValue="@color/md_grey_850"
+            android:defaultValue="@color/bar_background_pref_default_night"
             android:key="colorBottomBackgroundNight"
             android:summary="@string/night_navbar_color"
             android:title="@string/navbar_color"

@@ -87,8 +87,10 @@ class TipConfigDialog : BaseDialogFragment(R.layout.dialog_tip_config),
 
         binding.tvHeaderShow.text =
             ReadTipConfig.getHeaderModes(requireContext())[ReadTipConfig.headerMode]
+        binding.swHeaderLine.isChecked = ReadBookConfig.showHeaderLine
         binding.tvFooterShow.text =
             ReadTipConfig.getFooterModes(requireContext())[ReadTipConfig.footerMode]
+        binding.swFooterLine.isChecked = ReadBookConfig.showFooterLine
         binding.dsbTipTextSize.valueFormat = {
             tipTextSizeFromProgress(it).toString()
         }
@@ -274,6 +276,14 @@ class TipConfigDialog : BaseDialogFragment(R.layout.dialog_tip_config),
                 tvFooterShow.text = footerModes[ReadTipConfig.footerMode]
                 postEvent(EventBus.UP_CONFIG, arrayListOf(2))
             }
+        }
+        swHeaderLine.setOnUserCheckedChangeListener { isChecked ->
+            ReadBookConfig.showHeaderLine = isChecked
+            postEvent(EventBus.UP_CONFIG, arrayListOf(2))
+        }
+        swFooterLine.setOnUserCheckedChangeListener { isChecked ->
+            ReadBookConfig.showFooterLine = isChecked
+            postEvent(EventBus.UP_CONFIG, arrayListOf(2))
         }
         llHeaderLeft.setOnClickListener {
             ReadTipConfig.run {

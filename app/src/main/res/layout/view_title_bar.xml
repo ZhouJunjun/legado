@@ -4,6 +4,7 @@
     android:id="@+id/toolbar"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
+    android:minHeight="@dimen/title_bar_min_height"
     android:theme="?attr/actionBarStyle"
     app:titleTextAppearance="@style/ToolbarTitle"
     app:popupTheme="@style/AppTheme.PopupOverlay"/>
