@@ -15,12 +15,15 @@ open class StrokeTextView(context: Context, attrs: AttributeSet?) :
 
     private var radius = 1.dpToPx()
     private val isBottomBackground: Boolean
+    private val panelButtonStyle: Boolean
 
     init {
         val typedArray = context.obtainStyledAttributes(attrs, R.styleable.StrokeTextView)
         radius = typedArray.getDimensionPixelOffset(R.styleable.StrokeTextView_radius, radius)
         isBottomBackground =
             typedArray.getBoolean(R.styleable.StrokeTextView_isBottomBackground, false)
+        panelButtonStyle =
+            typedArray.getBoolean(R.styleable.StrokeTextView_panelButtonStyle, false)
         typedArray.recycle()
         upBackground()
     }
@@ -45,6 +48,30 @@ open class StrokeTextView(context: Context, attrs: AttributeSet?) :
                     Selector.colorBuild()
                         .setDefaultColor(context.getCompatColor(R.color.secondaryText))
                         .setSelectedColor(context.getCompatColor(R.color.accent))
+                        .setDisabledColor(context.getCompatColor(R.color.md_grey_500))
+                        .create()
+                )
+            }
+            panelButtonStyle -> {
+                // 设置面板方形按钮: 淡灰底 + 无边框, 选中态用 accent 底。
+                val isLight = ColorUtils.isColorLight(context.bottomBackground)
+                background = Selector.shapeBuild()
+                    .setCornerRadius(radius)
+                    .setDefaultBgColor(context.buttonSurfaceColor)
+                    .setPressedBgColor(context.buttonSurfacePressedColor)
+                    .setSelectedBgColor(context.accentColor)
+                    .setDisabledBgColor(context.getCompatColor(R.color.transparent30))
+                    .create()
+                setTextColor(
+                    Selector.colorBuild()
+                        .setDefaultColor(context.getPrimaryTextColor(isLight))
+                        .setSelectedColor(
+                            if (ColorUtils.isColorLight(context.accentColor)) {
+                                android.graphics.Color.BLACK
+                            } else {
+                                android.graphics.Color.WHITE
+                            }
+                        )
                         .setDisabledColor(context.getCompatColor(R.color.md_grey_500))
                         .create()
                 )

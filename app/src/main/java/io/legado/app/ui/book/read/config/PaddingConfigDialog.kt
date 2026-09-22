@@ -17,7 +17,9 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogReadPaddingBinding
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.alert
+import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.buttonSurfaceColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.utils.ColorUtils
@@ -37,6 +39,8 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
     private var lockLR = false
     private var textColor = 0
     private var bgColor = 0
+    private var accentColor = 0
+    private var accentTextColor = 0
     private var pendingBodyEdit: PaddingEdit? = null
     private var alphaAnimator: ValueAnimator? = null
     private val bodyThrottle = throttle<Unit>(150, leading = false) {
@@ -108,6 +112,8 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
     private fun initView() = binding.run {
         bgColor = requireContext().bottomBackground
         textColor = requireContext().getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
+        accentColor = requireContext().accentColor
+        accentTextColor = if (ColorUtils.isColorLight(accentColor)) Color.BLACK else Color.WHITE
         val radius = 8.dpToPx().toFloat()
         rootView.background = GradientDrawable().apply {
             cornerRadius = radius
@@ -181,16 +187,19 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
         ).forEach { (region, button) ->
             val selected = region == curRegion
             button.isSelected = selected
-            button.setTextColor(if (selected) bgColor else textColor)
+            button.setTextColor(if (selected) accentTextColor else textColor)
             button.backgroundTintList = null
             button.background = regionBackground(selected)
         }
     }
 
+    /**
+     * 分区按钮背景: 与「界面」面板的方形按钮同一套规格 ——
+     * 无选中时淡灰底、**无边框**; 选中时填充强调色。
+     */
     private fun regionBackground(selected: Boolean) = GradientDrawable().apply {
         cornerRadius = 8.dpToPx().toFloat()
-        setColor(if (selected) textColor else Color.TRANSPARENT)
-        setStroke(1.dpToPx(), textColor)
+        setColor(if (selected) accentColor else requireContext().buttonSurfaceColor)
     }
 
     private fun startTracking() {

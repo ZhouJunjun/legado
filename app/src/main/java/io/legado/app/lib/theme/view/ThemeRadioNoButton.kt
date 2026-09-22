@@ -9,6 +9,8 @@ import io.legado.app.R
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.buttonSurfaceColor
+import io.legado.app.lib.theme.buttonSurfacePressedColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
@@ -18,28 +20,47 @@ class ThemeRadioNoButton(context: Context, attrs: AttributeSet) :
     AppCompatRadioButton(context, attrs) {
 
     private val isBottomBackground: Boolean
+    private val panelButtonStyle: Boolean
 
     init {
         val typedArray = context.obtainStyledAttributes(attrs, R.styleable.ThemeRadioNoButton)
         isBottomBackground =
             typedArray.getBoolean(R.styleable.ThemeRadioNoButton_isBottomBackground, false)
+        panelButtonStyle =
+            typedArray.getBoolean(R.styleable.ThemeRadioNoButton_panelButtonStyle, false)
         typedArray.recycle()
         initTheme()
         TooltipCompat.setTooltipText(this, text)
     }
 
     private fun initTheme() {
+        if (isInEditMode) return
+        val accentColor = context.accentColor
+        val checkedTextColor = if (ColorUtils.isColorLight(accentColor)) {
+            Color.BLACK
+        } else {
+            Color.WHITE
+        }
         when {
-            isInEditMode -> Unit
+            panelButtonStyle -> {
+                // 与 StrokeTextView 同一套"面板方形按钮"规格: 无选中时淡灰底无边框。
+                val isLight = ColorUtils.isColorLight(context.bottomBackground)
+                background = Selector.shapeBuild()
+                    .setCornerRadius(2.dpToPx())
+                    .setDefaultBgColor(context.buttonSurfaceColor)
+                    .setPressedBgColor(context.buttonSurfacePressedColor)
+                    .setCheckedBgColor(accentColor)
+                    .create()
+                setTextColor(
+                    Selector.colorBuild()
+                        .setDefaultColor(context.getPrimaryTextColor(isLight))
+                        .setCheckedColor(checkedTextColor)
+                        .create()
+                )
+            }
             isBottomBackground -> {
-                val accentColor = context.accentColor
                 val isLight = ColorUtils.isColorLight(context.bottomBackground)
                 val textColor = context.getPrimaryTextColor(isLight)
-                val checkedTextColor = if (ColorUtils.isColorLight(accentColor)) {
-                    Color.BLACK
-                } else {
-                    Color.WHITE
-                }
                 background = Selector.shapeBuild()
                     .setCornerRadius(2.dpToPx())
                     .setStrokeWidth(2.dpToPx())
@@ -55,13 +76,7 @@ class ThemeRadioNoButton(context: Context, attrs: AttributeSet) :
                 )
             }
             else -> {
-                val accentColor = context.accentColor
                 val defaultTextColor = context.getCompatColor(R.color.primaryText)
-                val checkedTextColor = if (ColorUtils.isColorLight(accentColor)) {
-                    Color.BLACK
-                } else {
-                    Color.WHITE
-                }
                 background = Selector.shapeBuild()
                     .setCornerRadius(2.dpToPx())
                     .setStrokeWidth(2.dpToPx())

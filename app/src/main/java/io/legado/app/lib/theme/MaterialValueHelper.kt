@@ -212,6 +212,25 @@ fun Context.barBorderBackground(@ColorInt bgColor: Int, atTop: Boolean): Drawabl
     return layers
 }
 
+/**
+ * 设置面板里方形小按钮的**常态底色**: 协调的淡灰, 无边框。
+ *
+ * 做法是在栏位贴边线色 [barBorderColor](#898989 / #5A5A5A) 上挂一个低 alpha, 让它叠在
+ * 真实的栏位底色上 —— 这样浅色面板得到比底略深的灰、深色面板得到比底略亮的灰, 换肤后
+ * 自动协调, 不需要分主题硬编码两套颜色。
+ */
+@get:ColorInt
+val Context.buttonSurfaceColor: Int
+    get() = ColorUtils.withAlpha(barBorderColor, BUTTON_SURFACE_ALPHA)
+
+/** 上面这个底色的按下态(更实一点, 作为点击反馈)。 */
+@get:ColorInt
+val Context.buttonSurfacePressedColor: Int
+    get() = ColorUtils.withAlpha(barBorderColor, BUTTON_SURFACE_PRESSED_ALPHA)
+
+private const val BUTTON_SURFACE_ALPHA = 0.16f
+private const val BUTTON_SURFACE_PRESSED_ALPHA = 0.3f
+
 val Context.filletBackground: GradientDrawable
     get() {
         val background = GradientDrawable()

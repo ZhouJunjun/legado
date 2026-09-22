@@ -98,13 +98,14 @@
             android:layout_height="wrap_content"
             android:layout_marginHorizontal="6dp"
             android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:padding="6dp"
+            android:padding="10dp"
             android:singleLine="true"
             android:text="@string/underline_color"
             android:textSize="14sp"
-            app:isBottomBackground="true" />
+            app:isBottomBackground="true"
+            app:panelButtonStyle="true"
+            app:radius="3dp" />
 
         <io.legado.app.lib.theme.view.ThemeSwitch
             android:id="@+id/sw_underline_body"
@@ -156,13 +157,14 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:layout_weight="5"
-            android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:padding="6dp"
+            android:padding="10dp"
             android:singleLine="true"
             android:text="@string/text_color"
             android:textSize="14sp"
             app:isBottomBackground="true"
+            app:panelButtonStyle="true"
+            app:radius="3dp"
             tools:ignore="HardcodedText" />
 
         <io.legado.app.ui.widget.text.StrokeTextView
@@ -173,13 +175,14 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:layout_weight="5"
-            android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:padding="6dp"
+            android:padding="10dp"
             android:singleLine="true"
             android:text="@string/bg_color"
             android:textSize="14sp"
             app:isBottomBackground="true"
+            app:panelButtonStyle="true"
+            app:radius="3dp"
             tools:ignore="HardcodedText" />
 
         <io.legado.app.ui.widget.text.StrokeTextView
@@ -190,13 +193,14 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:layout_weight="5"
-            android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:padding="6dp"
+            android:padding="10dp"
             android:singleLine="true"
             android:text="@string/text_accent_color"
             android:textSize="14sp"
             app:isBottomBackground="true"
+            app:panelButtonStyle="true"
+            app:radius="3dp"
             tools:ignore="HardcodedText" />
 
     </LinearLayout>
@@ -215,13 +219,14 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:padding="6dp"
+            android:padding="10dp"
             android:singleLine="true"
             android:text="@string/review_icon_templates_title"
             android:textSize="14sp"
-            app:isBottomBackground="true" />
+            app:isBottomBackground="true"
+            app:panelButtonStyle="true"
+            app:radius="3dp" />
 
         <io.legado.app.ui.widget.text.StrokeTextView
             android:id="@+id/tv_review_icon_size"
@@ -230,13 +235,14 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:padding="6dp"
+            android:padding="10dp"
             android:singleLine="true"
             android:text="@string/review_icon_size_title"
             android:textSize="14sp"
-            app:isBottomBackground="true" />
+            app:isBottomBackground="true"
+            app:panelButtonStyle="true"
+            app:radius="3dp" />
 
         <io.legado.app.ui.widget.text.StrokeTextView
             android:id="@+id/tv_review_icon_color"
@@ -245,13 +251,14 @@
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
             android:layout_weight="1"
-            android:background="?attr/selectableItemBackground"
             android:gravity="center"
-            android:padding="6dp"
+            android:padding="10dp"
             android:singleLine="true"
             android:text="@string/review_icon_color_title"
             android:textSize="14sp"
-            app:isBottomBackground="true" />
+            app:isBottomBackground="true"
+            app:panelButtonStyle="true"
+            app:radius="3dp" />
 
     </LinearLayout>
 
@@ -268,7 +275,6 @@
             android:layout_height="36dp"
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
-            android:background="?attr/selectableItemBackground"
             android:contentDescription="@string/import_str"
             android:src="@drawable/ic_import"
             android:tooltipText="@string/import_str"
@@ -280,7 +286,6 @@
             android:layout_height="36dp"
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
-            android:background="?attr/selectableItemBackground"
             android:contentDescription="@string/import_str"
             android:src="@drawable/ic_export"
             android:tooltipText="@string/export_str"
@@ -292,7 +297,6 @@
             android:layout_height="36dp"
             android:layout_marginLeft="6dp"
             android:layout_marginRight="6dp"
-            android:background="?attr/selectableItemBackground"
             android:contentDescription="@string/delete"
             android:src="@drawable/ic_clear_all"
             android:tooltipText="@string/delete"

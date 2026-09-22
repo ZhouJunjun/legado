@@ -36,10 +36,11 @@ class PopupAction(private val context: Context) :
 
     companion object {
         /**
-         * 垂直菜单单行最小高度(dp)。上游原值为 48dp, 现按要求行距减半。
+         * 垂直菜单单行最小高度(dp)。上游原值为 48dp。
+         * 变迁: 48(上游) -> 24(行距过窄) -> 36(折中值, 当前)。
          * 注意这只是**最小高度**(floor): 字体放大时行高仍会随内容自动撑开, 不会裁切文字。
          */
-        private const val ITEM_MIN_HEIGHT_DP = 24
+        private const val ITEM_MIN_HEIGHT_DP = 36
     }
 
     val binding = PopupActionBinding.inflate(context.layoutInflater)
