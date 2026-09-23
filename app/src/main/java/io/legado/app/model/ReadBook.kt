@@ -218,6 +218,7 @@ object ReadBook : CoroutineScope by MainScope() {
         // 换书: 清掉上一本书遗留的朗读定位豁免与阅读位置备份(同 upData)。
         speechSelfPositioningChapter = -1
         aloudReadingBackup = null
+        aloudAutoPaged = false
         synchronized(readRecordLock) {
             ReadBook.book = book
             resetReadRecord(book)
@@ -648,6 +649,7 @@ object ReadBook : CoroutineScope by MainScope() {
         // 若不清, 新书的章节索引可能恰好命中旧豁免, 让该次加载被误判为「朗读自身定位」
         // 从而跳过朗读会话重启; 备份同理, 会把上一本书的阅读位置还原到新书上。
         speechSelfPositioningChapter = -1
+        aloudAutoPaged = false
         // 例外: 朗读跟随中重开「正在朗读的这本书」(后台朗读后回到阅读页)。
         // 此时内存里的 durChapterIndex/durChapterPos 是朗读游标, 而 DB 行里的
         // durChapter* 是阅读进度(跟随期间 saveRead 被门控, 不随朗读推进)。
@@ -954,6 +956,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 durChapterPos = nextPagePos
                 callBack?.cancelSelect()
                 callBack?.upContent()
+                markAloudAutoPaged(syncReadAloudFollow)
                 saveRead(true)
             }
         }
@@ -974,6 +977,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 hasPrevPage = true
                 durChapterPos = prevPagePos
                 callBack?.upContent()
+                markAloudAutoPaged(syncReadAloudFollow)
                 saveRead(true)
             }
         }
@@ -1006,6 +1010,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 callBack?.upContent()
             }
             loadContent(durChapterIndex.plus(1), upContent, false)
+            markAloudAutoPaged(syncReadAloudFollow)
             saveRead()
             callBack?.upMenuView()
             AppLog.putDebug("moveToNextChapter-curPageChanged()")
@@ -1048,6 +1053,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 callBack?.upContentAwait()
             }
             loadContent(durChapterIndex.plus(1), upContent, false)
+            markAloudAutoPaged(syncReadAloudFollow)
             saveRead()
             callBack?.upMenuView()
             AppLog.putDebug("moveToNextChapter-curPageChanged()")
@@ -1084,6 +1090,7 @@ object ReadBook : CoroutineScope by MainScope() {
                 callBack?.upContent()
             }
             loadContent(durChapterIndex.minus(1), upContent, false)
+            markAloudAutoPaged(syncReadAloudFollow)
             saveRead()
             callBack?.upMenuView()
             curPageChanged(
@@ -1115,6 +1122,7 @@ object ReadBook : CoroutineScope by MainScope() {
         val restartReadAloud = prepareReadAloudPageNavigation(syncReadAloudFollow)
         recycleRecorders(durPageIndex, index)
         durChapterPos = curTextChapter?.getReadLength(index) ?: index
+        markAloudAutoPaged(syncReadAloudFollow)
         saveRead(true)
         curPageChanged(
             pageChanged = true,
@@ -1987,6 +1995,36 @@ object ReadBook : CoroutineScope by MainScope() {
     private var aloudReadingBackup: Triple<String, Int, Int>? = null
 
     /**
+     * 朗读跟随期间是否发生过「朗读自动翻页」(由朗读进度驱动的翻页/换章)。
+     *
+     * 这是「正在朗读」与「正在自动翻页」的区别所在: 只朗读不动页时阅读进度不该被改写,
+     * 一旦页面开始跟着朗读自行翻动, 可见位置就成了有效的阅读进度, 必须落库,
+     * 并按用户要求在该状态下保持屏幕常亮。
+     * 用户手动接管(detach)、朗读结束、换书时复位。
+     */
+    private var aloudAutoPaged = false
+
+    /**
+     * 正在朗读 + 正在自动翻页: 阅读进度随朗读推进, 且保持屏幕常亮。
+     *
+     * 除跟随态与「发生过自动翻页」外, 还要求朗读的确实是当前这本书 ——
+     * 换书后台续播时朗读会驱动另一本书的游标, 不能据此点亮当前书阅读页的屏幕。
+     */
+    val isAloudAutoPaging: Boolean
+        get() {
+            if (!aloudAutoPaged) return false
+            if (!BaseReadAloudService.isRun || BaseReadAloudService.pause) return false
+            if (!ReadAloud.followReadAloudPosition) return false
+            val aloudUrl = BaseReadAloudService.aloudBookSnapshot?.bookUrl ?: return true
+            return aloudUrl == book?.bookUrl
+        }
+
+    /** 朗读驱动的翻页/换章成功推进后置位; 手动导航(参数为 false)不改动该状态。 */
+    private fun markAloudAutoPaged(syncReadAloudFollow: Boolean) {
+        if (syncReadAloudFollow) aloudAutoPaged = true
+    }
+
+    /**
      * 进入听书态前调用: 备份当前阅读位置。
      * 只在尚无备份(本会话首次)时记录, 避免朗读跟随期间被已污染的 durChapterPos 覆盖。
      *
@@ -2024,6 +2062,9 @@ object ReadBook : CoroutineScope by MainScope() {
      * 后续任意一次 saveRead() 都会把听书位置误存成阅读进度。
      */
     fun restoreReadingPositionAfterAloud() {
+        // 会话结束: 自动翻页状态必须复位。放在备份判空之前 —— 自动翻页过的会话
+        // 会主动作废备份(进度已落库), 备份为空时也要保证状态被清掉。
+        aloudAutoPaged = false
         val backup = aloudReadingBackup ?: return
         aloudReadingBackup = null
         val (bookUrl, chapterIndex, chapterPos) = backup
@@ -2049,16 +2090,26 @@ object ReadBook : CoroutineScope by MainScope() {
      */
     fun onAloudFollowDetached() {
         clearAloudReadingBackup()
+        // 用户接管阅读位置: 页面不再由朗读驱动, 自动翻页状态随之结束。
+        aloudAutoPaged = false
     }
 
     fun saveRead(pageChanged: Boolean = false) {
-        // 朗读驱动的推进(跟随朗读中由服务发起的翻页/换章)不落库阅读进度,
-        // 阅读进度保持用户上次手动阅读的位置; 听书进度由朗读服务写入
-        // book.config.aloud*, 两条进度完全分离。
+        // 朗读中的阅读进度是否落库, 取决于「页面是否正被朗读自动翻动」:
+        //  - 正在朗读 + 正在自动翻页(aloudAutoPaged): 可见位置就是朗读刚推进到的位置,
+        //    必须落库。否则会话结束的还原逻辑会用起读前的备份把页面拉回去,
+        //    表现为「从 a 章起读、自动翻到 b 章后关闭朗读又跳回 a 章」。
+        //  - 正在朗读但尚未发生自动翻页: 位置并没有被朗读推进过, 不落库,
+        //    保持听书进度(config.aloud*)与阅读进度(durChapter*)分离。
         //
-        // 判据用「是否正在跟随朗读」而非单纯的「服务是否运行」: 用户手动翻页时会
-        // detach 脱离跟随, 此时即便朗读仍在播放, 阅读进度也应照常保存。
-        if (BaseReadAloudService.isRun && ReadAloud.followReadAloudPosition) return
+        // 判据仍用「是否正在跟随朗读」而非单纯的「服务是否运行」: 用户手动翻页会
+        // detach 脱离跟随, 那时页面归用户所有, 照常走下面的正常落库流程。
+        if (BaseReadAloudService.isRun && ReadAloud.followReadAloudPosition) {
+            if (!aloudAutoPaged) return
+            // 位置已随自动翻页落库, 会话结束时无需(也不应)再还原 ——
+            // 否则会用起读位置覆盖刚刚存下的进度。
+            clearAloudReadingBackup()
+        }
         // 兜底: 服务被系统回收等未走 onDestroy 的情况, 补一次阅读位置还原
         if (!BaseReadAloudService.isRun) restoreReadingPositionAfterAloud()
         if (pendingPdfJump?.let { it.bookUrl == book?.bookUrl && it.chapterIndex == durChapterIndex } == true) return

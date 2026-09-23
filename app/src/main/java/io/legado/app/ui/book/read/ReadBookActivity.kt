@@ -296,7 +296,15 @@ class ReadBookActivity : BaseReadBookActivity(),
     private var lastReadAloudChapterStart = -1
     private var lastReadAloudChapterIndex = -1
     private val handler by lazy { buildMainHandler() }
-    private val screenOffRunnable by lazy { Runnable { keepScreenOn(false) } }
+    private val screenOffRunnable by lazy {
+        Runnable {
+            // 定时器可能在进入「朗读自动翻页」之前就已排队, 到点时重新确认一次条件:
+            // 自动翻页期间用户不会触屏, 此处若照常关屏就成了「听着听着熄屏」。
+            if (!ReadBook.isAloudAutoPaging) {
+                keepScreenOn(false)
+            }
+        }
+    }
     private val executor = ReadBook.executor
     private val upSeekBarThrottle = throttle(200) {
         runOnUiThread {
@@ -3035,6 +3043,9 @@ class ReadBookActivity : BaseReadBookActivity(),
             }
         }
         observeEvent<Int>(EventBus.ALOUD_STATE) {
+            // 朗读状态变化会影响「自动翻页保持常亮」是否成立, 每次都要重算熄屏策略;
+            // 朗读结束后若不再处于自动翻页, 这里会把屏幕交还给正常熄屏定时。
+            upScreenTimeOut()
             if (it == Status.STOP || it == Status.PAUSE) {
                 ReadBook.curTextChapter?.let { textChapter ->
                     val page = textChapter.getPageByReadPos(ReadBook.durChapterPos)
@@ -3048,7 +3059,15 @@ class ReadBookActivity : BaseReadBookActivity(),
         // 朗读进度用非 sticky 订阅: sticky 会在订阅/重建瞬间回放上一次的旧值,
         // 把「已经过去的朗读位置」注入到当前页面, 表现为位置莫名回跳。
         // 需要当前值时直接读 BaseReadAloudService.readAloudChapterStart(静态游标)。
+        //
+        // 跟随态切换(用户手动接管 / 回到朗读位置)会改变「是否处于自动翻页」的判定,
+        // 因此这里要重算一次熄屏策略: 手动接管后应把屏幕交还给正常熄屏定时。
+        observeEvent<Boolean>(EventBus.READ_ALOUD_FOLLOW) {
+            upScreenTimeOut()
+        }
         observeEvent<Int>(EventBus.TTS_PROGRESS) { chapterStart ->
+            // 朗读已把页面推进过(自动翻页): 此时保持常亮; 条件不成立则什么都不做。
+            upAloudAutoPageScreenOn()
             lastReadAloudChapterStart = chapterStart
             lastReadAloudChapterIndex = ReadAloud.readAloudChapterIndex
             // 朗读的服务不是当前这本时, 不得把朗读位置写进当前书的阅读位置
@@ -3068,12 +3087,14 @@ class ReadBookActivity : BaseReadBookActivity(),
                     ReadBook.curTextChapter?.let { textChapter ->
                         // 回显: 把可见位置挪到朗读位置并挂上高亮。
                         //
-                        // 这里写的是「可见游标」而非阅读进度, 三重保证它不会落库:
-                        // 1) 上面已确认处于跟随态 —— saveRead() 的跟随门控会直接 return;
-                        // 2) 会话开始时已备份阅读位置, 会话结束/服务回收时由
-                        //    restoreReadingPositionAfterAloud() 还原;
+                        // 这里写的是「可见游标」而非直接的阅读进度; 是否落库由 saveRead()
+                        // 按「是否处于自动翻页」决定:
+                        // 1) 已随朗读自动翻页 -> 该位置就是有效阅读进度, 由 saveRead() 落库;
+                        // 2) 尚未翻页 -> saveRead() 直接 return, 位置只是回显, 不落库;
                         // 3) 用户手动导航会脱离跟随, 而各导航路径(moveTo*/setPageIndex/
                         //    skipToPage/updateScrollReadPosition)都会把该值改写成用户的新位置。
+                        // 会话结束时若进度尚未落库, 仍由
+                        // restoreReadingPositionAfterAloud() 还原到起读前的阅读位置。
                         //
                         // 落库由朗读服务负责(upTtsProgress → saveAloudProgress 带 override 参数),
                         // 此处**不得**再调用 saveAloudProgress() —— 无参调用会拿阅读游标
@@ -3147,10 +3168,29 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     /**
+     * 朗读自动翻页中保持屏幕常亮。
+     *
+     * 条件不成立时不做任何事, 熄屏策略仍由 screenOffTimerStart 按用户设置决定 ——
+     * 本方法只负责「翻页期间不让熄屏定时器关掉屏幕」。
+     */
+    private fun upAloudAutoPageScreenOn() {
+        if (ReadBook.isAloudAutoPaging) {
+            handler.removeCallbacks(screenOffRunnable)
+            keepScreenOn(true)
+        }
+    }
+
+    /**
      * 重置黑屏时间
      */
     override fun screenOffTimerStart() {
         handler.post {
+            // 朗读自动翻页中: 页面由朗读推进自行翻动, 用户不会触屏, 必须保持常亮,
+            // 否则会出现「听着听着熄屏」。
+            if (ReadBook.isAloudAutoPaging) {
+                upAloudAutoPageScreenOn()
+                return@post
+            }
             if (screenTimeOut < 0) {
                 keepScreenOn(true)
                 return@post
