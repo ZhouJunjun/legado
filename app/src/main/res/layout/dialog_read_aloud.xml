@@ -13,6 +13,25 @@
     android:paddingBottom="6dp">
 
     <!--
+      内容区套一层 ScrollView 做高度兜底。
+      面板以 dialog 形式叠在主菜单之上(留出底部 4 个按钮的位置), 高度上限 = 底栏上沿 - 顶栏下沿;
+      小屏/横屏下按内容自然高度算会顶穿顶栏, 所以给出上限并允许滚动。
+      上限值由 ReadAloudDialog.onStart() 写入 —— 不用 android:maxHeight(那是 API 30 起的属性,
+      低版本会被静默忽略)。
+      ScrollView 只能有一个直接子 View, 因此这里多包一层竖向 LinearLayout 承载原有各行。
+    -->
+    <ScrollView
+        android:id="@+id/sv_aloud_content"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:scrollbars="vertical">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical">
+
+    <!--
       正在朗读的书名行(纯展示, 不可点击)。
       数据取自朗读服务自持快照(BaseReadAloudService.aloudBookSnapshot / readAloudChapter*),
       与书架迷你条同源; 不用 ReadBook.book —— 换书后那会显示成错误的书。
@@ -131,6 +150,26 @@
             android:textColor="@color/primaryText"
             android:textSize="14sp" />
 
+        <View
+            android:id="@+id/v_aloud_position_divider2"
+            android:layout_width="1dp"
+            android:layout_height="18dp"
+            android:background="@color/divider" />
+
+        <TextView
+            android:id="@+id/tv_aloud_background_play"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:background="?android:attr/selectableItemBackground"
+            android:clickable="true"
+            android:focusable="true"
+            android:gravity="center"
+            android:minHeight="44dp"
+            android:text="@string/backstage_play"
+            android:textColor="@color/primaryText"
+            android:textSize="14sp" />
+
     </LinearLayout>
 
     <!-- 第 2 行(定位操作)与第 3 行起(原有设置)之间的分隔线 -->
@@ -181,6 +220,31 @@
             android:importantForAccessibility="no"
             android:src="@drawable/ic_arrow_drop_down"
             app:tint="@color/primaryText" />
+
+        <!--
+          朗读设置入口。
+          原在面板底栏的【设置】按钮里, 那个自成一体的底栏已拆除; 整行点按仍是切换引擎,
+          所以设置另起一个图标, 避免把「换引擎」和「朗读设置」混在同一个点击目标上。
+        -->
+        <View
+            android:layout_width="1dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="10dp"
+            android:background="@color/divider" />
+
+        <androidx.appcompat.widget.AppCompatImageView
+            android:id="@+id/iv_aloud_settings"
+            android:layout_width="30dp"
+            android:layout_height="30dp"
+            android:layout_marginStart="6dp"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:clickable="true"
+            android:contentDescription="@string/read_aloud_settings"
+            android:focusable="true"
+            android:padding="5dp"
+            android:src="@drawable/ic_settings"
+            app:tint="@color/primaryText"
+            tools:ignore="TouchTargetSizeCheck" />
 
     </LinearLayout>
 
@@ -408,174 +472,8 @@
 
     </LinearLayout>
 
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:baselineAligned="false"
-        android:orientation="horizontal">
-
-        <!--目录按钮-->
-        <LinearLayout
-            android:id="@+id/ll_catalog"
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:contentDescription="@string/chapter_list"
-            android:focusable="true"
-            android:orientation="vertical"
-            android:paddingBottom="7dp">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/iv_catalog"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:adjustViewBounds="true"
-                android:contentDescription="@string/chapter_list"
-                android:maxHeight="20dp"
-                android:src="@drawable/ic_toc"
-                app:tint="@color/primaryText"
-                tools:ignore="NestedWeights" />
-
-            <TextView
-                android:id="@+id/tv_catalog"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="3dp"
-                android:ellipsize="middle"
-                android:singleLine="true"
-                android:text="@string/chapter_list"
-                android:textColor="@color/primaryText"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2" />
-        <!--调节按钮-->
-        <LinearLayout
-            android:id="@+id/ll_main_menu"
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:contentDescription="@string/main_menu"
-            android:focusable="true"
-            android:orientation="vertical"
-            android:paddingBottom="7dp"
-            tools:ignore="TextSizeCheck">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/iv_main_menu"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:adjustViewBounds="true"
-                android:contentDescription="@string/main_menu"
-                android:maxHeight="20dp"
-                android:src="@drawable/ic_menu"
-                app:tint="@color/primaryText"
-                tools:ignore="NestedWeights" />
-
-            <TextView
-                android:id="@+id/tv_main_menu"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="3dp"
-                android:ellipsize="middle"
-                android:singleLine="true"
-                android:text="@string/main_menu"
-                android:textColor="@color/primaryText"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2" />
-        <!--界面按钮-->
-        <LinearLayout
-            android:id="@+id/ll_to_backstage"
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:contentDescription="@string/to_backstage"
-            android:focusable="true"
-            android:orientation="vertical"
-            android:paddingBottom="7dp">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/iv_to_backstage"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:adjustViewBounds="true"
-                android:contentDescription="@string/to_backstage"
-                android:maxHeight="20dp"
-                android:src="@drawable/ic_visibility_off"
-                app:tint="@color/primaryText"
-                tools:ignore="NestedWeights" />
-
-            <TextView
-                android:id="@+id/tv_to_backstage"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="3dp"
-                android:ellipsize="middle"
-                android:singleLine="true"
-                android:text="@string/to_backstage"
-                android:textColor="@color/primaryText"
-                android:textSize="12sp" />
-        </LinearLayout>
-
-        <View
-            android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="2" />
-        <!--设置按钮-->
-        <LinearLayout
-            android:id="@+id/ll_setting"
-            android:layout_width="60dp"
-            android:layout_height="wrap_content"
-            android:background="?android:attr/selectableItemBackgroundBorderless"
-            android:clickable="true"
-            android:contentDescription="@string/setting"
-            android:focusable="true"
-            android:orientation="vertical"
-            android:paddingBottom="7dp">
-
-            <androidx.appcompat.widget.AppCompatImageView
-                android:id="@+id/iv_setting"
-                android:layout_width="match_parent"
-                android:layout_height="0dp"
-                android:layout_weight="1"
-                android:adjustViewBounds="true"
-                android:contentDescription="@string/setting"
-                android:maxHeight="20dp"
-                android:src="@drawable/ic_settings"
-                app:tint="@color/primaryText"
-                tools:ignore="NestedWeights" />
-
-            <TextView
-                android:id="@+id/tv_setting"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_gravity="center_horizontal"
-                android:layout_marginTop="3dp"
-                android:ellipsize="middle"
-                android:singleLine="true"
-                android:text="@string/setting"
-                android:textColor="@color/primaryText"
-                android:textSize="12sp" />
-        </LinearLayout>
-
     </LinearLayout>
+
+    </ScrollView>
 
 </LinearLayout>

@@ -154,7 +154,8 @@
             android:gravity="center_vertical"
             android:orientation="horizontal"
             android:paddingStart="16dp"
-            android:paddingEnd="16dp">
+            android:paddingEnd="16dp"
+            android:visibility="invisible">
 
             <com.google.android.material.floatingactionbutton.FloatingActionButton
                 android:id="@+id/fabSearch"
@@ -243,6 +244,7 @@
             android:orientation="vertical">
             <!--章节设置-->
             <LinearLayout
+                android:id="@+id/ll_chapter_progress"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginLeft="20dp"
@@ -250,7 +252,8 @@
                 android:layout_marginRight="20dp"
                 android:layout_marginBottom="5dp"
                 android:importantForAccessibility="no"
-                android:orientation="horizontal">
+                android:orientation="horizontal"
+                android:visibility="invisible">
 
                 <TextView
                     android:id="@+id/tv_pre"
@@ -295,6 +298,7 @@
             </LinearLayout>
 
             <LinearLayout
+                android:id="@+id/ll_bottom_buttons"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:baselineAligned="false"

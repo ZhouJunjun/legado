@@ -77,6 +77,47 @@ class ReadMenu @JvmOverloads constructor(
     private val chapterNameTextSize = binding.tvChapterName.textSize
     private var confirmSkipToChapter: Boolean = false
     private var isMenuOutAnimating = false
+
+    /**
+     * 当前叠在主菜单之上的面板。
+     *
+     * 面板不再收起主菜单(旧行为: 点【朗读】→ runMenuOut → 主菜单消失, 底栏换成
+     * 【目录/主菜单/后台/设置】)。现在底栏 4 个按钮恒为【目录/朗读/界面/设置】,
+     * 面板以 dialog 形式叠在底栏之上, 切换面板时主菜单全程不动 —— 用户要的
+     * 「面板切换」心智模型。
+     */
+    private var curPanel = PANEL_NONE
+
+    /** 是否正有面板叠在主菜单之上。 */
+    val hasPanel: Boolean get() = curPanel != PANEL_NONE
+
+    /**
+     * 面板要向上抬的偏移量 —— 把整段底栏(进度行 + 4 个按钮)完整让出来。
+     *
+     * 推导(全部用屏幕坐标, 不依赖窗口内边距的归属):
+     *   · 面板是独立窗口, 其窗口底边默认落在**导航栏之上**(这正是原来朗读面板贴底时
+     *     不会盖住导航栏的原因), 即 windowBottom = 底栏背景(ll_bottom_bg)的底边。
+     *   · Gravity.BOTTOM 下 yAdj 取正值把窗口向上抬: windowBottom = 底边 - yAdj。
+     *   · 要让面板底边落在底栏上沿(ll_bottom_bg.top) ⇒ yAdj = 进度行 + 按钮行。
+     *
+     * 这两行在面板出现时只置 INVISIBLE(仍占位), 所以高度稳定, 不会随开关而变。
+     */
+    fun panelOffset(): Int =
+        binding.llChapterProgress.height + binding.llBottomButtons.height
+
+    /**
+     * 面板高度上限: 底栏上沿 → 顶栏下沿, 再留 8dp 呼吸空隙。
+     *
+     * 顶栏高度已含状态栏内边距, 底栏底边已让开导航栏, 因此两端都天然排除系统栏。
+     * 用 getLocationOnScreen 取真实屏幕位置, 免去对各级 padding 归属的假设。
+     */
+    fun panelMaxHeight(): Int {
+        val bottomBarTop = IntArray(2).also { binding.llBottomBg.getLocationOnScreen(it) }[1]
+        val titleBottom = IntArray(2).also { binding.titleBar.getLocationOnScreen(it) }[1] +
+            binding.titleBar.height
+        return (bottomBarTop - titleBottom - 8.dpToPx()).coerceAtLeast(160.dpToPx())
+    }
+
     private val menuTopIn: Animation by lazy {
         loadAnimation(context, R.anim.anim_readbook_top_in)
     }
@@ -257,6 +298,10 @@ class ReadMenu @JvmOverloads constructor(
     fun reset() {
         upColorConfig()
         initView(true)
+        // initView 会把底栏 4 个按钮统一刷成普通文字色, 因此重置后必须重新上选中态。
+        // 触发路径真实存在: 在「界面」面板里换配色方案/字号 → postEvent(UPDATE_READ_ACTION_BAR)
+        // → 这里 reset() —— 少了这一句, 面板还开着但底栏高亮会凭空消失。
+        upSelectedState()
     }
 
     /**
@@ -404,6 +449,10 @@ class ReadMenu @JvmOverloads constructor(
         if (isMenuOutAnimating) {
             return
         }
+        // 面板还叠在上面时, 收起菜单必须连带关掉面板 —— 否则面板会悬在空无一物的正文上。
+        // 走 clearPanel() 而不是直接关 dialog: 让 CallBack.onMenuPanelChange(NONE) 收尾,
+        // 底栏选中的高亮也一并复位。
+        clearPanel()
         callBack.onMenuHide()
         this.onMenuOutEnd = onMenuOutEnd
         if (this.isVisible) {
@@ -415,6 +464,93 @@ class ReadMenu @JvmOverloads constructor(
                 menuOutListener.onAnimationEnd(menuBottomOut)
             }
         }
+    }
+
+    /**
+     * 切换面板。传 [panel] 与当前相同则关闭(再次点击同一按钮 = 收起), 否则换面板。
+     *
+     * 主菜单在这里**不动**: 只负责把 FAB 行/进度行藏掉(给面板腾出干净的底栏),
+     * 以及把新面板的状态发给观察者去弹 dialog。
+     */
+    fun togglePanel(panel: Int) {
+        if (!isVisible || isMenuOutAnimating) {
+            // 菜单已收/正在动画: 先让菜单进场, 再叠面板。
+            // 菜单进场的动画要走一帧, 所以第二步再 post 一次, 避开动画中途改状态。
+            post {
+                runMenuIn()
+                post { applyPanel(if (curPanel == panel) PANEL_NONE else panel) }
+            }
+            return
+        }
+        applyPanel(if (curPanel == panel) PANEL_NONE else panel)
+    }
+
+    /** 点正文之类的地方收起面板, 但保留主菜单(与旧行为一致: 底栏还在)。 */
+    fun closePanel() = clearPanel()
+
+    /** 收起面板: 主菜单保持不动, 仅恢复 FAB/进度行的显隐与底栏高亮。 */
+    fun clearPanel() {
+        if (curPanel != PANEL_NONE) applyPanel(PANEL_NONE)
+    }
+
+    private fun applyPanel(panel: Int) {
+        if (curPanel == panel) return
+        curPanel = panel
+        upPanelRows()
+        upSelectedState()
+        callBack.onMenuPanelChange(panel)
+    }
+
+    /**
+     * 面板 dialog 已消失(含面板内部动作自我关闭, 如【停止朗读】)。
+     *
+     * 此时若菜单还开着, 只清面板状态、保留主菜单 —— 高亮随之复位, [hasPanel] 也回 false,
+     * 否则系统返回会被多吞一次(见 ReadBookActivity 的返回回调)。
+     *
+     * **必须带 [panel] 参数比对**: dialog 的 dismiss 是异步投递的, 面板→面板切换时
+     * 旧面板的 dispatchDismiss 排在新面板展示之后才执行; 若无条件清状态, 刚叠上来的
+     * 新面板高亮与 [hasPanel] 会被旧面板的回调抹掉(表现为高亮闪一下就没)。
+     */
+    fun onPanelDialogDismissed(panel: Int) {
+        if (curPanel == panel) clearPanel()
+    }
+
+    /**
+     * 面板出现时藏掉 FAB 行与章节进度行。
+     *
+     * 置 INVISIBLE 而不是 GONE: 二者被隐藏后「底栏」在屏幕上的绝对位置不变,
+     * 而面板正是贴到底栏上沿的 —— 位置一变就会露缝或压住底栏。
+     */
+    private fun upPanelRows() = binding.run {
+        // 置 INVISIBLE 而不是 GONE: 二者被隐藏后「底栏」在屏幕上的绝对位置不变,
+        // 面板贴的是底栏上沿, 位置一变就会露出缝隙或压到底栏。
+        val show = curPanel == PANEL_NONE
+        llFloatingButton.visible(show)
+        llChapterProgress.visible(show)
+    }
+
+    /**
+     * 底栏选中态着色: 当前面板对应的按钮用主题色(accentColor)。
+     *
+     * 只动图标与文字色, 不改背景 —— 面板叠上来之后底栏仍是原来的底栏,
+     * 换背景会显得像换了套控件。
+     */
+    private fun upSelectedState() = binding.run {
+        val accent = context.accentColor
+        val normal = textColor
+        fun up(
+            iv: android.widget.ImageView,
+            tv: android.widget.TextView,
+            selected: Boolean
+        ) {
+            val color = if (selected) accent else normal
+            iv.setColorFilter(color, PorterDuff.Mode.SRC_IN)
+            tv.setTextColor(color)
+        }
+        up(ivCatalog, tvCatalog, curPanel == PANEL_CATALOG)
+        up(ivReadAloud, tvReadAloud, curPanel == PANEL_ALOUD)
+        up(ivFont, tvFont, curPanel == PANEL_STYLE)
+        up(ivSetting, tvSetting, curPanel == PANEL_SETTING)
     }
 
     private fun brightnessAuto(): Boolean {
@@ -600,6 +736,7 @@ class ReadMenu @JvmOverloads constructor(
 
         //目录
         llCatalog.setOnClickListener {
+            // 用户要求: 目录保留原有逻辑 —— 整页跳转, 主菜单收起。
             runMenuOut {
                 callBack.openChapterList()
             }
@@ -607,28 +744,25 @@ class ReadMenu @JvmOverloads constructor(
 
         //朗读
         llReadAloud.setOnClickListener {
-            runMenuOut {
-                if (BaseReadAloudService.isRun) {
-                    callBack.showReadAloudDialog()
-                } else {
-                    callBack.onClickReadAloud()
-                }
+            // 朗读面板叠在主菜单之上, 所以不走 runMenuOut —— 主菜单全程不收起。
+            // 服务没在跑时沿用「一键起读」: 先起读, 面板同时叠出来(内容也随之可用)。
+            if (!BaseReadAloudService.isRun) {
+                callBack.onClickReadAloud()
             }
+            togglePanel(PANEL_ALOUD)
         }
         llReadAloud.onLongClick {
-            runMenuOut {
-                callBack.showReadAloudDialog()
-            }
+            // 长按=只开面板(即使服务没在跑), 语义与短按区分保持不变。
+            togglePanel(PANEL_ALOUD)
         }
         //界面
         llFont.setOnClickListener {
-            runMenuOut {
-                callBack.showReadStyle()
-            }
+            togglePanel(PANEL_STYLE)
         }
 
         //设置
         llSetting.setOnClickListener {
+            // 用户要求: 设置保留原有逻辑 —— 半屏设置面板弹出, 主菜单收起。
             runMenuOut {
                 callBack.showMoreSetting()
             }
@@ -768,6 +902,19 @@ class ReadMenu @JvmOverloads constructor(
         fun skipToChapter(index: Int)
         fun onMenuShow()
         fun onMenuHide()
+
+        /** 面板切换(叠在主菜单之上的朗读/界面面板)。[panel] 见 [PANEL_NONE] 等常量。 */
+        fun onMenuPanelChange(panel: Int)
+    }
+
+    companion object {
+        const val PANEL_NONE = 0
+        const val PANEL_ALOUD = 1
+        const val PANEL_STYLE = 2
+
+        /** 仅在「原逻辑」里被引用, 保留常量以免新增分支时误用裸数字。 */
+        const val PANEL_CATALOG = 3
+        const val PANEL_SETTING = 4
     }
 
 }

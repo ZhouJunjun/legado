@@ -6,6 +6,8 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.widget.SeekBar
 import androidx.appcompat.widget.TooltipCompat
@@ -21,6 +23,7 @@ import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.ui.book.read.ReadMenu
 import io.legado.app.ui.widget.dialog.SleepTimerDialog
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
 import io.legado.app.utils.*
@@ -36,21 +39,47 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
 
     override fun onStart() {
         super.onStart()
+        val activity = activity as? ReadBookActivity ?: return
+        // 面板叠在主菜单之上时需要给底栏让位, 窗口因此比内容矮一截并整体上移;
+        // 独立显示(面板栈关闭)时保持原样: 贴底、按内容高度。
+        val stack = activity.dialogStackMode
+        val maxHeight = if (stack) activity.panelMaxHeight() else WRAP_CONTENT
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setBackgroundDrawableResource(R.color.background)
             decorView.setPadding(0, 0, 0, 0)
+            setLayout(MATCH_PARENT, maxHeight)
             val attr = attributes
             attr.dimAmount = 0.0f
             attr.gravity = Gravity.BOTTOM
+            // Gravity.BOTTOM 下 yAdj 取正值窗口向上抬 —— 抬出底栏高度后,
+            // 面板底边正好落在底栏上沿, 形成「面板压在主菜单之上」的观感。
+            attr.y = if (stack) activity.panelOffset() else 0
             attributes = attr
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
+        }
+        binding.svAloudContent.layoutParams = binding.svAloudContent.layoutParams.also {
+            it.height = maxHeight
+            it.width = MATCH_PARENT
         }
     }
 
     override fun onDismiss(dialog: DialogInterface) {
         super.onDismiss(dialog)
         (activity as ReadBookActivity).bottomDialog--
+        // 面板自我关闭(点【停止朗读】等)时, 让底栏高亮与 hasPanel 一并复位 ——
+        // 否则主菜单还开着却高亮着【朗读】, 且系统返回会被多吞一次。
+        (activity as? ReadBookActivity)?.onPanelDialogDismissed(ReadMenu.PANEL_ALOUD)
+    }
+
+    /**
+     * 点面板外 / 系统返回触发的取消: 连主菜单一起收起(用户要求「收起上述所有」)。
+     *
+     * 不能用 onDismiss 代替 —— 面板内部的按钮(【回到朗读位置】等)也走 dismiss,
+     * 那些场景主菜单应当保留, 只有用户主动取消才整套收起。
+     */
+    override fun onCancel(dialog: DialogInterface) {
+        super.onCancel(dialog)
+        (activity as? ReadBookActivity)?.onMenuPanelCancelled()
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
@@ -77,14 +106,6 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
             tvTtsSpeed.setTextColor(textColor)
             tvTtsSpeedValue.setTextColor(textColor)
             ivTtsSpeechAdd.setColorFilter(textColor)
-            ivCatalog.setColorFilter(textColor)
-            tvCatalog.setTextColor(textColor)
-            ivMainMenu.setColorFilter(textColor)
-            tvMainMenu.setTextColor(textColor)
-            ivToBackstage.setColorFilter(textColor)
-            tvToBackstage.setTextColor(textColor)
-            ivSetting.setColorFilter(textColor)
-            tvSetting.setTextColor(textColor)
             cbTtsFollowSys.setTextColor(textColor)
             ivEngine.setColorFilter(textColor)
             tvEngineName.setTextColor(textColor)
@@ -95,6 +116,7 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
             tvAloudBookPercent.setTextColor(textColor)
             tvAloudBackToSpeech.setTextColor(textColor)
             tvAloudReadFromHere.setTextColor(textColor)
+            tvAloudBackgroundPlay.setTextColor(textColor)
         }
         initData()
         initEvent()
@@ -169,6 +191,11 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
     }
 
     private fun initEvent() = binding.run {
+        // 朗读设置(原面板底栏【设置】按钮拆掉后的新入口): 整行点按仍是切换引擎,
+        // 所以另起一个图标承接, 不让同一处点击承担两种语义。
+        ivAloudSettings.setOnClickListener {
+            ReadAloudConfigDialog().show(childFragmentManager, "readAloudConfigDialog")
+        }
         tvAloudBackToSpeech.setOnClickListener {
             // 跟随态下该动作无意义(阅读页已在朗读处); 置灰之外再拦一道, 防止误点。
             if (ReadAloud.followReadAloudPosition) return@setOnClickListener
@@ -179,12 +206,10 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
             callBack?.readAloudFromVisiblePage()
             dismissAllowingStateLoss()
         }
-        llMainMenu.setOnClickListener {
-            callBack?.showMenuBar()
-            dismissAllowingStateLoss()
-        }
-        llSetting.setOnClickListener {
-            ReadAloudConfigDialog().show(childFragmentManager, "readAloudConfigDialog")
+        // 后台播放: 退出阅读页, 朗读交给前台服务继续(通知栏可控)。
+        // 即原底栏【后台】按钮, 语义未变, 只是入口从左起第 2 行第 3 格。
+        tvAloudBackgroundPlay.setOnClickListener {
+            callBack?.finish()
         }
         llEngine.setOnClickListener {
             SpeakEngineDialog().show(childFragmentManager, "speakEngineDialog")
@@ -210,8 +235,6 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
         ivPlayPause.setOnClickListener { callBack?.onClickReadAloud() }
         ivPlayPrev.setOnClickListener { ReadAloud.prevParagraph(requireContext()) }
         ivPlayNext.setOnClickListener { ReadAloud.nextParagraph(requireContext()) }
-        llCatalog.setOnClickListener { callBack?.openChapterList() }
-        llToBackstage.setOnClickListener { callBack?.finish() }
         cbTtsFollowSys.setOnCheckedChangeListener { _, isChecked ->
             AppConfig.ttsFlowSys = isChecked
             upTtsSpeechRateEnabled(!isChecked)

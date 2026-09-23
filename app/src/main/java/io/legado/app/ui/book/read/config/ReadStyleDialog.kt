@@ -5,6 +5,8 @@ import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
+import android.view.ViewGroup.LayoutParams.MATCH_PARENT
+import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import androidx.core.view.get
 import com.github.liuyueyi.quick.transfer.constants.TransType
@@ -24,6 +26,7 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.ReadBookActivity
+import io.legado.app.ui.book.read.ReadMenu
 import io.legado.app.ui.font.FontSelectDialog
 import io.legado.app.utils.ChineseUtils
 import io.legado.app.utils.ColorUtils
@@ -44,16 +47,37 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
 
     override fun onStart() {
         super.onStart()
+        val activity = activity as? ReadBookActivity ?: return
+        // 与朗读面板同一套叠层规则: 叠在主菜单之上时给底栏让位, 高度按可用空间封顶。
+        val stack = activity.dialogStackMode
+        val maxHeight = if (stack) activity.panelMaxHeight() else WRAP_CONTENT
         dialog?.window?.run {
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setBackgroundDrawableResource(R.color.background)
             decorView.setPadding(0, 0, 0, 0)
+            setLayout(MATCH_PARENT, maxHeight)
             val attr = attributes
             attr.dimAmount = 0.0f
             attr.gravity = Gravity.BOTTOM
+            // yAdj 取正值把窗口向上抬, 抬出底栏高度 → 面板底边落在底栏上沿。
+            attr.y = if (stack) activity.panelOffset() else 0
             attributes = attr
-            setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT)
         }
+        binding.svStyleContent.layoutParams = binding.svStyleContent.layoutParams.also {
+            it.height = maxHeight
+            it.width = MATCH_PARENT
+        }
+    }
+
+    /**
+     * 点面板外 / 系统返回触发的取消: 连主菜单一起收起(用户要求「收起上述所有」)。
+     *
+     * 不能用 onDismiss 代替: 面板内部的按钮(如【边距】)也是 dismiss —— 那些场景
+     * 主菜单应当保留, 只有用户主动取消才整套收起。
+     */
+    override fun onCancel(dialog: DialogInterface) {
+        super.onCancel(dialog)
+        (activity as? ReadBookActivity)?.onMenuPanelCancelled()
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
@@ -67,6 +91,9 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
         super.onDismiss(dialog)
         ReadBookConfig.save()
         (activity as ReadBookActivity).bottomDialog--
+        // 面板自我关闭(点【边距】等会 dismiss 再去开别的 dialog)时复位面板状态,
+        // 避免主菜单仍高亮【界面】且系统返回被多吞一次。
+        (activity as? ReadBookActivity)?.onPanelDialogDismissed(ReadMenu.PANEL_STYLE)
     }
 
     private fun initView() = binding.run {

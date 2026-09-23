@@ -870,11 +870,16 @@ abstract class BaseReadAloudService : BaseService(),
         nTitle += ": ${aloudBook?.name ?: ReadBook.book?.name}"
         val metadata = MediaMetadataCompat.Builder()
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, cover)
+            // 状态栏媒体胶囊取的是 METADATA_KEY_TITLE(曲名位): 系统媒体会话里
+            // TITLE 会被 One UI 渲染成状态栏上的「图标 + 文字」。原先这里放的是章节标题,
+            // 就是用户在状态栏看到的「第n章 xxx」。置空 -> 状态栏只留图标、不显示文字。
+            // 章节名在下拉面板里由 setContentText(nSubtitle) 单独提供, 不受此处影响;
+            // 锁屏/媒体控件的上下文由下面的 ARTIST 承担。
+            .putText(MediaMetadataCompat.METADATA_KEY_TITLE, "")
             .putText(
-                MediaMetadataCompat.METADATA_KEY_TITLE,
-                textChapter?.title ?: ReadBook.curTextChapter?.title ?: "null"
+                MediaMetadataCompat.METADATA_KEY_ARTIST,
+                textChapter?.title ?: ReadBook.curTextChapter?.title ?: nTitle
             )
-            .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, nTitle)
             .putText(
                 MediaMetadataCompat.METADATA_KEY_ALBUM,
                 aloudBook?.author ?: ReadBook.book?.author ?: "null"

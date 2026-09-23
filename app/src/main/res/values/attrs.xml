@@ -199,7 +199,7 @@
 
     <declare-styleable name="ThemeRadioNoButton">
         <attr name="isBottomBackground" />
-        <attr name="panelButtonStyle" format="boolean" />
+        <attr name="panelButtonStyle" />
     </declare-styleable>
 
     <declare-styleable name="Preference">

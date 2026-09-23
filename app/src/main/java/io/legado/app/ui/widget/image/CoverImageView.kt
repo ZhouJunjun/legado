@@ -30,6 +30,7 @@ import com.bumptech.glide.load.engine.GlideException
 import com.bumptech.glide.request.RequestListener
 import com.bumptech.glide.request.RequestOptions
 import com.bumptech.glide.request.target.Target
+import io.legado.app.R
 import io.legado.app.constant.AppPattern
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
@@ -437,7 +438,7 @@ class CoverImageView @JvmOverloads constructor(
             )
         }
         bitmapCanvas.drawRect(0f, 0f, viewWidth, viewHeight, backgroundPaint)
-        val startX = viewWidth * NAME_COVER_TITLE_START_X_RATIO
+        var startX = viewWidth * NAME_COVER_TITLE_START_X_RATIO
         val startY = viewHeight * NAME_COVER_TITLE_START_Y_RATIO
         if (horizontal) {
             drawHorizontalTextCover(

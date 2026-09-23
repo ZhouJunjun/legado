@@ -355,6 +355,12 @@ class ReadBookActivity : BaseReadBookActivity(),
         upScreenTimeOut()
         ReadBook.register(this)
         onBackPressedDispatcher.addCallback(this) {
+            // 面板叠在主菜单之上时, 返回手势先收起这一整套(面板 + 主菜单),
+            // 不直接退出阅读页 —— 与「点击非菜单/面板区域收起」同一套语义。
+            if (binding.readMenu.hasPanel) {
+                binding.readMenu.runMenuOut()
+                return@addCallback
+            }
             if (isShowingSearchResult) {
                 exitSearchMenu()
                 restoreLastBookProcess()
@@ -1779,18 +1785,89 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun showActionMenu() {
         when {
-            BaseReadAloudService.isRun -> showReadAloudDialog()
+            // 朗读中: 主菜单 + 朗读面板一起出来(底栏【朗读】高亮), 这是用户要的
+            // 「朗读状态默认展示」。
+            BaseReadAloudService.isRun -> {
+                if (!binding.readMenu.isVisible) binding.readMenu.runMenuIn()
+                binding.readMenu.togglePanel(ReadMenu.PANEL_ALOUD)
+            }
+
             isAutoPage -> showDialogFragment<AutoReadDialog>()
             isShowingSearchResult -> binding.searchMenu.runMenuIn()
             else -> binding.readMenu.runMenuIn()
         }
+    }
+    /* ==================== 阅读页「面板叠在主菜单之上」 ==================== */
+
+    /**
+     * 面板栈模式。由 [ReadMenu] 经 [ReadMenu.CallBack.onMenuPanelChange] 驱动, 面板 dialog
+     * 起来时读它来决定「给底栏让位 + 高度封顶」还是「按老样子贴底铺满」。
+     */
+    private var menuPanel = ReadMenu.PANEL_NONE
+
+    val dialogStackMode: Boolean get() = menuPanel != ReadMenu.PANEL_NONE
+
+    /**
+     * 面板要向上抬的偏移量(屏幕像素), 见 [ReadMenu.panelOffset]。
+     */
+    fun panelOffset(): Int = binding.readMenu.panelOffset()
+
+    /** 面板高度上限, 见 [ReadMenu.panelMaxHeight]。 */
+    fun panelMaxHeight(): Int = binding.readMenu.panelMaxHeight()
+
+    /**
+     * 面板状态变更: 弹出/切换/关闭对应的 dialog。
+     *
+     * 面板是独立 dialog, 所以「切换」= 关旧的 + 开新的; 主菜单全程不动,
+     * FAB/进度行的显隐与底栏高亮由 ReadMenu 自己负责。
+     *
+     * **必须先关旧面板再 post 开新面板**: dialog 的 dismiss 是异步投递的, 而旧 dialog
+     * 直到它自己的 `dispatchDismiss` 跑完才把 `bottomDialog` 减回 0。若在同一消息里
+     * 直接开新面板, 新面板的 `onFragmentCreated` 会读到 `bottomDialog == 1` 而立即自毁
+     * (那是「同一位置只允许一个面板」的既有守卫)。把「开新面板」排到队尾, 就能保证
+     * 减计数先于读计数执行。
+     */
+    override fun onMenuPanelChange(panel: Int) {
+        if (menuPanel == panel) return
+        menuPanel = panel
+        when (panel) {
+            ReadMenu.PANEL_ALOUD -> {
+                dismissDialogFragment<ReadStyleDialog>()
+                binding.root.post { showDialogFragment<ReadAloudDialog>() }
+            }
+
+            ReadMenu.PANEL_STYLE -> {
+                dismissDialogFragment<ReadAloudDialog>()
+                binding.root.post { showDialogFragment<ReadStyleDialog>() }
+            }
+
+            else -> {
+                dismissDialogFragment<ReadAloudDialog>()
+                dismissDialogFragment<ReadStyleDialog>()
+            }
+        }
+    }
+
+    /** 面板被取消(点面板外 / 系统返回): 连主菜单一起收起。 */
+    fun onMenuPanelCancelled() {
+        binding.readMenu.runMenuOut()
+    }
+
+    /** 面板 dialog 已消失: 只复位面板状态与底栏高亮, 主菜单保留。 */
+    fun onPanelDialogDismissed(panel: Int) {
+        binding.readMenu.onPanelDialogDismissed(panel)
+    }
+
+    /** 收起面板, 主菜单保留(面板内部的动作按钮走这条)。 */
+    fun closeMenuPanel() {
+        binding.readMenu.closePanel()
     }
 
     /**
      * 显示朗读菜单
      */
     override fun showReadAloudDialog() {
-        showDialogFragment<ReadAloudDialog>()
+        binding.readMenu.togglePanel(ReadMenu.PANEL_ALOUD)
     }
 
     /**
@@ -1868,10 +1945,10 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     /**
-     * 显示阅读样式配置
+     * 显示阅读样式配置(「界面」面板): 叠在主菜单之上, 主菜单不收起。
      */
     override fun showReadStyle() {
-        showDialogFragment<ReadStyleDialog>()
+        binding.readMenu.togglePanel(ReadMenu.PANEL_STYLE)
     }
 
     /**
