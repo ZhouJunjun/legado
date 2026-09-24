@@ -92,18 +92,21 @@ class ReadMenu @JvmOverloads constructor(
     val hasPanel: Boolean get() = curPanel != PANEL_NONE
 
     /**
-     * 面板要向上抬的偏移量 —— 把整段底栏(进度行 + 4 个按钮)完整让出来。
+     * 面板要向上抬的偏移量 —— 面板底边落在**按钮行(ll_bottom_buttons)的上沿**,
+     * 正好压住被隐藏的进度行空档。
      *
      * 推导(全部用屏幕坐标, 不依赖窗口内边距的归属):
      *   · 面板是独立窗口, 其窗口底边默认落在**导航栏之上**(这正是原来朗读面板贴底时
      *     不会盖住导航栏的原因), 即 windowBottom = 底栏背景(ll_bottom_bg)的底边。
      *   · Gravity.BOTTOM 下 yAdj 取正值把窗口向上抬: windowBottom = 底边 - yAdj。
-     *   · 要让面板底边落在底栏上沿(ll_bottom_bg.top) ⇒ yAdj = 进度行 + 按钮行。
+     *   · 面板出现时进度行只置 INVISIBLE(仍占位), 若面板底边停在 ll_bottom_bg.top,
+     *     进度行的空档会露成一条空带(用户 2026-09-24 截图圈出)。
+     *     ⇒ yAdj = ll_bottom_bg.bottom - ll_bottom_buttons.top = **按钮行高度**。
      *
-     * 这两行在面板出现时只置 INVISIBLE(仍占位), 所以高度稳定, 不会随开关而变。
+     * 进度行/FAB 行在面板出现时只置 INVISIBLE(仍占位), 高度稳定, 偏移量不随开关跳变。
      */
     fun panelOffset(): Int =
-        binding.llChapterProgress.height + binding.llBottomButtons.height
+        binding.llBottomButtons.height
 
     private val menuTopIn: Animation by lazy {
         loadAnimation(context, R.anim.anim_readbook_top_in)

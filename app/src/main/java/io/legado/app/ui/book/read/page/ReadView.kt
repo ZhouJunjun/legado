@@ -90,6 +90,31 @@ internal fun resolvePullBookmarkPageOffset(deltaY: Float, viewHeight: Int): Floa
     return (deltaY * 0.5f).coerceIn(0f, viewHeight.coerceAtLeast(0) * 0.35f)
 }
 
+/**
+ * 判断触摸起点是否落在系统手势保留区内(左右两侧的返回手势区)。
+ *
+ * 系统返回手势的横向判定优先于应用: 手指从屏幕边缘往中间划时, 系统会先给应用
+ * 派发 DOWN + 少量 MOVE, 待确认要接管后补一个 CANCEL。若应用在此之前就按横向
+ * 位移翻页, 就会出现「划出边缘返回上一级, 顺手把正文翻了一页」的现象。
+ * 因此起点落在保留区时, 整个手势都不应参与翻页判定。
+ *
+ * @param startX 手势按下时的 x 坐标(相对本视图, 与 insets 同一坐标系)
+ * @param viewWidth 视图宽度, 未知时返回 false 不拦截
+ * @param insetStart 左边缘系统手势区宽度
+ * @param insetEnd 右边缘系统手势区宽度
+ */
+internal fun isInSystemGestureEdge(
+    startX: Float,
+    viewWidth: Int?,
+    insetStart: Int,
+    insetEnd: Int,
+): Boolean {
+    if (viewWidth == null || viewWidth <= 0) return false
+    if (insetStart <= 0 && insetEnd <= 0) return false
+    if (startX < insetStart) return true
+    return startX > viewWidth - insetEnd
+}
+
 internal fun visibleParagraphRange(
     lineIndex: Int,
     lineCount: Int,
@@ -147,6 +172,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
     private var pressDown = false
     internal val isTouching: Boolean get() = pressDown
     private var isMove = false
+    /** 当前手势起点落在系统手势保留区且已产生位移 —— 整段手势不参与翻页 */
+    private var systemEdgeGesture = false
     private val readPositionVersion = ReadPositionVersion()
 
     //起始点
@@ -290,9 +317,31 @@ class ReadView(context: Context, attrs: AttributeSet) :
             val insets = this.rootWindowInsets.getInsetsIgnoringVisibility(
                 WindowInsets.Type.mandatorySystemGestures()
             )
-            val height = activity?.windowManager?.currentWindowMetrics?.bounds?.height()
+            val bounds = activity?.windowManager?.currentWindowMetrics?.bounds
+            // 起点落在左右系统手势保留区(返回手势)的滑动: 整段手势不参与翻页。
+            // 系统确认要接管之前会先向本视图派发 DOWN + 少量 MOVE, 若此时就按横向
+            // 位移翻身, 就会出现「从屏幕边缘划出去返回上一级, 正文被顺手翻了一页」。
+            // 按「起点」判定并拦到手势结束, 可根治这一竞态。
+            if (pressDown) {
+                if (!systemEdgeGesture && isInSystemGestureEdge(
+                        startX, bounds?.width(), insets.left, insets.right
+                    )
+                ) {
+                    systemEdgeGesture = true
+                }
+                // 单击(无位移)仍交给正常点击逻辑, 只有滑动才拦截
+                if (systemEdgeGesture &&
+                    (event.actionMasked == MotionEvent.ACTION_MOVE
+                        || event.actionMasked == MotionEvent.ACTION_POINTER_DOWN)
+                ) {
+                    // 标记已移动, 避免收尾时把这次滑动误判成单击而触发翻页点击
+                    isMove = true
+                    return true
+                }
+            }
+            val height = bounds?.height()
             if (height != null) {
-                if (event.y > height.minus(insets.bottom)
+                if (event.y > height - insets.bottom
                     && event.action != MotionEvent.ACTION_UP
                     && event.action != MotionEvent.ACTION_CANCEL
                 ) {
@@ -330,6 +379,7 @@ class ReadView(context: Context, attrs: AttributeSet) :
                 postDelayed(longPressRunnable, longPressTimeout)
                 pressDown = true
                 isMove = false
+                systemEdgeGesture = false
                 pullBookmarkCandidate = AppConfig.pullToToggleBookmark &&
                         !pressOnTextSelected && !isAutoPage &&
                         (!isScroll || curPage.isAtChapterTop())

@@ -53,10 +53,34 @@ abstract class HorizontalPageDelegate(readView: ReadView) : PageDelegate(readVie
                 onScroll(event)
             }
 
-            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> {
+            MotionEvent.ACTION_UP -> {
                 onAnimStart(readView.defaultAnimationSpeed)
             }
+
+            MotionEvent.ACTION_CANCEL -> {
+                // 手势被系统抢走: 侧边/底部返回手势、多任务手势、下拉通知栏等会先给
+                // 本视图派发 DOWN + MOVE, 等系统确认要接管时再补一个 CANCEL。
+                // 原先这里与 ACTION_UP 合并, 等于把「系统夺走手势」当成「用户抬手」,
+                // 于是斜着划出屏幕边缘(横向位移早于纵向位移)时的横向分量被动画补成整页,
+                // 表现为从阅读页返回首页时偷偷翻了一页。CANCEL 只回滚, 不提交翻页。
+                cancelAnim()
+            }
         }
+    }
+
+    /**
+     * 手势被系统接管时回滚本页已产生的位移, 保留原页不翻页。
+     * 无位移的 CANCEL 保持与 DOWN 相同的既有行为, 不额外重绘。
+     */
+    open fun cancelAnim() {
+        if (!isMoved && !isRunning && !isStarted) {
+            abortAnim()
+            return
+        }
+        // isCancel = true 使 abortAnim 只中止滚动, 不执行 fillPage —— 即不提交翻页
+        isCancel = true
+        abortAnim()
+        readView.invalidate()
     }
 
     private fun onScroll(event: MotionEvent) {

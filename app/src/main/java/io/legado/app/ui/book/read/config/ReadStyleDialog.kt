@@ -60,6 +60,11 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
             // (用户 2026-09-23 反馈「点主菜单的目录/界面没有任何反映」)。
             addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            // 🔴 同朗读面板: 关掉窗口自身的浮层投影(2026-09-24 修)。
+            // 平台 Dialog 主题带 windowElevation, 面板上抬后窗口底边的阴影会投到
+            // 底栏按钮行上, 形成一条紧贴面板底边、向下单调变浅的灰带。
+            // 详见 ReadAloudDialog.onStart() 的同一段注释。
+            setElevation(0f)
             setBackgroundDrawableResource(R.color.background)
             decorView.setPadding(0, 0, 0, 0)
             setLayout(MATCH_PARENT, WRAP_CONTENT)

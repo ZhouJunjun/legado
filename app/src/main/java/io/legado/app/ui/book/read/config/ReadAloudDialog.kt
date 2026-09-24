@@ -58,6 +58,20 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
             // ReadMenu 窗口 —— 底栏可以正常点, 点正文区域也能照常收起。
             addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+            // 🔴 关掉窗口自身的浮层投影(2026-09-24 修)。
+            //
+            // 平台 Dialog 主题带 windowElevation(= @dimen/floating_window_z), 会由
+            // WindowManager 在窗口四周画一层柔和阴影。本面板经 attr.y 上抬一个底栏
+            // 高度后, 窗口底边正好压在「目录/朗读/界面/设置」那一行之上, 于是这层
+            // 阴影直接投到了按钮行上 —— 表现为「紧贴面板底边、向下单调变浅」的一条
+            // 灰带(用户实测: y=674→719 共 45 行, RGB 227→246, 水平均匀且纯灰阶),
+            // 收起面板则整条消失。
+            //
+            // 上一轮只把面板下移了一个进度行高, 空档是被盖住了, 但阴影并没有消失,
+            // 只是从「投在进度行空档上」变成了「投在按钮行上」。面板本身是紧贴底栏
+            // 的实体栏位、不需要悬浮感, 置 0 才是根治。与正文的分界仍由顶部那根
+            // 1dp 实线(borderedDialogBackground)保证, 不依赖投影。
+            setElevation(0f)
             setBackgroundDrawableResource(R.color.background)
             decorView.setPadding(0, 0, 0, 0)
             setLayout(MATCH_PARENT, WRAP_CONTENT)

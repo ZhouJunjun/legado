@@ -206,6 +206,11 @@
         <attr name="isBottomBackground" />
     </declare-styleable>
 
+    <!-- 首页封面圆角: 传 0dp 即直角; 不传则保持默认圆角 -->
+    <declare-styleable name="CoverImageView">
+        <attr name="coverCornerRadius" format="dimension" />
+    </declare-styleable>
+
     <!--斜角标签-->
     <declare-styleable name="BevelLabelView">
         <!--背景颜色-->

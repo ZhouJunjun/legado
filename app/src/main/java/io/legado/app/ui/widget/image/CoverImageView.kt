@@ -22,7 +22,6 @@ import android.util.AttributeSet
 import android.view.View
 import android.view.ViewGroup
 import androidx.appcompat.widget.AppCompatImageView
-import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import com.bumptech.glide.load.DataSource
@@ -44,7 +43,6 @@ import androidx.collection.LruCache
 import androidx.core.graphics.createBitmap
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.SearchBook
-import io.legado.app.utils.dpToPx
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -136,10 +134,10 @@ private const val NAME_COVER_AUTHOR_TEXT_SIZE_RATIO = 0.12f
 /** 放不下时末尾使用的省略号 */
 private const val NAME_COVER_ELLIPSIS = "…"
 
-/** 无封面封面的外框线宽(dp), 取「浅浅的」观感 */
-private const val NAME_COVER_BORDER_WIDTH_DP = 1
-
-/** 外框圆角(px), 与 onSizeChanged 里 outline 的 12f 保持一致 */
+/**
+ * 外框圆角(px)。自绘封面已去掉边框, 该常量仅用于 outline 圆角。
+ * 此处仅保留给 outline 圆角与历史兼容, 不再用于 stroke。
+ */
 private const val NAME_COVER_BORDER_CORNER_RADIUS = 12f
 
 internal fun normalizeCoverText(value: String?, keepPunctuation: Boolean): String? =
@@ -202,8 +200,22 @@ class CoverImageView @JvmOverloads constructor(
     private var nameHeight = 0f
     private var authorHeight = 0f
 
-    /** 当前已应用的外框色, 0 表示无外框; 用于避免每帧重建 foreground */
-    private var borderColor = 0
+    /**
+     * 封面圆角(px)。0 表示直角 —— 首页书架按需求改为直角。
+     * 其他页面(详情页/搜索页/封面预览等)不传该属性, 默认保持 12f 圆角。
+     */
+    private var coverCornerRadius = NAME_COVER_BORDER_CORNER_RADIUS
+
+    init {
+        context.obtainStyledAttributes(attrs, R.styleable.CoverImageView).let { array ->
+            coverCornerRadius = array.getDimension(
+                R.styleable.CoverImageView_coverCornerRadius,
+                NAME_COVER_BORDER_CORNER_RADIUS,
+            )
+            array.recycle()
+        }
+    }
+
     override fun setLayoutParams(params: ViewGroup.LayoutParams?) {
         if (params != null) {
             val width = params.width
@@ -231,19 +243,24 @@ class CoverImageView @JvmOverloads constructor(
             currentJob?.cancel()
             currentNameBitmap = null
         }
-        outlineProvider = object : ViewOutlineProvider() {
-            override fun getOutline(view: View, outline: Outline) {
-                outline.setRoundRect(0, 0, w, h, 12f)
+        if (coverCornerRadius > 0f) {
+            outlineProvider = object : ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: Outline) {
+                    outline.setRoundRect(0, 0, w, h, coverCornerRadius)
+                }
             }
+            clipToOutline = true
+        } else {
+            // 直角: 不裁切, 让封面画满整个矩形
+            outlineProvider = ViewOutlineProvider.BACKGROUND
+            clipToOutline = false
         }
-        clipToOutline = true
     }
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
         updateNormalizedText()
         val useNameCover = AppConfig.useDefaultCover || needNameBitmap[bitmapPath.toString()] == true
-        updateNameCoverBorder(useNameCover)
         val drawBookName = BookCover.drawBookName
         val drawBookAuthor = BookCover.drawBookAuthor
         if (!drawBookName) return
@@ -278,36 +295,6 @@ class CoverImageView @JvmOverloads constructor(
             }
             drawNameAuthor(currentName, currentAuthor, backgroundColor, accentColor, false,
                 fontSizes, fontTypeface, fontCacheKey)
-        }
-    }
-
-    /**
-     * 无封面书籍的封面外框: 一个**圆角描边**的透明前景层。
-     *
-     * 用 [android.view.View.setForeground] 而不是往 Bitmap 上画边框, 两个原因:
-     * - 本控件 `clipToOutline = true` + `setRoundRect(..., 12f)`, 前景层会被自动裁成圆角,
-     *   边框天然贴合; 画在 Bitmap 里则会被裁掉四角露出直角边。
-     * - 前景层不参与位图缓存键, 换主题时不必重算 Bitmap。
-     *
-     * 颜色**固定**取 `@color/divider`, 不再跟随「设置 → 阅读 → 分隔线颜色」
-     * (`ReadTipConfig.tipDividerColor`) —— 用户明确指定了这一个颜色。
-     * 有真实封面的书籍不加框 —— 用户要的是「无封面书籍」的纯色封面更协调。
-     */
-    private fun updateNameCoverBorder(useNameCover: Boolean) {
-        if (!useNameCover) {
-            if (borderColor != 0) {
-                foreground = null
-                borderColor = 0
-            }
-            return
-        }
-        val color = ContextCompat.getColor(context, R.color.divider)
-        if (color == borderColor) return
-        borderColor = color
-        foreground = GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = NAME_COVER_BORDER_CORNER_RADIUS
-            setStroke(NAME_COVER_BORDER_WIDTH_DP.dpToPx(), color)
         }
     }
 
@@ -478,7 +465,8 @@ class CoverImageView @JvmOverloads constructor(
         val marginX = viewWidth * NAME_COVER_TEXT_MARGIN_RATIO
         val marginY = viewHeight * NAME_COVER_TEXT_MARGIN_RATIO
         val namePaint = TextPaint().apply {
-            typeface = fontTypeface ?: Typeface.DEFAULT_BOLD
+            // 书名不再加粗(用户要求); 自定义封面字体仍优先于默认字重
+            typeface = fontTypeface ?: Typeface.DEFAULT
             isAntiAlias = true
             textAlign = Paint.Align.CENTER
         }
@@ -565,7 +553,8 @@ class CoverImageView @JvmOverloads constructor(
     ) {
         val basePaint = TextPaint().apply {
             isAntiAlias = true
-            typeface = fontTypeface ?: Typeface.DEFAULT_BOLD
+            // 书名不再加粗(用户要求); 自定义封面字体仍优先于默认字重
+            typeface = fontTypeface ?: Typeface.DEFAULT
         }
         name?.takeIf { it.isNotEmpty() }?.let { title ->
             val titleWidth = (viewWidth * 0.78f).toInt().coerceAtLeast(1)

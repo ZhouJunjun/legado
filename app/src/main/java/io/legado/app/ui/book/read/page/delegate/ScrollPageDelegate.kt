@@ -57,10 +57,34 @@ class ScrollPageDelegate(readView: ReadView) : PageDelegate(readView) {
                 onScroll(event)
             }
 
-            MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_UP -> {
+            MotionEvent.ACTION_UP -> {
                 onAnimStart(readView.defaultAnimationSpeed)
             }
+
+            MotionEvent.ACTION_CANCEL -> {
+                // 手势被系统抢走(侧边/底部返回手势、多任务手势、下拉通知栏等):
+                // 原先这里与 ACTION_UP 合并, 会把速度追踪器里已有的速度补成一次惯性
+                // fling, 于是返回首页时页面还在继续滚。CANCEL 只收尾, 不补惯性。
+                // 不回滚滚动位移 —— 滚动模式下位移即阅读进度, 回滚会让画面跳动。
+                cancelAnim()
+            }
         }
+    }
+
+    /**
+     * 手势被系统接管: 结束滚动并清理速度追踪器, 不做惯性 fling。
+     * 刻意不走 abortAnim(): 那会置 readView.isAbortAnim = true, 该标记会被
+     * nextPageByAnim 消费掉一次, 导致下一次正常翻页被吞。
+     */
+    fun cancelAnim() {
+        readView.onScrollAnimStop()
+        isStarted = false
+        isMoved = false
+        isRunning = false
+        if (!scroller.isFinished) {
+            scroller.abortAnimation()
+        }
+        mVelocity.clear()
     }
 
     override fun onScroll() {
