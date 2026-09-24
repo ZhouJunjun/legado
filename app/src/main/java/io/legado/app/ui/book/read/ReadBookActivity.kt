@@ -363,9 +363,12 @@ class ReadBookActivity : BaseReadBookActivity(),
         upScreenTimeOut()
         ReadBook.register(this)
         onBackPressedDispatcher.addCallback(this) {
-            // 面板叠在主菜单之上时, 返回手势先收起这一整套(面板 + 主菜单),
-            // 不直接退出阅读页 —— 与「点击非菜单/面板区域收起」同一套语义。
-            if (binding.readMenu.hasPanel) {
+            // 用户规范 3: 系统返回手势 → **收起上述所有菜单**(主菜单 + 面板),
+            // 不退出阅读页。收起只走这一层, 所以这里用「主菜单可见」而不是
+            // 原来的「有面板」—— 菜单可见但没开面板时(规范 1.1 默认态)按返回,
+            // 原实现会一路走到 finish() 直接退出阅读页, 与规范不符。
+            // 面板必然伴随主菜单可见, 因此 isVisible 已涵盖 hasPanel 的情形。
+            if (binding.readMenu.isVisible) {
                 binding.readMenu.runMenuOut()
                 return@addCallback
             }
@@ -1793,11 +1796,12 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun showActionMenu() {
         when {
-            // 朗读中: 主菜单 + 朗读面板一起出来(底栏【朗读】高亮), 这是用户要的
-            // 「朗读状态默认展示」。
+            // 规范 2.1: 朗读中, 主菜单 + 朗读面板一起出来(底栏【朗读】高亮)。
+            // 用 openPanel 而不是 togglePanel —— 这里是「展示」语义, 不是「切换」:
+            // 若面板已在, 不该因为点了一下 body 就把它关掉。
             BaseReadAloudService.isRun -> {
                 if (!binding.readMenu.isVisible) binding.readMenu.runMenuIn()
-                binding.readMenu.togglePanel(ReadMenu.PANEL_ALOUD)
+                binding.readMenu.openPanel(ReadMenu.PANEL_ALOUD)
             }
 
             isAutoPage -> showDialogFragment<AutoReadDialog>()
@@ -1809,7 +1813,7 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     /**
      * 面板栈模式。由 [ReadMenu] 经 [ReadMenu.CallBack.onMenuPanelChange] 驱动, 面板 dialog
-     * 起来时读它来决定「给底栏让位 + 高度封顶」还是「按老样子贴底铺满」。
+     * 起来时读它来决定「给底栏让位」还是「按老样子贴底铺满」。
      */
     private var menuPanel = ReadMenu.PANEL_NONE
 
@@ -1817,11 +1821,11 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     /**
      * 面板要向上抬的偏移量(屏幕像素), 见 [ReadMenu.panelOffset]。
+     *
+     * 面板高度不再封顶(用户要求: 面板很长, 需要完整展开而不是滚动), 所以这里没有
+     * 对应的 maxHeight 方法 —— 窗口高度一律交回 wrap_content。
      */
     fun panelOffset(): Int = binding.readMenu.panelOffset()
-
-    /** 面板高度上限, 见 [ReadMenu.panelMaxHeight]。 */
-    fun panelMaxHeight(): Int = binding.readMenu.panelMaxHeight()
 
     /**
      * 面板状态变更: 弹出/切换/关闭对应的 dialog。

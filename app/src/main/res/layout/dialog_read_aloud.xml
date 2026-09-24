@@ -13,23 +13,10 @@
     android:paddingBottom="6dp">
 
     <!--
-      内容区套一层 ScrollView 做高度兜底。
-      面板以 dialog 形式叠在主菜单之上(留出底部 4 个按钮的位置), 高度上限 = 底栏上沿 - 顶栏下沿;
-      小屏/横屏下按内容自然高度算会顶穿顶栏, 所以给出上限并允许滚动。
-      上限值由 ReadAloudDialog.onStart() 写入 —— 不用 android:maxHeight(那是 API 30 起的属性,
-      低版本会被静默忽略)。
-      ScrollView 只能有一个直接子 View, 因此这里多包一层竖向 LinearLayout 承载原有各行。
+      内容区不再套 ScrollView(用户 2026-09-22 要求「去掉 scroll」):
+      朗读面板很长, 用户要的是完整展开、一眼看全, 而不是被压到一小段区域里滚动。
+      面板是独立窗口且贴底栏上沿, 高度按内容自然展开。
     -->
-    <ScrollView
-        android:id="@+id/sv_aloud_content"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:scrollbars="vertical">
-
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:orientation="vertical">
 
     <!--
       正在朗读的书名行(纯展示, 不可点击)。
@@ -471,9 +458,5 @@
         </LinearLayout>
 
     </LinearLayout>
-
-    </LinearLayout>
-
-    </ScrollView>
 
 </LinearLayout>

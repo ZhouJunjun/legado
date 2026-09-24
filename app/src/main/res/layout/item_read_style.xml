@@ -1,4 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  样式色块。上下 margin 是给**自动换行**留的行距(2026-09-23):
+  旧的单行横滑不需要纵向间距, 折成多行后会上下紧贴, 故补上与左右同值(6dp)的上下边距。
+  上下相邻间距 = 6+6 = 12dp, 与左右相邻间距一致, 视觉均匀。
+-->
 <io.legado.app.ui.widget.image.CircleImageView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res-auto"
     android:id="@+id/iv_style"
@@ -6,6 +11,8 @@
     android:layout_height="48dp"
     android:layout_marginLeft="6dp"
     android:layout_marginRight="6dp"
+    android:layout_marginTop="6dp"
+    android:layout_marginBottom="6dp"
     android:scaleType="centerCrop"
     android:src="@drawable/image_cover_default"
     app:civ_border_color="@color/primaryText"

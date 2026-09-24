@@ -44,8 +44,6 @@ import androidx.collection.LruCache
 import androidx.core.graphics.createBitmap
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.SearchBook
-import io.legado.app.help.config.ReadBookConfig
-import io.legado.app.help.config.ReadTipConfig
 import io.legado.app.utils.dpToPx
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -92,18 +90,48 @@ private val nameCoverColorDrawable: GradientDrawable by lazy {
  */
 private const val NAME_COVER_TITLE_TEXT_SIZE_RATIO = 0.1714f
 
-/** 书名版面的起点(相对封面宽/高), 尽量靠左上以换取更多折列空间 */
-private const val NAME_COVER_TITLE_START_X_RATIO = 0.12f
-private const val NAME_COVER_TITLE_START_Y_RATIO = 0.12f
+/**
+ * 文字与封面边缘的留空(相对封面宽/高, 四边同值)。
+ *
+ * 版面的几何全部由它推导 —— 文字的**外接矩形**距四边各留这么多, 而不是让
+ * 笔位贴边。旧实现把 `startY` 当基线用, 结果首字的字顶几乎顶到上边框
+ * (基线位置 = 字顶 + ascent), 看起来就是「文字贴边」。
+ */
+private const val NAME_COVER_TEXT_MARGIN_RATIO = 0.10f
 
 /**
- * 书名最大占用的版面高度比例。超出则**自动折成更多纵向列**而不是缩小字号;
- * 列横排都放不下时, 末尾字改用省略号「…」表示(见 foldVerticalName)。
+ * 行距(相邻两行基线间距)相对**字号**的比例, 即「字身框」的倍数。
+ *
+ * 竖排中文按字身框排, 1.05 倍≈近实心——这是竖排书名的常规观感, 也留了一点点缝。
+ *
+ * ⚠️ **不能用字体的 `textHeight`(= descent - ascent + leading)做基准**:
+ * 那是「行框」高度, 含大量为拉丁字母变音符预留的余量, 中文封面用不上,
+ * 按它排会白扔掉约 30% 的竖向空间 —— 每列少排 1-2 个字 → 书名被迫多切一列
+ * (用户反馈的「9 个字被切成三列, 看着应该两列」正是这个原因)。
+ * 字身框才是中文方块字真正的占位, 见下划线 [NAME_COVER_INK_ASCENT_RATIO]。
  */
-private const val NAME_COVER_TITLE_AREA_HEIGHT_RATIO = 0.78f
+private const val NAME_COVER_ROW_STEP_RATIO = 1.05f
+
+/**
+ * 中文方块字**字面顶**相对字号的比例(字面顶 = 基线 - 0.88em)。
+ *
+ * 用来把「首字的字面顶」精准落在留空处: 直接拿 `-fontMetrics.ascent` 当顶端偏移,
+ * 那是行框顶(≈1.15em), 会让首字看起来比预期低一截、上边留白偏大。
+ * 仅当字体声明的 ascent 比它更小(生僻字体)时才退用声明值, 免得字被切到。
+ */
+private const val NAME_COVER_INK_ASCENT_RATIO = 0.88f
+
+/** 中文方块字**字面底**相对字号的比例(字面底 = 基线 + 0.16em), 覆盖拉丁字母的下伸部 */
+private const val NAME_COVER_INK_DESCENT_RATIO = 0.16f
 
 /** 相邻两列的水平间距(相对字高)。越小则同样宽度能塞下越多列 */
 private const val NAME_COVER_COLUMN_GAP_RATIO = 0.12f
+
+/**
+ * 作者名字号(相对封面宽度)。1/8.33 ≈ 0.12 —— 比上游的 1/10 大一号。
+ * 仍可被「封面字体」设置里的作者名字号(作者名大/小)按百分比二次缩放。
+ */
+private const val NAME_COVER_AUTHOR_TEXT_SIZE_RATIO = 0.12f
 
 /** 放不下时末尾使用的省略号 */
 private const val NAME_COVER_ELLIPSIS = "…"
@@ -261,8 +289,8 @@ class CoverImageView @JvmOverloads constructor(
      *   边框天然贴合; 画在 Bitmap 里则会被裁掉四角露出直角边。
      * - 前景层不参与位图缓存键, 换主题时不必重算 Bitmap。
      *
-     * 颜色取「设置 → 阅读 → 分隔线颜色」(`ReadTipConfig.tipDividerColor`),
-     * 语义即其名称里的 `-1 / 0 / 其它` 三态。
+     * 颜色**固定**取 `@color/divider`, 不再跟随「设置 → 阅读 → 分隔线颜色」
+     * (`ReadTipConfig.tipDividerColor`) —— 用户明确指定了这一个颜色。
      * 有真实封面的书籍不加框 —— 用户要的是「无封面书籍」的纯色封面更协调。
      */
     private fun updateNameCoverBorder(useNameCover: Boolean) {
@@ -273,7 +301,7 @@ class CoverImageView @JvmOverloads constructor(
             }
             return
         }
-        val color = tipBorderColor()
+        val color = ContextCompat.getColor(context, R.color.divider)
         if (color == borderColor) return
         borderColor = color
         foreground = GradientDrawable().apply {
@@ -281,13 +309,6 @@ class CoverImageView @JvmOverloads constructor(
             cornerRadius = NAME_COVER_BORDER_CORNER_RADIUS
             setStroke(NAME_COVER_BORDER_WIDTH_DP.dpToPx(), color)
         }
-    }
-
-    /** 读取「分隔线颜色」设置, 与 `PageView.upStyle()` 的取值逻辑保持一致 */
-    private fun tipBorderColor(): Int = when (val color = ReadTipConfig.tipDividerColor) {
-        -1 -> ContextCompat.getColor(context, R.color.divider)
-        0 -> ReadBookConfig.durConfig.curTextColor()
-        else -> color
     }
 
     private fun getNameBitmap(cacheKey: String): Bitmap? {
@@ -438,8 +459,6 @@ class CoverImageView @JvmOverloads constructor(
             )
         }
         bitmapCanvas.drawRect(0f, 0f, viewWidth, viewHeight, backgroundPaint)
-        var startX = viewWidth * NAME_COVER_TITLE_START_X_RATIO
-        val startY = viewHeight * NAME_COVER_TITLE_START_Y_RATIO
         if (horizontal) {
             drawHorizontalTextCover(
                 bitmapCanvas,
@@ -455,6 +474,9 @@ class CoverImageView @JvmOverloads constructor(
             )
             return bitmap
         }
+        // 文字的「外接矩形」距四边各留 NAME_COVER_TEXT_MARGIN_RATIO —— 所有几何都由它推导。
+        val marginX = viewWidth * NAME_COVER_TEXT_MARGIN_RATIO
+        val marginY = viewHeight * NAME_COVER_TEXT_MARGIN_RATIO
         val namePaint = TextPaint().apply {
             typeface = fontTypeface ?: Typeface.DEFAULT_BOLD
             isAntiAlias = true
@@ -469,50 +491,61 @@ class CoverImageView @JvmOverloads constructor(
             namePaint.textSize = textSize
             namePaint.color = accentColor
             namePaint.style = Paint.Style.FILL
+            // 列的横位: textAlign 是 CENTER, 笔位落在**字心**上, 所以要让首个字的左缘
+            // 正好贴住 marginX, 笔位得再右移半个字宽(= 半个 advance)。这与 foldVerticalName
+            // 里 columnLimit 的推导(末列右缘 = viewWidth - marginX)是同一套约束。
+            val firstColumnX = marginX + textSize / 2f
+            // 基线取「字面顶 + 字身框 ascent」: 让首字的**字面顶**正好落在 marginY。
+            // (不能用 -fontMetrics.ascent —— 那是行框顶, 会让首字下坠一截。)
+            val firstBaselineY = marginY + namePaint.inkAscent()
             val lastColumn = layout.columns.lastIndex
             var index = 0
             for (column in layout.columns.indices) {
-                val columnX = startX + layout.stepX * column
-                var columnY = startY
+                val columnX = firstColumnX + layout.stepX * column
+                var baselineY = firstBaselineY
                 repeat(layout.columns[column]) { row ->
                     val isLastChar = layout.ellipsized && column == lastColumn &&
                         row == layout.columns[column] - 1
                     bitmapCanvas.drawText(
                         if (isLastChar) NAME_COVER_ELLIPSIS else name[index].toString(),
                         columnX,
-                        columnY,
+                        baselineY,
                         namePaint,
                     )
                     index++
-                    columnY += layout.charHeight
+                    baselineY += layout.rowStep
                 }
             }
         }
-        if (!drawAuthor){
+        if (!drawAuthor) {
             return bitmap
         }
         val authorPaint = TextPaint(namePaint).apply {
             typeface = fontTypeface ?: Typeface.DEFAULT
+            // 书名是 CENTER 对齐, 作者名要「贴右下」必须显式改成 RIGHT ——
+            // 否则笔位会被当成字心, 字会向右多伸半个字宽、吃掉刚留出的边距。
+            textAlign = Paint.Align.RIGHT
         }
         author?.toStringArray()?.let { author ->
-            authorPaint.textSize = viewWidth / 10
+            authorPaint.textSize = viewWidth * NAME_COVER_AUTHOR_TEXT_SIZE_RATIO
             fontSizes?.let {
                 authorPaint.textSize *= it.authorLarge / 100f
                 if (author.size * authorPaint.textHeight > viewHeight * 0.65f) {
-                    authorPaint.textSize = viewWidth / 10 * it.authorSmall / 100f
+                    authorPaint.textSize = viewWidth * NAME_COVER_AUTHOR_TEXT_SIZE_RATIO *
+                        it.authorSmall / 100f
                 }
             }
-            startX = (renderWidth * 0.8f).coerceAtMost(viewWidth - NAME_COVER_EDGE_EPSILON)
-            var startY = viewHeight * 0.95f - author.size * authorPaint.textHeight
-            startY = maxOf(startY, viewHeight * 0.3f)
+            // 作者名整体贴右下: 与右边、下边各留 marginY。按**整段**高度回推首行基线,
+            // 使最后一行的**字面底**恰好落在 viewHeight - marginY。
+            val authorStep = authorPaint.rowStep()
+            val authorRightX = (viewWidth - marginX).coerceAtLeast(marginX + NAME_COVER_EDGE_EPSILON)
+            val authorLastBaselineY = viewHeight - marginY - authorPaint.inkDescent()
+            var baselineY = authorLastBaselineY - (author.size - 1) * authorStep
             author.forEach {
                 authorPaint.color = accentColor
                 authorPaint.style = Paint.Style.FILL
-                bitmapCanvas.drawText(it, startX, startY, authorPaint)
-                startY += authorPaint.textHeight
-                if (startY > viewHeight * 0.95) {
-                    return@let
-                }
+                bitmapCanvas.drawText(it, authorRightX, baselineY, authorPaint)
+                baselineY += authorStep
             }
         }
         return bitmap
@@ -568,10 +601,13 @@ class CoverImageView @JvmOverloads constructor(
             val authorPaint = TextPaint(basePaint).apply {
                 typeface = fontTypeface ?: Typeface.DEFAULT
                 textAlign = Paint.Align.RIGHT
-                textSize = viewWidth / 10
+                // 作者名字号与纵向封面同一基准(见 NAME_COVER_AUTHOR_TEXT_SIZE_RATIO), 整体大一号
+                textSize = viewWidth * NAME_COVER_AUTHOR_TEXT_SIZE_RATIO
                 fontSizes?.let { textSize *= it.authorLarge / 100f }
             }
-            val smallSize = fontSizes?.let { viewWidth / 10 * it.authorSmall / 100f } ?: (viewWidth / 16)
+            val smallSize = fontSizes?.let {
+                viewWidth * NAME_COVER_AUTHOR_TEXT_SIZE_RATIO * it.authorSmall / 100f
+            } ?: (viewWidth / 16)
             if (fontSizes != null && authorPaint.measureText(authorText) > authorWidth &&
                 smallSize > authorPaint.textSize
             ) {
@@ -589,7 +625,9 @@ class CoverImageView @JvmOverloads constructor(
                 authorWidth,
                 TextUtils.TruncateAt.END
             ).toString()
-            val authorX = (viewWidth * 0.9f).coerceAtMost(viewWidth - NAME_COVER_EDGE_EPSILON)
+            // 右缘留出与纵向封面同一比例的留空(marginX), 不再贴到 viewWidth
+            val authorX = (viewWidth * 0.9f)
+                .coerceAtMost(viewWidth - viewWidth * NAME_COVER_TEXT_MARGIN_RATIO)
             val authorY = viewHeight * 0.92f
             authorPaint.color = accentColor
             authorPaint.style = Paint.Style.FILL
@@ -599,7 +637,9 @@ class CoverImageView @JvmOverloads constructor(
 
     /** 纵向书名排版结果 */
     private class VerticalNameLayout(
-        val charHeight: Float,
+        /** 相邻两行的基线间距(px) */
+        val rowStep: Float,
+        /** 相邻两列的水平间距(px) */
         val stepX: Float,
         /** 每列字数, 从第一列开始 */
         val columns: IntArray,
@@ -614,7 +654,13 @@ class CoverImageView @JvmOverloads constructor(
      * ① 折出更多纵向列 → ② 扩到封面宽度允许的最大列数 → ③ 仍放不下则末尾用「…」省略。
      * 这样长标题也是大字, 不会因为书名长就被缩成小字。
      *
-     * 字高用 [paint] 实测 —— `textHeight` 与字体相关, 不能按固定比例硬算。
+     * **切分规则是「贪心填满」**: 第 n 列一路排到列底, 装不下才从第 n+1 列从头开始。
+     * 旧实现按 `total / 需要列数` **平均分配**, 会出现「每列都只排一半、下面全空着」
+     * (用户反馈的「字全堆在左上、左下空空」), 而且平均分配在「总字数 ÷ 列数」有余数时
+     * 还会把余数摊到前几列, 看上去像三列。
+     *
+     * 行距/字高一律按**字号**推算(见 [NAME_COVER_ROW_STEP_RATIO] / [inkAscent]), 与字体声明的
+     * 行框无关 —— 竖排中文用字身框, 不用字体自带的行距(理由见常量注释)。
      * 方法会改写 [paint] 的 textSize, 由调用方随后重新赋值。
      */
     private fun foldVerticalName(
@@ -624,37 +670,57 @@ class CoverImageView @JvmOverloads constructor(
         viewWidth: Float,
         viewHeight: Float,
     ): VerticalNameLayout {
-        val startX = viewWidth * NAME_COVER_TITLE_START_X_RATIO
-        val areaHeight = viewHeight * NAME_COVER_TITLE_AREA_HEIGHT_RATIO
+        val marginX = viewWidth * NAME_COVER_TEXT_MARGIN_RATIO
+        val marginY = viewHeight * NAME_COVER_TEXT_MARGIN_RATIO
         paint.textSize = textSize
-        val charHeight = paint.textHeight.coerceAtLeast(1f)
-        val stepX = textSize + charHeight * NAME_COVER_COLUMN_GAP_RATIO
-        val perColumn = (areaHeight / charHeight).toInt().coerceAtLeast(1)
-        // 列数上限 n 满足: startX + (n-1)*stepX + textSize/2 <= viewWidth
-        val availableWidth = viewWidth - startX - textSize / 2f - NAME_COVER_EDGE_EPSILON
+        val rowStep = paint.rowStep()
+        val inkAscent = paint.inkAscent()
+        val inkDescent = paint.inkDescent()
+        val stepX = textSize + inkAscent * NAME_COVER_COLUMN_GAP_RATIO
+        // 版面可容纳的行数: 首字**字面顶**在 marginY, 末字**字面底**不超过 H - marginY。
+        // k 行占高 = (k-1)*rowStep + (inkAscent + inkDescent), 令其 ≤ H - 2*marginY ⇒ 解出 k。
+        // (不能直接拿 (H - 2*marginY)/rowStep —— 那少算了末行字自身的高度。)
+        val lineHeight = inkAscent + inkDescent
+        val areaHeight = (viewHeight - marginY * 2f - lineHeight).coerceAtLeast(0f)
+        val perColumn = ((areaHeight / rowStep).toInt() + 1).coerceAtLeast(1)
+        // 列位是 marginX + textSize/2 + (n-1)*stepX(见绘制处), 末列右缘 = 上式 + textSize/2;
+        // 要求它 ≤ viewWidth - marginX ⇒ 解出列数上限。
+        val availableWidth = viewWidth - marginX * 2f - textSize
         val columnLimit = ((availableWidth / stepX).toInt() + 1).coerceAtLeast(1)
 
         if (total <= perColumn) {
-            return VerticalNameLayout(charHeight, stepX, intArrayOf(total), ellipsized = false)
+            return VerticalNameLayout(rowStep, stepX, intArrayOf(total), ellipsized = false)
         }
         // 最少需要多少列才能放下(ceilDiv)
         val neededColumns = (total + perColumn - 1) / perColumn
         if (neededColumns <= columnLimit) {
-            val base = total / neededColumns
-            val extra = total % neededColumns
-            return VerticalNameLayout(
-                charHeight, stepX,
-                IntArray(neededColumns) { base + if (it < extra) 1 else 0 },
-                ellipsized = false,
-            )
+            // 贪心: 除最后一列外每列都填满 perColumn, 余下的全给最后一列。
+            val columns = IntArray(neededColumns) { perColumn }
+            columns[neededColumns - 1] = total - perColumn * (neededColumns - 1)
+            return VerticalNameLayout(rowStep, stepX, columns, ellipsized = false)
         }
         // 连宽度允许的最大列数都装不下: 填满容量, 末尾用省略号表示还有内容
         return VerticalNameLayout(
-            charHeight, stepX,
+            rowStep, stepX,
             IntArray(columnLimit) { perColumn },
             ellipsized = true,
         )
     }
+
+    /** 行距(相邻两行基线间距): 按**字号**的固定倍数, 与字体声明无关, 竖排中文的常规观感 */
+    private fun TextPaint.rowStep(): Float = textSize * NAME_COVER_ROW_STEP_RATIO
+
+    /**
+     * 字面顶相对基线的距离(正值, 即基线往下取负)。取「字身框」而非 `-fontMetrics.ascent`:
+     * 后者是行框顶(≈1.15em), 拿它定位会让首字整体下坠、上边留白偏大。
+     * 字体声明的 ascent 比字身框更小时(个别字体), 退用声明值以免切字。
+     */
+    private fun TextPaint.inkAscent(): Float =
+        minOf(-fontMetrics.ascent, textSize * NAME_COVER_INK_ASCENT_RATIO)
+
+    /** 字面底相对基线的距离(正值)。取字身框而非 `fontMetrics.descent`, 理由同 [inkAscent] */
+    private fun TextPaint.inkDescent(): Float =
+        maxOf(fontMetrics.descent, textSize * NAME_COVER_INK_DESCENT_RATIO)
 
     private fun horizontalTitleLayout(
         title: CharSequence,

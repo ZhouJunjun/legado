@@ -9,19 +9,10 @@
     android:orientation="vertical">
 
     <!--
-      内容区加滚动兜底: 面板叠在主菜单之上时, 高度上限 = 屏高 - 状态栏 - 顶栏 - 底栏,
-      小屏/横屏下按内容自然高度算会顶穿顶栏。上限值由 ReadStyleDialog.onStart() 写入。
+      内容区不再套 ScrollView(用户 2026-09-22 要求「去掉 scroll」):
+      界面面板很长, 要完整展开而不是滚动 —— 面板是独立窗口且贴底栏上沿,
+      高度按内容自然展开。
     -->
-    <ScrollView
-        android:id="@+id/sv_style_content"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:scrollbars="vertical">
-
-    <LinearLayout
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
 
     <HorizontalScrollView
         android:id="@+id/style_toolbar_scroll"
@@ -298,20 +289,25 @@
 
     </LinearLayout>
 
+    <!--
+      样式色块改为**自动换行**(用户 2026-09-23: 「不要左右滑动, 要自动换行」)。
+      行方向 + WRAP 由 FlexboxLayoutManager 在 ReadStyleDialog.initView() 里设置。
+      ⚠️ 不能只靠 XML 的 app:layoutManager 声明 —— FlexboxLayoutManager 的默认
+      flexWrap 是 NOWRAP(等价于旧的单行横滑), 必须在代码里 setFlexWrap(WRAP) 才会折行。
+      orientation 是 LinearLayoutManager 的概念, 这里已无意义, 故一并去掉。
+
+      上下 margin 由 8/16 改 2/10: item_read_style 现在自带 6dp 上下边距(给折行留行距),
+      这里各减 6dp 正好抵掉, 使「标题→首行」「末行→下一条分割线」的间距与改前**完全一致**。
+      改这两个数前请先看 item_read_style.xml 的注释, 它们是配对的。
+    -->
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/rv_style"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:layout_marginBottom="16dp"
+        android:layout_marginTop="2dp"
+        android:layout_marginBottom="10dp"
         android:clipToPadding="false"
-        android:orientation="horizontal"
         android:paddingHorizontal="12dp"
-        app:layoutManager="androidx.recyclerview.widget.LinearLayoutManager"
         tool:listitem="@layout/item_read_style" />
-
-    </LinearLayout>
-
-    </ScrollView>
 
 </LinearLayout>

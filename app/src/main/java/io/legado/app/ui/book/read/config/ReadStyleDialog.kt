@@ -10,6 +10,9 @@ import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import androidx.core.view.get
 import com.github.liuyueyi.quick.transfer.constants.TransType
+import com.google.android.flexbox.FlexDirection
+import com.google.android.flexbox.FlexWrap
+import com.google.android.flexbox.FlexboxLayoutManager
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.adapter.ItemViewHolder
@@ -48,14 +51,18 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
     override fun onStart() {
         super.onStart()
         val activity = activity as? ReadBookActivity ?: return
-        // 与朗读面板同一套叠层规则: 叠在主菜单之上时给底栏让位, 高度按可用空间封顶。
+        // 与朗读面板同一套叠层规则: 叠在主菜单之上时给底栏让位。
+        // 高度同样**不封顶**: 界面面板很长, 完整展开而不是滚动。
         val stack = activity.dialogStackMode
-        val maxHeight = if (stack) activity.panelMaxHeight() else WRAP_CONTENT
         dialog?.window?.run {
+            // 🔴 与朗读面板同一坑: Dialog 窗口默认触摸模态, 会吞掉全屏所有指针事件。
+            // 面板被 attr.y 上抬后底栏整块落在窗口之外 → 底栏四个按钮全部点不动
+            // (用户 2026-09-23 反馈「点主菜单的目录/界面没有任何反映」)。
+            addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setBackgroundDrawableResource(R.color.background)
             decorView.setPadding(0, 0, 0, 0)
-            setLayout(MATCH_PARENT, maxHeight)
+            setLayout(MATCH_PARENT, WRAP_CONTENT)
             val attr = attributes
             attr.dimAmount = 0.0f
             attr.gravity = Gravity.BOTTOM
@@ -63,10 +70,9 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
             attr.y = if (stack) activity.panelOffset() else 0
             attributes = attr
         }
-        binding.svStyleContent.layoutParams = binding.svStyleContent.layoutParams.also {
-            it.height = maxHeight
-            it.width = MATCH_PARENT
-        }
+        // 第二道保险(同朗读面板): 屏蔽 OEM 主题可能带上的「点外即取消」,
+        // 避免面板窗口之外的点击触发 cancel → onMenuPanelCancelled → 整个菜单被收起。
+        dialog?.setCanceledOnTouchOutside(false)
     }
 
     /**
@@ -114,6 +120,13 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
         dsbLineSize.valueFormat = { lineSpacingDisplayValue(it) }
         dsbParagraphSpacing.valueFormat = { (it / 10f).toString() }
         styleAdapter = StyleAdapter()
+        // 样式色块自动换行(用户 2026-09-23 要求, 替代原来的左右滑动)。
+        // ROW + WRAP 缺一不可: FlexboxLayoutManager 默认 flexWrap = NOWRAP,
+        // 不显式设 WRAP 就还是单行横滑。
+        rvStyle.layoutManager = FlexboxLayoutManager(requireContext()).apply {
+            flexDirection = FlexDirection.ROW
+            flexWrap = FlexWrap.WRAP
+        }
         rvStyle.adapter = styleAdapter
         styleAdapter.addFooterView {
             ItemReadStyleBinding.inflate(layoutInflater, it, false).apply {

@@ -28,6 +28,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="3dp"
+                android:drawablePadding="2dp"
                 android:text="@string/title_left" />
 
             <RadioButton
@@ -35,6 +36,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="3dp"
+                android:drawablePadding="2dp"
                 android:text="@string/title_center" />
 
             <RadioButton
@@ -42,6 +44,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="3dp"
+                android:drawablePadding="2dp"
                 android:text="@string/right" />
 
             <RadioButton
@@ -49,6 +52,7 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:padding="3dp"
+                android:drawablePadding="2dp"
                 android:text="@string/title_hide" />
         </RadioGroup>
 
@@ -261,6 +265,14 @@
 
         </LinearLayout>
 
+        <io.legado.app.lib.theme.view.ThemeSwitch
+                android:id="@+id/sw_header_line"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:padding="6dp"
+                android:text="@string/showLine"
+                tools:ignore="TouchTargetSizeCheck" />
+
         <LinearLayout
             android:id="@+id/ll_header_left"
             android:layout_width="match_parent"
@@ -350,14 +362,6 @@
                 tools:text="@string/title" />
 
         </LinearLayout>
-
-        <io.legado.app.lib.theme.view.ThemeSwitch
-            android:id="@+id/sw_header_line"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:padding="6dp"
-            android:text="@string/showLine"
-            tools:ignore="TouchTargetSizeCheck" />
 
         <io.legado.app.ui.widget.text.AccentTextView
             android:layout_width="wrap_content"

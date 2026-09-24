@@ -105,19 +105,6 @@ class ReadMenu @JvmOverloads constructor(
     fun panelOffset(): Int =
         binding.llChapterProgress.height + binding.llBottomButtons.height
 
-    /**
-     * 面板高度上限: 底栏上沿 → 顶栏下沿, 再留 8dp 呼吸空隙。
-     *
-     * 顶栏高度已含状态栏内边距, 底栏底边已让开导航栏, 因此两端都天然排除系统栏。
-     * 用 getLocationOnScreen 取真实屏幕位置, 免去对各级 padding 归属的假设。
-     */
-    fun panelMaxHeight(): Int {
-        val bottomBarTop = IntArray(2).also { binding.llBottomBg.getLocationOnScreen(it) }[1]
-        val titleBottom = IntArray(2).also { binding.titleBar.getLocationOnScreen(it) }[1] +
-            binding.titleBar.height
-        return (bottomBarTop - titleBottom - 8.dpToPx()).coerceAtLeast(160.dpToPx())
-    }
-
     private val menuTopIn: Animation by lazy {
         loadAnimation(context, R.anim.anim_readbook_top_in)
     }
@@ -432,6 +419,10 @@ class ReadMenu @JvmOverloads constructor(
         val showMemo = context.getPrefBoolean(PreferKey.showBookMemo, false)
         binding.llMemo.isVisible = showMemo
         binding.memoSpacer.isVisible = showMemo
+        // FAB 行/章节进度行的**布局初始值是 invisible**(占位不塌缩, 见 upPanelRows 注释),
+        // 而唯一会恢复它们的 applyPanel() 在 curPanel == PANEL_NONE 时 early-return ——
+        // 不在这里补一刀, 首次打开菜单这两行就永远不显示(要开一次面板再关掉才出现)。
+        upPanelRows()
         callBack.onMenuShow()
         this.visible()
         binding.titleBar.visible()
@@ -467,22 +458,45 @@ class ReadMenu @JvmOverloads constructor(
     }
 
     /**
-     * 切换面板。传 [panel] 与当前相同则关闭(再次点击同一按钮 = 收起), 否则换面板。
+     * 打开 / 切换 / 关闭面板(用户 2026-09-23 规范)。
      *
-     * 主菜单在这里**不动**: 只负责把 FAB 行/进度行藏掉(给面板腾出干净的底栏),
-     * 以及把新面板的状态发给观察者去弹 dialog。
+     * · 传 [panel] 与当前面板**不同** → 直接切过去(界面 ↔ 朗读)。
+     * · 传 [panel] 与当前面板**相同** → **取消选中并收起面板**, 回到主菜单默认态
+     *   (顶栏 + 4 个 FAB + 章节进度行 + 底栏, 无任何选中)。
+     *   —— 用户规范: 「如果当前已经是界面/朗读面板, 去掉选中状态, 返回 1.1」。
+     *
+     * 主菜单在这一步**不动**: 只负责 FAB 行/进度行的显隐(给面板腾出干净的底栏)
+     * 与底栏高亮, 面板 dialog 的弹/关交给 [CallBack.onMenuPanelChange]。
      */
     fun togglePanel(panel: Int) {
+        // 已是当前面板 → 取消选中, 回到默认态(1.1)。
+        // 必须放在最前: 菜单已收起时 curPanel 已是 PANEL_NONE, 不会命中这里。
+        if (curPanel == panel) {
+            clearPanel()
+            return
+        }
+        openPanel(panel)
+    }
+
+    /**
+     * 只负责「打开 / 切到」[panel], **不做「再点一次收起」**。
+     *
+     * 长按【朗读】用它: 该手势的既有语义是「只开面板(即使朗读服务没在跑)」,
+     * 与短按的「起读 + 开面板」区分开。若已在该面板上则不动 —— 长按一个已经
+     * 打开的面板再把它关掉, 不符合这个手势的语义。
+     */
+    fun openPanel(panel: Int) {
+        if (curPanel == panel) return
         if (!isVisible || isMenuOutAnimating) {
             // 菜单已收/正在动画: 先让菜单进场, 再叠面板。
             // 菜单进场的动画要走一帧, 所以第二步再 post 一次, 避开动画中途改状态。
             post {
                 runMenuIn()
-                post { applyPanel(if (curPanel == panel) PANEL_NONE else panel) }
+                post { applyPanel(panel) }
             }
             return
         }
-        applyPanel(if (curPanel == panel) PANEL_NONE else panel)
+        applyPanel(panel)
     }
 
     /** 点正文之类的地方收起面板, 但保留主菜单(与旧行为一致: 底栏还在)。 */
@@ -744,19 +758,29 @@ class ReadMenu @JvmOverloads constructor(
 
         //朗读
         llReadAloud.setOnClickListener {
+            // 用户规范 1.3: 已在朗读面板 → **只取消选中**, 返回主菜单默认态(1.1)。
+            // 这里必须先拦住 —— 否则会先被下面的「一键起读」重新拉起朗读,
+            // 变成「点了没收起反而又起读一遍」。
+            if (curPanel == PANEL_ALOUD) {
+                clearPanel()
+                return@setOnClickListener
+            }
             // 朗读面板叠在主菜单之上, 所以不走 runMenuOut —— 主菜单全程不收起。
             // 服务没在跑时沿用「一键起读」: 先起读, 面板同时叠出来(内容也随之可用)。
             if (!BaseReadAloudService.isRun) {
                 callBack.onClickReadAloud()
             }
-            togglePanel(PANEL_ALOUD)
+            openPanel(PANEL_ALOUD)
         }
         llReadAloud.onLongClick {
             // 长按=只开面板(即使服务没在跑), 语义与短按区分保持不变。
-            togglePanel(PANEL_ALOUD)
+            // 用 openPanel 而非 togglePanel: 长按一个已打开的面板不该把它关掉。
+            openPanel(PANEL_ALOUD)
         }
         //界面
         llFont.setOnClickListener {
+            // 用户规范 1.2: 已是界面面板 → 取消选中并收起, 返回默认态(1.1);
+            // 否则打开/切到界面面板。togglePanel 已覆盖这两种情形。
             togglePanel(PANEL_STYLE)
         }
 

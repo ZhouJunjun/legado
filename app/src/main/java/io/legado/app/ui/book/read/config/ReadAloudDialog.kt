@@ -40,15 +40,27 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
     override fun onStart() {
         super.onStart()
         val activity = activity as? ReadBookActivity ?: return
-        // 面板叠在主菜单之上时需要给底栏让位, 窗口因此比内容矮一截并整体上移;
-        // 独立显示(面板栈关闭)时保持原样: 贴底、按内容高度。
+        // 面板叠在主菜单之上时需要给底栏让位, 所以窗口整体上移;
+        // 高度**不封顶** —— 朗读面板内容很长, 完整展开(超出屏幕时由窗口自行裁切,
+        // 而不是塞进 ScrollView 让用户滚), 用户要的是一次看全。
         val stack = activity.dialogStackMode
-        val maxHeight = if (stack) activity.panelMaxHeight() else WRAP_CONTENT
         dialog?.window?.run {
+            // 🔴 必须加 NOT_TOUCH_MODAL —— Dialog 窗口默认是**触摸模态**的。
+            //
+            // 不加这个 flag 时, 窗口会吞掉**全屏**所有指针事件(官方文档原文:
+            // "Otherwise it will consume all pointer events itself, regardless of
+            // whether they are inside of the window")。而本面板被 attr.y 上抬后,
+            // 底栏(ll_bottom_bg)整块都落在面板窗口**之外**, 于是底栏上的
+            // 【目录】【朗读】【界面】【设置】全部点不动, 表现为「点了没有任何反映」
+            // (用户 2026-09-23 反馈)。顺带「点面板外收起」(走 Activity 窗口的
+            // vw_menu_bg)也会被一起吞掉。
+            // 加上之后: 面板窗口内的事件仍归面板, 窗口之外的点击透传给后面的
+            // ReadMenu 窗口 —— 底栏可以正常点, 点正文区域也能照常收起。
+            addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL)
             clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
             setBackgroundDrawableResource(R.color.background)
             decorView.setPadding(0, 0, 0, 0)
-            setLayout(MATCH_PARENT, maxHeight)
+            setLayout(MATCH_PARENT, WRAP_CONTENT)
             val attr = attributes
             attr.dimAmount = 0.0f
             attr.gravity = Gravity.BOTTOM
@@ -57,10 +69,12 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
             attr.y = if (stack) activity.panelOffset() else 0
             attributes = attr
         }
-        binding.svAloudContent.layoutParams = binding.svAloudContent.layoutParams.also {
-            it.height = maxHeight
-            it.width = MATCH_PARENT
-        }
+        // 第二道保险: 若系统/OEM 主题把 windowCloseOnTouchOutside 设成了 true
+        // (三星 One UI 的对话框主题就带这个属性), 面板窗口之外的点击会走
+        // Dialog.onTouchEvent → shouldCloseOnTouch → cancel() → onCancel →
+        // onMenuPanelCancelled → runMenuOut —— 表现成「点一下就莫名把整个菜单收起来」。
+        // 这里显式关掉: 收起只走「点正文空白处」或「系统返回」两条路。
+        dialog?.setCanceledOnTouchOutside(false)
     }
 
     override fun onDismiss(dialog: DialogInterface) {
