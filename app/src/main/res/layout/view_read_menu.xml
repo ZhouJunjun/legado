@@ -23,10 +23,27 @@
         app:layout_constraintTop_toTopOf="parent"
         app:opaque="true" >
 
+        <!--
+          🔴 章节名行的「抬高留白」(2026-09-24 用户反馈「下行章节名和顶栏下边缘贴一起了,
+          抬高章节名让下方留点白, 但不要改变顶栏高度」)。
+
+          做法是**等量的一负一正**: marginTop 取负把整块内容上移, 再用同值 paddingBottom
+          把高度补回来。AppBarLayout(TitleBar) 是 LinearLayout, 子项占位 = 高度 + margin,
+          所以
+            总高 = toolbar高 + (内容高 + paddingBottom) + marginTop
+                 = toolbar高 + 内容高 + 8dp - 8dp   ← 总高不变 ✓
+            内容顶 = toolbarBottom + marginTop = toolbarBottom - 8dp  ← 内容上移 8dp ✓
+          两个数必须**保持相等且互为相反数**, 改动时请成对修改。
+
+          这里选择 8dp: 实测改前章节名墨迹底到顶栏下边线只剩约 2.5dp(1080px 宽下 7px),
+          加 8dp 后约 10dp, 与上方正文的呼吸感一致。
+        -->
         <androidx.constraintlayout.widget.ConstraintLayout
             android:id="@+id/title_bar_addition"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content">
+            android:layout_height="wrap_content"
+            android:layout_marginTop="-8dp"
+            android:paddingBottom="8dp">
 
             <TextView
                 android:id="@+id/tv_chapter_name"

@@ -12,10 +12,13 @@ import android.util.AttributeSet
 import android.util.TypedValue
 import android.view.Gravity
 import android.view.LayoutInflater
+import android.view.View
+import android.view.ViewGroup
 import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
 import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.SeekBar
+import androidx.appcompat.widget.AppCompatTextView
 import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.doOnLayout
 import androidx.core.view.isGone
@@ -808,6 +811,7 @@ class ReadMenu @JvmOverloads constructor(
 
     fun upBookView() {
         binding.titleBar.title = ReadBook.book?.name
+        alignTitleBarText()
         ReadBook.curTextChapter?.let {
             binding.tvChapterName.text = it.title
             binding.tvChapterName.visible()
@@ -825,6 +829,71 @@ class ReadMenu @JvmOverloads constructor(
             binding.tvChapterName.gone()
             binding.tvChapterUrl.gone()
         }
+    }
+
+    /**
+     * 顶栏书名的垂直对齐校正。
+     *
+     * 🐞 现象(用户 2026-09-24 反馈): 「菜单顶栏的小说名和同行的按钮明显不是水平对齐」。
+     * 实测(1080px 宽截图, density≈2.75): 返回箭头/文A/⋮ 的墨迹中心都在 y≈161.5,
+     * 而书名墨迹中心在 y≈181 —— 低了 19.5px ≈ **7dp**。
+     *
+     * 根因不在布局, 而在**「视图框居中」与「墨迹居中」不是一回事**:
+     * TextView 的框含 `includeFontPadding` 字体留白, 而中文字体的字框是
+     * ascent≫descent 的不对称结构。Toolbar 把「框」居中, 墨迹就整体下沉
+     *     Δ = (fm.ascent + fm.descent)/2 - (fm.top + fm.bottom)/2
+     * 这个量跟字体走(不同设备/字体各不相同), 所以**不能写死一个 dp 偏移**。
+     *
+     * 这里不依赖 Toolbar 内部的居中公式(那是 AppCompat 私有实现, 版本间会变),
+     * 而是直接量两个**已经画好的**锚点做自校正(见 applyTitleOffset):
+     *   · 基准 = 导航图标(返回箭头)的中心 —— 这正是用户肉眼拿来比较的对象;
+     *   · 目标 = 书名首行的墨迹中心, 由 layout 的基线与字体度量解析求出。
+     * 两者之差就是 translationY。全是 UI 线程上的常量级读写, 不触发重新布局。
+     *
+     * 导航图标与标题是同一个 Toolbar 的兄弟, 一次 layout pass 内一起量好;
+     * 若首次读到的尺寸还是 0(尚未布局), 就挂一次性 layout 监听等下次布局再量。
+     */
+    private fun alignTitleBarText() {
+        val toolbar = binding.titleBar.toolbar
+        toolbar.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View, l: Int, t: Int, r: Int, b: Int,
+                ol: Int, ot: Int, or: Int, ob: Int
+            ) {
+                if (applyTitleOffset()) v.removeOnLayoutChangeListener(this)
+            }
+        })
+        applyTitleOffset()
+    }
+
+    /** @return true 表示这次成功写入了偏移(锚点与标题都已量好)。 */
+    private fun applyTitleOffset(): Boolean {
+        val toolbar = binding.titleBar.toolbar
+        // 基准锚点 = Toolbar 的第 0 个子项, 即返回箭头(导航按钮)。
+        // 用户肉眼比较的正是「书名 vs 同行按钮」, 拿图标中心当基准最直接。
+        val anchor = toolbar.getChildAt(0) ?: return false
+        if (anchor.width == 0 || anchor.height == 0) return false
+        val tv = findToolbarTitle(toolbar) ?: return false
+        val layout = tv.layout ?: return false
+        if (layout.lineCount == 0 || tv.height == 0) return false
+        // 墨迹中心(视图坐标) = 上内边距 + 首行基线 + (ascent+descent)/2
+        // 用 layout 的基线而不是「框高/2」, 这样即使 TextView 带上下 padding 或
+        // 多行也不会算错 —— 无需假设「视图框 == 行框」。
+        val fm = tv.paint.fontMetrics
+        val baseline = tv.totalPaddingTop + layout.getLineBaseline(0).toFloat()
+        val inkCenter = tv.top + baseline + (fm.ascent + fm.descent) / 2f
+        val anchorCenter = anchor.top + anchor.height / 2f
+        tv.translationY = anchorCenter - inkCenter
+        return true
+    }
+
+    /** 在 Toolbar 里找到实际的标题 TextView(Toolbar 自己 new 出来的 AppCompatTextView)。 */
+    private fun findToolbarTitle(toolbar: ViewGroup): AppCompatTextView? {
+        for (i in 0 until toolbar.childCount) {
+            val child = toolbar.getChildAt(i)
+            if (child is AppCompatTextView) return child
+        }
+        return null
     }
 
     private fun updateTitleAdditionLayout() = binding.run {

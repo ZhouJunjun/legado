@@ -17,77 +17,82 @@
         android:paddingEnd="16dp"
         android:paddingBottom="8dp">
 
+        <!--
+          🔴 分区按钮(页眉/正文/页脚)改用与「界面」面板第 1 行完全相同的规格
+          (用户 2026-09-24 反馈「第 1 行按钮非常大, 要调成界面面板第 1 行按钮的大小」)。
+
+          原实现是 AppCompatButton + layout_width="wrap_content" + layout_weight="1",
+          weight 把按钮**拉伸铺满整行**, 加上 AppCompatButton 默认 minHeight/minWidth 与
+          stateListAnimator 的阴影, 视觉上又大又笨重。
+
+          新规格逐项对齐 dialog_read_book_style.xml 的 tv_text_font:
+            · StrokeTextView + app:panelButtonStyle="true" + radius=3dp
+              (淡灰底无边框, 选中态填 accent —— 由控件自己按主题着色,
+               不必再在代码里手工造 GradientDrawable)
+            · layout_width/height = wrap_content (不拉伸)
+            · padding=4dp, marginLeft/Right=6dp, textSize=14sp
+            · 外层 LinearLayout 用 gravity="center_vertical" 靠左排列,
+              与界面面板的 HorizontalScrollView 内层一致
+        -->
         <LinearLayout
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:orientation="horizontal">
 
-            <LinearLayout
-                android:layout_width="0dp"
+            <io.legado.app.ui.widget.text.StrokeTextView
+                android:id="@+id/btn_region_header"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_weight="1"
-                android:orientation="horizontal">
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:layout_marginLeft="6dp"
+                android:layout_marginRight="6dp"
+                android:padding="4dp"
+                android:text="@string/header"
+                android:textSize="14sp"
+                app:isBottomBackground="true"
+                app:panelButtonStyle="true"
+                app:radius="3dp" />
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_region_header"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="2dp"
-                    android:layout_weight="1"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?android:attr/selectableItemBackground"
-                    android:gravity="center"
-                    android:ellipsize="end"
-                    android:maxLines="2"
-                    android:minWidth="0dp"
-                    android:padding="4dp"
-                    android:text="@string/header"
-                    android:textAllCaps="false"
-                    android:textColor="@color/primaryText"
-                    android:textSize="14sp" />
+            <io.legado.app.ui.widget.text.StrokeTextView
+                android:id="@+id/btn_region_body"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:layout_marginLeft="6dp"
+                android:layout_marginRight="6dp"
+                android:padding="4dp"
+                android:text="@string/main_body"
+                android:textSize="14sp"
+                app:isBottomBackground="true"
+                app:panelButtonStyle="true"
+                app:radius="3dp"
+                tools:selected="true" />
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_region_body"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="2dp"
-                    android:layout_weight="1"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?android:attr/selectableItemBackground"
-                    android:gravity="center"
-                    android:ellipsize="end"
-                    android:maxLines="2"
-                    android:minWidth="0dp"
-                    android:padding="4dp"
-                    android:text="@string/main_body"
-                    android:textAllCaps="false"
-                    android:textColor="@color/primaryText"
-                    android:textSize="14sp"
-                    tools:selected="true" />
+            <io.legado.app.ui.widget.text.StrokeTextView
+                android:id="@+id/btn_region_footer"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:clickable="true"
+                android:focusable="true"
+                android:gravity="center"
+                android:layout_marginLeft="6dp"
+                android:layout_marginRight="6dp"
+                android:padding="4dp"
+                android:text="@string/footer"
+                android:textSize="14sp"
+                app:isBottomBackground="true"
+                app:panelButtonStyle="true"
+                app:radius="3dp" />
 
-                <androidx.appcompat.widget.AppCompatButton
-                    android:id="@+id/btn_region_footer"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginHorizontal="2dp"
-                    android:layout_weight="1"
-                    android:clickable="true"
-                    android:focusable="true"
-                    android:foreground="?android:attr/selectableItemBackground"
-                    android:gravity="center"
-                    android:ellipsize="end"
-                    android:maxLines="2"
-                    android:minWidth="0dp"
-                    android:padding="4dp"
-                    android:text="@string/footer"
-                    android:textAllCaps="false"
-                    android:textColor="@color/primaryText"
-                    android:textSize="14sp" />
-
-            </LinearLayout>
+            <Space
+                android:layout_width="0dp"
+                android:layout_height="1dp"
+                android:layout_weight="1" />
 
             <androidx.appcompat.widget.AppCompatImageView
                 android:id="@+id/iv_reset"

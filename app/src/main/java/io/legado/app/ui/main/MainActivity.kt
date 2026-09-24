@@ -28,7 +28,6 @@ import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ActivityMainBinding
-import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.AppWebDav
 import io.legado.app.help.BottomBarSkinManager
 import io.legado.app.help.SourceSharePassphrase
@@ -55,7 +54,6 @@ import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
 import io.legado.app.ui.main.my.MyFragment
-import io.legado.app.ui.widget.dialog.TextDialog
 import io.legado.app.ui.widget.text.BadgeView
 import io.legado.app.utils.clearClip
 import io.legado.app.utils.dpToPx
@@ -149,10 +147,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         lifecycleScope.launch {
             //隐私协议
             if (!privacyPolicy()) return@launch
-            //版本更新
+            //版本检查(仅自动检查新版本; 更新日志/帮助/设置密码的自动弹窗已按要求去掉,
+            // 详见 upVersion 的注释)
             upVersion()
-            //设置本地密码
-            setLocalPassword()
             notifyAppCrash()
             //备份同步
             backupSync()
@@ -272,6 +269,13 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
 
     /**
      * 版本更新日志
+     *
+     * ⚠️ 2026-09-24 用户要求删除「进入 app 时自动弹出的更新日志/设置 password 等弹窗」。
+     * 这里只去掉**自动弹出**的部分(更新日志 / 首次打开帮助), 自动检查新版本
+     * (AppConfig.autoUpdateVariant 命中时弹 UpdateDialog)属于用户自己开的开关, 保留。
+     *
+     * 保留 `LocalConfig.versionCode = appInfo.versionCode` 这一行是必要的: 它是「本版本
+     * 已经走完首启流程」的标记, 去掉的话每次启动都会重新进入这个分支。
      */
     private suspend fun upVersion() = suspendCancellableCoroutine sc@{ block ->
         if (LocalConfig.versionCode == appInfo.versionCode) {
@@ -294,55 +298,12 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             return@sc
         }
         LocalConfig.versionCode = appInfo.versionCode
-        if (LocalConfig.isFirstOpenApp) {
-            val help = String(assets.open("web/help/md/appHelp.md").readBytes())
-            val dialog = TextDialog(
-                getString(R.string.help),
-                help,
-                TextDialog.Mode.MD,
-                showToc = true,
-            )
-            dialog.setOnDismissListener {
-                block.resume(null)
-            }
-            showDialogFragment(dialog)
-        } else if (!BuildConfig.DEBUG) {
-            val log = String(assets.open("updateLog.md").readBytes())
-            val dialog = TextDialog(getString(R.string.update_log), log, TextDialog.Mode.MD)
-            dialog.setOnDismissListener {
-                block.resume(null)
-            }
-            showDialogFragment(dialog)
-        } else {
-            block.resume(null)
-        }
-    }
-
-    /**
-     * 设置本地密码
-     */
-    private suspend fun setLocalPassword() = suspendCancellableCoroutine sc@{ block ->
-        if (LocalConfig.password != null) {
-            block.resume(null)
-            return@sc
-        }
-        alert(R.string.set_local_password, R.string.set_local_password_summary) {
-            val editTextBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "password"
-            }
-            customView {
-                editTextBinding.root
-            }
-            onDismiss {
-                block.resume(null)
-            }
-            okButton {
-                LocalConfig.password = editTextBinding.editView.text.toString()
-            }
-            cancelButton {
-                LocalConfig.password = ""
-            }
-        }
+        // 首次打开帮助(appHelp.md)与更新日志(updateLog.md)两个自动弹窗已按用户要求去掉。
+        // · 更新日志: 仍可从「关于」页进入(AboutFragment 的 update_log -> updateLog.md)。
+        // · 应用帮助: ⚠️ 走的就是这里, 删掉后 assets/web/help/md/appHelp.md **暂无 UI 入口**
+        //   (阅读菜单里的「帮助」是 readMenuHelp.md, 不是同一份)。若之后要补入口,
+        //   在「我的」页加一项 showMdFile/getString(R.string.help) 即可, 文档本身没删。
+        block.resume(null)
     }
 
     private fun notifyAppCrash() {

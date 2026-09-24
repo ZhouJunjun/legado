@@ -174,9 +174,19 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
                 postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
             }
         }
+        // 🔴 这里原来先 dismissAllowingStateLoss() 再走 Activity 级的
+        // showDialogFragment<PaddingConfigDialog>(), 结果点【边距】会把整个界面面板收掉,
+        // 而同行其它按钮(【字体】【缩进】【信息】)打开子面板时面板都还在。
+        // 改法: 与【信息】按钮完全一致 —— 用 childFragmentManager 把子面板挂在
+        // **本面板之下**, 不自关(用户 2026-09-24 反馈「点边距界面面板会收起, 点其他按钮不会」)。
+        //
+        // 挂 childFragmentManager 而不是 Activity 级还有一层必要: BaseDialogFragment
+        // 的 onFragmentCreated 里有「同一位置只允许一个面板」守卫(读到 bottomDialog > 0
+        // 就自毁), Activity 级路径下界面面板的 dismiss 是异步投递的, 新面板可能在
+        // 计数减回 0 之前就创建 -> 直接消失。挂在子管理器的栈里则继承父面板的生命周期,
+        // 父面板关闭时子面板一并销毁, 不留孤儿窗口。
         tvPadding.setOnClickListener {
-            dismissAllowingStateLoss()
-            callBack?.showPaddingConfig()
+            PaddingConfigDialog().show(childFragmentManager, "paddingConfigDialog")
         }
         tvTip.setOnClickListener {
             TipConfigDialog().show(childFragmentManager, "tipConfigDialog")

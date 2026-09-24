@@ -2,14 +2,12 @@ package io.legado.app.ui.book.read.config
 
 import android.animation.ValueAnimator
 import android.content.DialogInterface
-import android.graphics.Color
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.view.WindowManager
-import android.widget.TextView
 import androidx.appcompat.widget.TooltipCompat
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
@@ -17,9 +15,7 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogReadPaddingBinding
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.buttonSurfaceColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.utils.ColorUtils
@@ -39,8 +35,6 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
     private var lockLR = false
     private var textColor = 0
     private var bgColor = 0
-    private var accentColor = 0
-    private var accentTextColor = 0
     private var pendingBodyEdit: PaddingEdit? = null
     private var alphaAnimator: ValueAnimator? = null
     private val bodyThrottle = throttle<Unit>(150, leading = false) {
@@ -112,8 +106,6 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
     private fun initView() = binding.run {
         bgColor = requireContext().bottomBackground
         textColor = requireContext().getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
-        accentColor = requireContext().accentColor
-        accentTextColor = if (ColorUtils.isColorLight(accentColor)) Color.BLACK else Color.WHITE
         val radius = 8.dpToPx().toFloat()
         rootView.background = GradientDrawable().apply {
             cornerRadius = radius
@@ -179,27 +171,22 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
         upRegionStyles()
     }
 
+    /**
+     * 分区按钮选中态。
+     *
+     * 按钮已换成 StrokeTextView + panelButtonStyle(与「界面」面板首行同一规格),
+     * 它自己会按主题给「默认淡灰底 / 选中 accent 底 / 禁用」三态着色,
+     * 所以这里**只需切换 isSelected** —— 不要再手动 setTextColor / setBackground,
+     * 那会覆盖掉控件按主题算好的 Selector(尤其是自定义主题下的前景色)。
+     */
     private fun upRegionStyles() = binding.run {
         mapOf(
             Region.HEADER to btnRegionHeader,
             Region.BODY to btnRegionBody,
             Region.FOOTER to btnRegionFooter,
         ).forEach { (region, button) ->
-            val selected = region == curRegion
-            button.isSelected = selected
-            button.setTextColor(if (selected) accentTextColor else textColor)
-            button.backgroundTintList = null
-            button.background = regionBackground(selected)
+            button.isSelected = region == curRegion
         }
-    }
-
-    /**
-     * 分区按钮背景: 与「界面」面板的方形按钮同一套规格 ——
-     * 无选中时淡灰底、**无边框**; 选中时填充强调色。
-     */
-    private fun regionBackground(selected: Boolean) = GradientDrawable().apply {
-        cornerRadius = 8.dpToPx().toFloat()
-        setColor(if (selected) accentColor else requireContext().buttonSurfaceColor)
     }
 
     private fun startTracking() {
@@ -231,7 +218,7 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
         swLockLr.alpha = alpha
     }
 
-    private fun regionButtons(): List<TextView> = binding.run {
+    private fun regionButtons() = binding.run {
         listOf(btnRegionHeader, btnRegionBody, btnRegionFooter)
     }
 

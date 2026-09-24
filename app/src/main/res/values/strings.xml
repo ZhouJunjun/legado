@@ -1052,6 +1052,7 @@
     <string name="keep_original_name">Keep the original name</string>
     <string name="click_regional_config">Screen touch control</string>
     <string name="close">Close</string>
+    <string name="close_read_aloud">Stop speaking</string>
     <string name="next_page">Next page</string>
     <string name="prev_page">Prior page</string>
     <string name="non_action">None</string>

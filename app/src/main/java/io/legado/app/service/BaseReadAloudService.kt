@@ -798,6 +798,15 @@ abstract class BaseReadAloudService : BaseService(),
                     getString(R.string.set_timer),
                     R.drawable.ic_time_add_24dp
                 )
+                // 关闭朗读: 加在定时之后(用户 2026-09-24 要求「加到最后面」)。
+                // 复用一个自定义 action 而非 onStop(): 各厂商的系统媒体控件对
+                // 标准 stop 按钮的呈现并不一致(很多只显示播放/暂停/上一下一首),
+                // 自定义项才会稳定出现在展开后的按钮列表里。
+                .addCustomAction(
+                    "ACTION_CLOSE_ALOUD",
+                    getString(R.string.close_read_aloud),
+                    R.drawable.ic_baseline_close
+                )
                 .build()
         )
     }
@@ -841,7 +850,12 @@ abstract class BaseReadAloudService : BaseService(),
             }
 
             override fun onCustomAction(action: String, extras: Bundle?) {
-                if (action == "ACTION_ADD_TIMER") addTimer()
+                when (action) {
+                    "ACTION_ADD_TIMER" -> addTimer()
+                    // 系统媒体控件上的「关闭朗读」。走 stopSelf() 与通知栏的停止按钮
+                    // (IntentAction.stop) 同一条路, 保证两条入口的收尾行为完全一致。
+                    "ACTION_CLOSE_ALOUD" -> stopSelf()
+                }
             }
 
             override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
