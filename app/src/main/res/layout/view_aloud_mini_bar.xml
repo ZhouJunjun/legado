@@ -72,6 +72,6 @@
         android:contentDescription="@string/stop"
         android:padding="12dp"
         android:scaleType="centerInside"
-        android:src="@drawable/ic_clear" />
+        android:src="@drawable/ic_baseline_close" />
 
 </LinearLayout>

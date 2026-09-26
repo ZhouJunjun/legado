@@ -66,7 +66,7 @@ class HighlightStyleDialog : BottomSheetDialogFragment(),
         binding.tvHighlightFontSize.setOnClickListener {
             NumberPickerDialog(requireContext()).setTitle(getString(R.string.text_size))
                 .setMinValue(5).setMaxValue(100)
-                .setValue(currentStyle().resolvedFontSize?.roundToInt() ?: ReadBookConfig.textSize)
+                .setValue(currentStyle().resolvedFontSize?.roundToInt() ?: ReadBookConfig.textSize.roundToInt())
                 .setCustomButton(R.string.btn_default_s) { apply(currentStyle().copy(fontSize = null)) }
                 .show { apply(currentStyle().copy(fontSize = it.toFloat())) }
         }

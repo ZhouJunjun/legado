@@ -3,14 +3,12 @@ package io.legado.app.help
 import io.legado.app.constant.AppConst
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.DictRule
-import io.legado.app.data.entities.HttpTTS
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.help.source.clearSharedGlobalState
 import io.legado.app.model.BookCover
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonArray
@@ -23,9 +21,8 @@ object DefaultData {
     fun upVersion() {
         if (LocalConfig.versionCode < AppConst.appInfo.versionCode) {
             Coroutine.async {
-                if (LocalConfig.needUpHttpTTS) {
-                    importDefaultHttpTTS()
-                }
+                // 默认朗读引擎(httpTTS.json)已连同「导入默认朗读引擎」整条链路一并删除
+                // (2026-09-25, 用户要求去掉 百度/阿里云/Next引擎), 故不再有 needUpHttpTTS 分支。
                 if (LocalConfig.needUpTxtTocRule) {
                     importDefaultTocRules()
                 }
@@ -34,17 +31,6 @@ object DefaultData {
                 }
             }.onError {
             }
-        }
-    }
-
-    val httpTTS: List<HttpTTS> by lazy {
-        val json =
-            String(
-                appCtx.assets.open("defaultData${File.separator}httpTTS.json")
-                    .readBytes()
-            )
-        HttpTTS.fromJsonArray(json).getOrElse {
-            emptyList()
         }
     }
 
@@ -95,14 +81,6 @@ object DefaultData {
                 .readBytes()
         )
         GSON.fromJsonArray<KeyboardAssist>(json).getOrThrow()
-    }
-
-    fun importDefaultHttpTTS() {
-        appDb.httpTTSDao.all
-            .filter { it.id < 0 }
-            .forEach { it.clearSharedGlobalState() }
-        appDb.httpTTSDao.deleteDefault()
-        appDb.httpTTSDao.insert(*httpTTS.toTypedArray())
     }
 
     fun importDefaultTocRules() {

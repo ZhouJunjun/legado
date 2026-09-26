@@ -881,7 +881,8 @@ abstract class BaseReadAloudService : BaseService(),
 
             else -> ""/*getString(R.string.read_aloud_t)*/
         }
-        nTitle += ": ${aloudBook?.name ?: ReadBook.book?.name}"
+        val titleSeparator = if (nTitle == "") "" else ":"
+        nTitle += "$titleSeparator ${aloudBook?.name ?: ReadBook.book?.name}"
         val metadata = MediaMetadataCompat.Builder()
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, cover)
             .putText(MediaMetadataCompat.METADATA_KEY_TITLE,

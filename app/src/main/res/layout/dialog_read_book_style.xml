@@ -122,7 +122,7 @@
         android:layout_marginHorizontal="16dp"
         android:layout_marginTop="8dp"
         app:isBottomBackground="true"
-        app:max="45"
+        app:max="90"
         app:title="@string/text_size" />
 
     <io.legado.app.ui.widget.DetailSeekBar

@@ -15,7 +15,6 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.saveReadRecordSnapshot
 import io.legado.app.help.AppWebDav
-import io.legado.app.help.DefaultData
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.addType
 import io.legado.app.help.book.isUpError
@@ -323,16 +322,6 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
                     SourceCallBack.END_SHELF_REFRESH,
                     source,
                 )
-            }
-        }
-    }
-
-    fun postLoad() {
-        execute {
-            if (appDb.httpTTSDao.count == 0) {
-                DefaultData.httpTTS.let {
-                    appDb.httpTTSDao.insert(*it.toTypedArray())
-                }
             }
         }
     }

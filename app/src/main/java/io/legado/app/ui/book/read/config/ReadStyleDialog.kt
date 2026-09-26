@@ -38,6 +38,7 @@ import io.legado.app.utils.getIndexById
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.viewbindingdelegate.viewBinding
+import kotlin.math.roundToInt
 import splitties.views.onLongClick
 
 class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
@@ -116,8 +117,12 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
         tvPageAnim.setTextColor(textColor)
         tvBgTs.setTextColor(textColor)
         tvShareLayout.setTextColor(textColor)
+        // 字号以 0.5 为步长(用户 2026-09-25 要求): 进度一格 = 0.5sp, 字号 = 5 + progress / 2。
+        // 整数值不显示小数点(20), 半值显示一位小数(20.5)。
+        // 布局里该条 max 相应由 45 提到 90, 字号范围仍是 5~50sp。
         dsbTextSize.valueFormat = {
-            (it + 5).toString()
+            val size = it / 2f + 5f
+            if (size % 1f == 0f) size.toInt().toString() else size.toString()
         }
         dsbTextLetterSpacing.valueFormat = {
             ((it - 50) / 100f).toString()
@@ -206,7 +211,7 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
             postEvent(EventBus.UP_CONFIG, arrayListOf(1, 2, 5))
         }
         dsbTextSize.onChanged = {
-            ReadBookConfig.textSize = it + 5
+            ReadBookConfig.textSize = it / 2f + 5f
             postEvent(EventBus.UP_CONFIG, arrayListOf(8, 5))
         }
         dsbTextLetterSpacing.onChanged = {
@@ -261,7 +266,7 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
             updatingPageAnim = false
         }
         ReadBookConfig.let {
-            dsbTextSize.progress = it.textSize - 5
+            dsbTextSize.progress = ((it.textSize - 5f) * 2f).roundToInt()
             dsbTextLetterSpacing.progress = (it.letterSpacing * 100).toInt() + 50
             dsbLineSize.progress = lineSpacingToProgress(it.lineSpacingExtra)
             dsbParagraphSpacing.progress = it.paragraphSpacing

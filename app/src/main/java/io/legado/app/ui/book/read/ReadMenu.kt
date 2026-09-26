@@ -28,7 +28,6 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.databinding.ViewReadMenuBinding
 import io.legado.app.help.config.AppConfig
-import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
 import io.legado.app.help.coroutine.Coroutine
@@ -166,9 +165,9 @@ class ReadMenu @JvmOverloads constructor(
         override fun onAnimationEnd(animation: Animation) {
             binding.vwMenuBg.setOnClickListener { runMenuOut() }
             callBack.upSystemUiVisibility()
-            if (!LocalConfig.readMenuHelpVersionIsLast) {
-                callBack.showHelp()
-            }
+            // 阅读菜单首次打开时自动弹出的帮助弹窗(readMenuHelp.md)已按要求移除(2026-09-25)。
+            // 阅读页右上角菜单里的【帮助】项(ReadBookActivity 的 menu_help)不受影响,
+            // 仍可手动打开同一份文档; 原本用于判定的 readMenuHelpVersionIsLast 已一并删除。
         }
 
         override fun onAnimationRepeat(animation: Animation) = Unit

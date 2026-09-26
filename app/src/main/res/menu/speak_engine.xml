@@ -18,11 +18,6 @@
         tools:ignore="AlwaysShowAction" />
 
     <item
-        android:id="@+id/menu_default"
-        android:title="@string/import_default_rule"
-        app:showAsAction="never" />
-
-    <item
         android:id="@+id/menu_import_local"
         android:title="@string/import_local"
         app:showAsAction="never" />

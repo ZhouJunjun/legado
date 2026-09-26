@@ -14,6 +14,7 @@ import androidx.appcompat.widget.TooltipCompat
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.constant.EventBus
+import io.legado.app.constant.Status
 import io.legado.app.databinding.DialogReadAloudBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.borderedDialogBackground
@@ -409,7 +410,20 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
     }
 
     override fun observeLiveBus() {
-        observeEvent<Int>(EventBus.ALOUD_STATE) {
+        observeEvent<Int>(EventBus.ALOUD_STATE) { status ->
+            // 朗读已停止时自动收起本面板。
+            //
+            // 停止可能来自任意入口: 下拉通知媒体面板的「关闭朗读」、耳机线控、
+            // 定时结束、音频焦点丢失等。此前只有面板内第 4 行第 4 个【停止】按钮
+            // 会顺手关掉面板, 从通知面板关闭时面板会留在屏幕上(播放/暂停已失效),
+            // 两条入口收尾不一致(用户 2026-09-25 反馈并要求「统一为都收起面板」)。
+            // 服务端两条路本来就都走同一个 onDestroy, 这里把 UI 收尾也统一到同一处。
+            // 注: 面板内【停止】会先自己 dismiss 一次, dismissAllowingStateLoss 自带
+            // 幂等守卫, 这里再加 isAdded 判断, 重复收起无副作用。
+            if (status == Status.STOP) {
+                if (isAdded) dismissAllowingStateLoss()
+                return@observeEvent
+            }
             upPlayState()
             upAloudBookInfo()
             upAloudPositionActions()

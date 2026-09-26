@@ -207,8 +207,17 @@ object ReadBookConfig {
     var durConfig
         get() = getConfig(styleSelect)
         set(value) {
-            val changed = getConfig(styleSelect) != value
-            configList[styleSelect] = value
+            // 下标规则必须与 getConfig() 完全一致: 为空先还原默认, 越界回落到第 0 个。
+            //
+            // styleSelect 来自持久化配置, 而样式数量现在可少至 1(2026-09-26 放宽最小
+            // 个数限制), 两者可能不一致 —— 最典型的场景是恢复备份时勾选「忽略阅读配置」:
+            // 样式列表没被替换, 但下标会被还原成备份里的值, 于是下标可能大于当前样式数。
+            // 越界时若写到「最后一个」而 getter 读的是第 0 个, 就会形成「读一个、写另一个」
+            // 的错配(表现是应用预设后界面没反应); 这里让两条路径共用同一套下标规则。
+            if (configList.isEmpty()) resetAll()
+            val index = styleSelect.takeIf { it in configList.indices } ?: 0
+            val changed = configList[index] != value
+            configList[index] = value
             underlineConfigInitialized = false
             if (shareLayout) {
                 shareConfig = value
@@ -230,7 +239,13 @@ object ReadBookConfig {
 
     @Synchronized
     fun getConfig(index: Int): Config {
-        if (configList.size < 5) {
+        // 配置为空才视为损坏并还原默认。
+        //
+        // 原阈值是 5, 与 deleteDur() 的 `> 5` 配对, 共同保证「样式至少保留 5 个」。
+        // 用户 2026-09-26 要求最少可留 1 个, 两处阈值必须**同步**改成 1 ——
+        // 否则删到 5 个以下后, 任何一次 getConfig() 都会触发 resetAll(),
+        // 把用户自定义的样式全部还原成默认值(表现为「删完样式后配置自己变回去了」)。
+        if (configList.isEmpty()) {
             resetAll()
         }
         return configList.getOrNull(index) ?: configList[0]
@@ -330,8 +345,12 @@ object ReadBookConfig {
     }
 
     fun deleteDur(): Boolean {
-        if (configList.size > 5) {
-            val removeIndex = styleSelect
+        // 样式最少保留 1 个(用户 2026-09-26 要求, 原为 5 个)。
+        // 阈值变更必须与 getConfig() 的空判同步, 详见那里的注释。
+        if (configList.size > 1) {
+            // 先夹紧再删: styleSelect 是持久化值, 可能与当前样式数失配
+            // (成因见 durConfig setter 的注释), 不夹紧会 removeAt 越界崩溃。
+            val removeIndex = styleSelect.coerceIn(0, configList.lastIndex)
             configList.removeAt(removeIndex)
             if (removeIndex <= readStyleSelect) {
                 readStyleSelect -= 1
@@ -339,6 +358,15 @@ object ReadBookConfig {
             if (removeIndex <= comicStyleSelect) {
                 comicStyleSelect -= 1
             }
+            // 删完后把两个下标夹回合法范围。
+            // 原实现只在 removeIndex <= select 时 -1, 当用户「反复删除当前选中的样式」时
+            // select 会一路减到 -1 —— 最小个数放宽到 1 之前最多只能删 1 次(6→5), 减不到
+            // 负数, 所以没暴露。负下标会让 styleSelect 指向不存在的样式(读配置兜底到第 0 个,
+            // 与用户看到的选中项不符), 且 ReadStyleDialog 会拿它去 notifyItemChanged,
+            // 这里统一夹回 [0, lastIndex]。
+            val lastIndex = configList.lastIndex
+            readStyleSelect = readStyleSelect.coerceIn(0, lastIndex)
+            comicStyleSelect = comicStyleSelect.coerceIn(0, lastIndex)
             return true
         }
         return false
@@ -483,7 +511,15 @@ object ReadBookConfig {
             config.textBold = value
         }
 
-    var textSize: Int
+    /**
+     * 正文字号(sp)。
+     *
+     * 2026-09-25 由 Int 改为 Float, 以支持「界面」面板按 0.5 的步长调整字号
+     * (此前 DetailSeekBar 的 +/- 每次只走 1, 字号只能是整数)。
+     * 渲染端本来就是 Float 精度(Paint.textSize), 这里让存储与 UI 对齐即可;
+     * 旧配置里的整数值由 Gson 读入 Float 时自动兼容, 默认配置 readConfig.json 同理。
+     */
+    var textSize: Float
         get() = config.textSize
         set(value) {
             config.textSize = value
@@ -911,7 +947,7 @@ object ReadBookConfig {
         var titleFont: String = "",//标题字体, 空值跟随正文字体
         var titleBold: Int = -1,//标题字重 -1:保持原有随正文变化的效果, 0:正常, 1:粗体, 2:细体
         var textBold: Int = 0,//是否粗体字 0:正常, 1:粗体, 2:细体
-        var textSize: Int = 20,//文字大小
+        var textSize: Float = 20f,//文字大小(sp, 支持 0.5 步长)
         var letterSpacing: Float = 0.1f,//字间距
         var lineSpacingExtra: Int = 12,//行间距
         var titleLineSpacingExtra: Int = 0,//章节名行距相对字体行高的偏移，单位0.1

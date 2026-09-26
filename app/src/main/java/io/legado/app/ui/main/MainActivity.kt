@@ -145,8 +145,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     override fun onPostCreate(savedInstanceState: Bundle?) {
         super.onPostCreate(savedInstanceState)
         lifecycleScope.launch {
-            //隐私协议
-            if (!privacyPolicy()) return@launch
+            // 首页「用户隐私与协议」弹窗已按要求移除(2026-09-25)。
+            // 仍然把 privacyPolicyOk 置为 true: 该标记被「源分享口令自动导入」
+            // (SourceSharePassphraseImportPolicy) 等逻辑依赖, 保持 true 才能让它们照常工作。
+            // 协议全文仍可查看: 「我的」→「关于」→ 隐私政策(AboutFragment -> privacyPolicy.md)。
+            LocalConfig.privacyPolicyOk = true
             //版本检查(仅自动检查新版本; 更新日志/帮助/设置密码的自动弹窗已按要求去掉,
             // 详见 upVersion 的注释)
             upVersion()
@@ -163,9 +166,8 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
                     viewModel.upAllBookToc()
                 }
             }
-            binding.viewPagerMain.postDelayed(3000) {
-                viewModel.postLoad()
-            }
+            // 首次启动导入默认朗读引擎的 viewModel.postLoad() 已随「默认朗读引擎」一并删除
+            // (2026-09-25, 百度/阿里云/Next引擎 三个默认引擎按用户要求移除)
         }
     }
 
@@ -246,26 +248,9 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         }
     }
 
-    /**
-     * 用户隐私与协议
-     */
-    private suspend fun privacyPolicy(): Boolean = suspendCancellableCoroutine sc@{ block ->
-        if (LocalConfig.privacyPolicyOk) {
-            block.resume(true)
-            return@sc
-        }
-        val privacyPolicy = String(assets.open("privacyPolicy.md").readBytes())
-        alert(getString(R.string.privacy_policy), privacyPolicy) {
-            positiveButton(R.string.agree) {
-                LocalConfig.privacyPolicyOk = true
-                block.resume(true)
-            }
-            negativeButton(R.string.refuse) {
-                finish()
-                block.resume(false)
-            }
-        }
-    }
+    // 原「用户隐私与协议」弹窗的实现(privacyPolicy())已整体删除(2026-09-25)。
+    // 首页不再弹窗, privacyPolicyOk 在 onPostCreate 里直接置位;
+    // 协议全文由「我的」→「关于」→ 隐私政策(privacyPolicy.md)承载, 不受影响。
 
     /**
      * 版本更新日志
