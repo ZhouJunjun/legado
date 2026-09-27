@@ -135,24 +135,6 @@
                     app:autoSizeTextType="uniform" />
 
                 <io.legado.app.ui.widget.text.StrokeTextView
-                    android:id="@+id/tv_change_cover"
-                    android:layout_width="0dp"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:layout_weight="1"
-                    android:ellipsize="end"
-                    android:gravity="center"
-                    android:maxLines="1"
-                    android:minHeight="48dp"
-                    android:paddingStart="4dp"
-                    android:paddingEnd="4dp"
-                    android:text="@string/change_cover_source"
-                    app:autoSizeMaxTextSize="14sp"
-                    app:autoSizeMinTextSize="10sp"
-                    app:autoSizeStepGranularity="1sp"
-                    app:autoSizeTextType="uniform" />
-
-                <io.legado.app.ui.widget.text.StrokeTextView
                     android:id="@+id/tv_refresh_cover"
                     android:layout_width="0dp"
                     android:layout_height="wrap_content"

@@ -5,8 +5,8 @@ import com.script.rhino.RhinoInterruptError
 import com.script.rhino.RhinoScriptEngine
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.exception.NoStackTraceException
-import io.legado.app.help.RegexJsExtensions
 import io.legado.app.help.config.ReplacePreviewConfig
+import io.legado.app.utils.RegexJsExtensions
 import io.legado.app.utils.quoteReplacementJs
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers

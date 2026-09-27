@@ -41,7 +41,6 @@ import io.legado.app.ui.book.read.page.provider.LayoutProgressListener
 import io.legado.app.ui.book.read.page.provider.TextPageFactory
 import io.legado.app.utils.activity
 import io.legado.app.utils.invisible
-import io.legado.app.utils.longToastOnUi
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.throttle
 import java.text.BreakIterator
@@ -314,17 +313,25 @@ class ReadView(context: Context, attrs: AttributeSet) :
         }
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            val insets = this.rootWindowInsets.getInsetsIgnoringVisibility(
-                WindowInsets.Type.mandatorySystemGestures()
+            // 左右: 「强制系统手势区」与「系统手势区」取并集。
+            // 返回手势的左右保留区通常只报在 systemGestures(), 只取 mandatorySystemGestures()
+            // 会因左右 inset 恒为 0 而使整个判定空转(isInSystemGestureEdge 有 inset<=0 短路)。
+            val lrInsets = this.rootWindowInsets.getInsetsIgnoringVisibility(
+                WindowInsets.Type.mandatorySystemGestures() or WindowInsets.Type.systemGestures()
             )
-            val bounds = activity?.windowManager?.currentWindowMetrics?.bounds
+            // 底部单独只取强制手势区, 避免把底部导航手势整片吞掉。
+            val bottomInset = this.rootWindowInsets.getInsetsIgnoringVisibility(
+                WindowInsets.Type.mandatorySystemGestures()
+            ).bottom
+            // startX / event.y 均为本视图坐标, 故尺寸也取视图自身的宽高, 保证同一坐标系
+            // (原实现用窗口 bounds.width()/height(), 横屏/分屏/刘海机型下与视图坐标系不一致)。
             // 起点落在左右系统手势保留区(返回手势)的滑动: 整段手势不参与翻页。
             // 系统确认要接管之前会先向本视图派发 DOWN + 少量 MOVE, 若此时就按横向
             // 位移翻身, 就会出现「从屏幕边缘划出去返回上一级, 正文被顺手翻了一页」。
             // 按「起点」判定并拦到手势结束, 可根治这一竞态。
             if (pressDown) {
                 if (!systemEdgeGesture && isInSystemGestureEdge(
-                        startX, bounds?.width(), insets.left, insets.right
+                        startX, width, lrInsets.left, lrInsets.right
                     )
                 ) {
                     systemEdgeGesture = true
@@ -339,9 +346,8 @@ class ReadView(context: Context, attrs: AttributeSet) :
                     return true
                 }
             }
-            val height = bounds?.height()
-            if (height != null) {
-                if (event.y > height - insets.bottom
+            if (height > 0) {
+                if (event.y > height - bottomInset
                     && event.action != MotionEvent.ACTION_UP
                     && event.action != MotionEvent.ACTION_CANCEL
                 ) {
@@ -846,11 +852,6 @@ class ReadView(context: Context, attrs: AttributeSet) :
             9 -> callBack.changeReplaceRuleState()
             10 -> callBack.openChapterList()
             11 -> callBack.openSearchActivity(null)
-            12 -> ReadBook.syncProgress(
-                { progress -> callBack.sureNewProgress(progress) },
-                { context.longToastOnUi(context.getString(R.string.upload_book_success)) },
-                { context.longToastOnUi(context.getString(R.string.sync_book_progress_success)) })
-
             13 -> {
                 if (BaseReadAloudService.isPlay()) {
                     ReadAloud.pause(context)

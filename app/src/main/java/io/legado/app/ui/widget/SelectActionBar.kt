@@ -186,8 +186,7 @@ class SelectActionBar @JvmOverloads constructor(
 
     companion object {
         private val dangerMenuItemIds = setOf(
-            R.id.menu_del_selection,
-            R.id.menu_del
+            R.id.menu_del_selection
         )
     }
 

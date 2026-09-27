@@ -13,43 +13,30 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.VMBaseFragment
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.data.AppDatabase
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.databinding.DialogBookshelfConfigBinding
-import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.ViewBookshelfHeaderBinding
-import io.legado.app.help.DirectLinkUpload
 import io.legado.app.help.book.readProgress
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.ui.about.AppLogDialog
-import io.legado.app.ui.book.cache.CacheActivity
 import io.legado.app.ui.book.group.GroupManageDialog
 import io.legado.app.ui.book.import.local.ImportBookActivity
-import io.legado.app.ui.book.import.remote.RemoteBookActivity
 import io.legado.app.ui.book.info.BookInfoActivity
 import io.legado.app.ui.book.manage.BookshelfManageActivity
-import io.legado.app.ui.book.search.SearchActivity
-import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.main.MainViewModel
-import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.utils.checkByIndex
 import io.legado.app.utils.flowWithLifecycleAndDatabaseChangeFirst
 import io.legado.app.utils.getCheckedIndex
 import io.legado.app.utils.gone
-import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.postEvent
-import io.legado.app.utils.readText
-import io.legado.app.utils.sendToClip
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.startActivityForBook
-import io.legado.app.utils.toastOnUi
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.catch
@@ -67,43 +54,10 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     val activityViewModel by activityViewModels<MainViewModel>()
     override val viewModel by viewModels<BookshelfViewModel>()
 
-    private val importBookshelf = registerForActivityResult(HandleFileContract()) {
-        kotlin.runCatching {
-            it.uri?.readText(requireContext())?.let { text ->
-                viewModel.importBookshelf(text, groupId)
-            }
-        }.onFailure {
-            toastOnUi(it.localizedMessage ?: "ERROR")
-        }
-    }
-    private val exportResult = registerForActivityResult(HandleFileContract()) {
-        it.uri?.let { uri ->
-            alert(R.string.export_success) {
-                if (uri.toString().isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
-                val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                    editView.hint = getString(R.string.path)
-                    editView.setText(uri.toString())
-                }
-                customView { alertBinding.root }
-                okButton {
-                    requireContext().sendToClip(uri.toString())
-                }
-            }
-        }
-    }
     abstract val groupId: Long
     abstract val books: List<Book>
     abstract var onlyUpdateRead: Boolean
     private var groupsLiveData: LiveData<List<BookGroup>>? = null
-    private val waitDialog by lazy {
-        WaitDialog(requireContext()).apply {
-            setOnCancelListener {
-                viewModel.addBookJob?.cancel()
-            }
-        }
-    }
 
     private var shelfHeaderBinding: ViewBookshelfHeaderBinding? = null
     private var continueBook: Book? = null
@@ -155,7 +109,7 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
                     Lifecycle.State.RESUMED,
                     AppDatabase.BOOK_TABLE_NAME
                 )
-                .catch { AppLog.put("书架头部刷新出错", it) }
+                .catch { Unit }
                 .conflate()
                 .flowOn(Dispatchers.Default)
                 .collect { bookCount ->
@@ -205,31 +159,14 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         super.onCompatOptionsItemSelected(item)
         when (item.itemId) {
-            R.id.menu_remote -> startActivity<RemoteBookActivity>()
-            R.id.menu_search -> startActivity<SearchActivity>()
             R.id.menu_update_toc -> activityViewModel.upToc(books, onlyUpdateRead)
             R.id.menu_bookshelf_layout -> configBookshelf()
             R.id.menu_group_manage -> showDialogFragment<GroupManageDialog>()
             R.id.menu_add_local -> startActivity<ImportBookActivity>()
-            R.id.menu_add_url -> showAddBookByUrlAlert()
             R.id.menu_bookshelf_manage -> startActivity<BookshelfManageActivity> {
                 putExtra("groupId", groupId)
             }
 
-            R.id.menu_download -> startActivity<CacheActivity> {
-                putExtra("groupId", groupId)
-            }
-
-            R.id.menu_export_bookshelf -> viewModel.exportBookshelf(books) { file ->
-                exportResult.launch {
-                    mode = HandleFileContract.EXPORT
-                    fileData =
-                        HandleFileContract.FileData("bookshelf.json", file, "application/json")
-                }
-            }
-
-            R.id.menu_import_bookshelf -> importBookshelfAlert(groupId)
-            R.id.menu_log -> showDialogFragment<AppLogDialog>()
         }
     }
 
@@ -245,34 +182,6 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     abstract fun upGroup(data: List<BookGroup>)
 
     abstract fun upSort()
-
-    override fun observeLiveBus() {
-        viewModel.addBookProgressLiveData.observe(this) { count ->
-            if (count < 0) {
-                waitDialog.dismiss()
-            } else {
-                waitDialog.setText("添加中... ($count)")
-            }
-        }
-    }
-
-    @SuppressLint("InflateParams")
-    fun showAddBookByUrlAlert() {
-        alert(titleResource = R.string.add_book_url) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url"
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    waitDialog.setText("添加中...")
-                    waitDialog.show()
-                    viewModel.addBookByUrl(it, groupId)
-                }
-            }
-            cancelButton()
-        }
-    }
 
     @SuppressLint("InflateParams")
     fun configBookshelf() {
@@ -392,26 +301,5 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
         }
     }
 
-
-    private fun importBookshelfAlert(groupId: Long) {
-        alert(titleResource = R.string.import_bookshelf) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url/json"
-            }
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let {
-                    viewModel.importBookshelf(it, groupId)
-                }
-            }
-            cancelButton()
-            neutralButton(R.string.select_file) {
-                importBookshelf.launch {
-                    mode = HandleFileContract.FILE
-                    allowExtensions = arrayOf("txt", "json")
-                }
-            }
-        }
-    }
 
 }

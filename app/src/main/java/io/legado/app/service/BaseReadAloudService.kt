@@ -27,7 +27,6 @@ import androidx.media.AudioManagerCompat
 import io.legado.app.R
 import io.legado.app.base.BaseService
 import io.legado.app.constant.AppConst
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.IntentAction
@@ -36,11 +35,9 @@ import io.legado.app.constant.PreferKey
 import io.legado.app.constant.Status
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
-import io.legado.app.data.entities.BookSource
 import io.legado.app.help.MediaHelp
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.ContentProcessor
-import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.readSimulating
 import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.config.AppConfig
@@ -48,14 +45,12 @@ import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
-import io.legado.app.model.CacheBook
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.receiver.MediaButtonReceiver
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
-import io.legado.app.utils.LogUtils
 import io.legado.app.utils.activityPendingIntent
 import io.legado.app.utils.broadcastPendingIntent
 import io.legado.app.utils.getPrefBoolean
@@ -64,7 +59,6 @@ import io.legado.app.utils.postEvent
 import io.legado.app.utils.toastOnUi
 import java.text.BreakIterator
 import java.util.concurrent.atomic.AtomicLong
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.Dispatchers.Main
 import kotlinx.coroutines.Job
@@ -356,7 +350,6 @@ abstract class BaseReadAloudService : BaseService(),
      */
     override fun onTaskRemoved(rootIntent: Intent?) {
         if (isPlay()) {
-            LogUtils.d(TAG, "onTaskRemoved 朗读中, 保持后台播放")
             return
         }
         super.onTaskRemoved(rootIntent)
@@ -403,7 +396,6 @@ abstract class BaseReadAloudService : BaseService(),
         notificationManager.cancel(NotificationId.ReadAloudService)
         upMediaSessionPlaybackState(PlaybackStateCompat.STATE_STOPPED)
         mediaSessionCompat.release()
-        ReadBook.uploadProgress()
         unregisterPhoneStateListener(phoneStateListener)
         upNotificationJob?.invokeOnCompletion {
             notificationManager.cancel(NotificationId.ReadAloudService)
@@ -474,10 +466,6 @@ abstract class BaseReadAloudService : BaseService(),
         if (!allowBookSwitch && currentAloudBookUrl != null &&
             targetBookUrl != null && currentAloudBookUrl != targetBookUrl
         ) {
-            LogUtils.d(
-                TAG,
-                "忽略跨书朗读重启: 正在朗读 $currentAloudBookUrl, 请求 $targetBookUrl"
-            )
             return
         }
         val generation = readAloudGeneration.incrementAndGet()
@@ -571,10 +559,6 @@ abstract class BaseReadAloudService : BaseService(),
                 if (prepared.consumedToLast) this@BaseReadAloudService.toLast = false
                 if (play) play() else pageChanged = true
             }
-        }.onError(Main) {
-            if (it !is CancellationException && generation == readAloudGeneration.get()) {
-                AppLog.put("启动朗读出错\n${it.localizedMessage}", it, true)
-            }
         }.onFinally(Main) {
             // 兜底解除准备窗口。协程被取消时不执行(此时必然有更新的会话在跑,
             // 它的 updateSessionPreparing(true) 会重新接管该状态)。
@@ -614,7 +598,6 @@ abstract class BaseReadAloudService : BaseService(),
         upReadAloudNotification()
         upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED)
         postEvent(EventBus.ALOUD_STATE, Status.PAUSE)
-        ReadBook.uploadProgress()
         doDs()
     }
 
@@ -870,26 +853,30 @@ abstract class BaseReadAloudService : BaseService(),
         mediaSessionCompat.isActive = true
     }
 
-    private fun upMediaMetadata() {
-        var nTitle: String = when {
+    /**
+     * 朗读标题: 有状态(暂停/定时/按章停止)时 "<状态>: 书名", 无状态时只用书名。
+     * 下拉通知与系统媒体控件共用同一函数, 保证两处显示一致, 且不会出现前导分隔符/空格。
+     */
+    private fun buildReadAloudTitle(): String {
+        val bookName = aloudBook?.name ?: ReadBook.book?.name ?: ""
+        val prefix = when {
             pause -> getString(R.string.read_aloud_pause)
             chapterToStop > 0 -> getString(R.string.read_aloud_timer_chapter, chapterToStop)
-            timeMinute > 0 -> getString(
-                R.string.read_aloud_timer,
-                timeMinute
-            )
-
-            else -> ""/*getString(R.string.read_aloud_t)*/
+            timeMinute > 0 -> getString(R.string.read_aloud_timer, timeMinute)
+            else -> ""
         }
-        val titleSeparator = if (nTitle == "") "" else ":"
-        nTitle += "$titleSeparator ${aloudBook?.name ?: ReadBook.book?.name}"
+        return if (prefix.isEmpty()) bookName else "$prefix: $bookName"
+    }
+
+    private fun upMediaMetadata() {
+        val nTitle = buildReadAloudTitle()
         val metadata = MediaMetadataCompat.Builder()
             .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, cover)
             .putText(MediaMetadataCompat.METADATA_KEY_TITLE,
-                textChapter?.title ?: ReadBook.curTextChapter?.title ?: "null")
+                textChapter?.title ?: ReadBook.curTextChapter?.title.orEmpty())
             .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, nTitle)
             .putText(MediaMetadataCompat.METADATA_KEY_ALBUM,
-                aloudBook?.author ?: ReadBook.book?.author ?: "null"
+                aloudBook?.author ?: ReadBook.book?.author.orEmpty()
             )
 //            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, nowSpeak.toLong())
             .build()
@@ -909,26 +896,21 @@ abstract class BaseReadAloudService : BaseService(),
      */
     override fun onAudioFocusChange(focusChange: Int) {
         if (AppConfig.ignoreAudioFocus) {
-            AppLog.put("忽略音频焦点处理(TTS)")
             return
         }
         when (focusChange) {
             AudioManager.AUDIOFOCUS_GAIN -> {
                 if (needResumeOnAudioFocusGain) {
-                    AppLog.put("音频焦点获得,继续朗读")
                     resumeReadAloud()
                 } else {
-                    AppLog.put("音频焦点获得")
                 }
             }
 
             AudioManager.AUDIOFOCUS_LOSS -> {
-                AppLog.put("音频焦点丢失,暂停朗读")
                 pauseReadAloud()
             }
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
-                AppLog.put("音频焦点暂时丢失并会很快再次获得,暂停朗读")
                 if (!pause) {
                     needResumeOnAudioFocusGain = true
                     pauseReadAloud(false)
@@ -937,7 +919,6 @@ abstract class BaseReadAloudService : BaseService(),
 
             AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
                 // 短暂丢失焦点，这种情况是被其他应用申请了短暂的焦点希望其他声音能压低音量（或者关闭声音）凸显这个声音（比如短信提示音），
-                AppLog.put("音频焦点短暂丢失,不做处理")
             }
         }
     }
@@ -949,23 +930,12 @@ abstract class BaseReadAloudService : BaseService(),
                 val notification = createNotification()
                 notificationManager.notify(NotificationId.ReadAloudService, notification.build())
             } catch (e: Exception) {
-                AppLog.put("创建朗读通知出错,${e.localizedMessage}", e, true)
             }
         }
     }
 
     private fun createNotification(): NotificationCompat.Builder {
-        var nTitle: String = when {
-            pause -> getString(R.string.read_aloud_pause)
-            chapterToStop > 0 -> getString(R.string.read_aloud_timer_chapter, chapterToStop)
-            timeMinute > 0 -> getString(
-                R.string.read_aloud_timer,
-                timeMinute
-            )
-
-            else -> getString(R.string.read_aloud_t)
-        }
-        nTitle += ": ${aloudBook?.name ?: ReadBook.book?.name}"
+        val nTitle = buildReadAloudTitle()
         var nSubtitle = textChapter?.chapter?.title ?: ReadBook.curTextChapter?.title
         if (nSubtitle.isNullOrBlank())
             nSubtitle = getString(R.string.read_aloud_s)
@@ -1048,7 +1018,6 @@ abstract class BaseReadAloudService : BaseService(),
                 val notification = createNotification()
                 startForeground(NotificationId.ReadAloudService, notification.build())
             } catch (e: Exception) {
-                AppLog.put("创建朗读通知出错,${e.localizedMessage}", e, true)
                 //创建通知出错不结束服务就会崩溃,服务必须绑定通知
                 stopSelf()
             }
@@ -1080,7 +1049,6 @@ abstract class BaseReadAloudService : BaseService(),
                 upReadAloudNotification()
             }
         }
-        AppLog.putDebug("${textChapter?.chapter?.title} 朗读结束跳转下一章并朗读")
         resumeReadAloudInternal()
         val hasNextChapter = speechChapterIndex() < speechTotalChapterSize() - 1
         // 只在「朗读的书就是阅读页当前书」时才驱动可见页同步换章;
@@ -1129,11 +1097,7 @@ abstract class BaseReadAloudService : BaseService(),
     private suspend fun loadSpeechTextChapterAwait(book: Book, chapterIndex: Int): TextChapter? {
         val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, chapterIndex)
             ?: return null
-        val content = BookHelp.getContent(book, chapter)
-            ?: speechBookSource(book)?.let { source ->
-                CacheBook.getOrCreate(source, book).downloadAwait(chapter)
-            }
-            ?: return null
+        val content = BookHelp.getContent(book, chapter) ?: return null
         val contentProcessor = ContentProcessor.get(book)
         val displayTitle = chapter.getDisplayTitle(
             contentProcessor.getTitleReplaceRules(),
@@ -1155,14 +1119,6 @@ abstract class BaseReadAloudService : BaseService(),
         return textChapter
     }
 
-    /** 取书源: 与阅读页同书时优先复用已加载的, 否则从 DB 按 origin 查。 */
-    private fun speechBookSource(book: Book): BookSource? {
-        ReadBook.bookSource?.let {
-            if (book.bookUrl == ReadBook.book?.bookUrl && it.bookSourceUrl == book.origin) return it
-        }
-        return appDb.bookSourceDao.getBookSource(book.origin)
-    }
-
     /** 书籍的章节总数(含模拟章节), 不依赖 ReadBook 单例。 */
     private fun Book.simulatedChapterSizeSnapshot(): Int {
         return if (readSimulating()) simulatedTotalChapterNum()
@@ -1176,10 +1132,7 @@ abstract class BaseReadAloudService : BaseService(),
             val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, chapterIndex)
                 ?: return@execute false
             val content = BookHelp.getContent(book, chapter)
-                ?: speechBookSource(book)?.let { source ->
-                    CacheBook.getOrCreate(source, book).downloadAwait(chapter)
-                }
-                ?: "加载正文失败\n${if (book.isLocal) "无内容" else "没有书源"}"
+                ?: "加载正文失败\n无内容"
             val contentProcessor = ContentProcessor.get(book)
             val displayTitle = chapter.getDisplayTitle(
                 contentProcessor.getTitleReplaceRules(),
@@ -1217,7 +1170,6 @@ abstract class BaseReadAloudService : BaseService(),
                 stopSelf()
             }
         }.onError(Main) {
-            AppLog.put("加载朗读下一章出错\n${it.localizedMessage}", it, true)
             stopSelf()
         }
     }
@@ -1261,7 +1213,6 @@ abstract class BaseReadAloudService : BaseService(),
                     try {
                         block.invoke()
                     } catch (_: SecurityException) {
-                        LogUtils.d(TAG, "Grant read phone state permission fail.")
                     }
                 }
                 .request()
@@ -1275,25 +1226,20 @@ abstract class BaseReadAloudService : BaseService(),
             when (state) {
                 TelephonyManager.CALL_STATE_IDLE -> {
                     if (needResumeOnCallStateIdle) {
-                        AppLog.put("来电结束,继续朗读")
                         resumeReadAloud()
                     } else {
-                        AppLog.put("来电结束")
                     }
                 }
 
                 TelephonyManager.CALL_STATE_RINGING -> {
                     if (!pause) {
-                        AppLog.put("来电响铃,暂停朗读")
                         needResumeOnCallStateIdle = true
                         pauseReadAloud()
                     } else {
-                        AppLog.put("来电响铃")
                     }
                 }
 
                 TelephonyManager.CALL_STATE_OFFHOOK -> {
-                    AppLog.put("来电接听,不做处理")
                 }
             }
         }

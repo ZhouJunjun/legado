@@ -6,14 +6,10 @@ import androidx.room.Entity
 import androidx.room.ForeignKey
 import androidx.room.Ignore
 import androidx.room.Index
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.appDb
 import io.legado.app.exception.RegexTimeoutException
-import io.legado.app.help.RuleBigDataHelp
 import io.legado.app.help.config.AppConfig
-import io.legado.app.model.analyzeRule.AnalyzeUrl
-import io.legado.app.model.analyzeRule.RuleDataInterface
 import io.legado.app.utils.ChineseUtils
 import io.legado.app.utils.GSON
 import io.legado.app.utils.MD5Utils
@@ -25,6 +21,7 @@ import kotlinx.coroutines.CancellationException
 import kotlinx.parcelize.IgnoredOnParcel
 import kotlinx.parcelize.Parcelize
 import splitties.init.appCtx
+import io.legado.app.utils.paramPattern
 
 @Parcelize
 @Entity(
@@ -105,14 +102,6 @@ data class BookChapter(
         return true
     }
 
-    override fun putBigVariable(key: String, value: String?) {
-        RuleBigDataHelp.putChapterVariable(bookUrl, url, key, value)
-    }
-
-    override fun getBigVariable(key: String): String? {
-        return RuleBigDataHelp.getChapterVariable(bookUrl, url, key)
-    }
-
     override fun hashCode() = url.hashCode()
 
     override fun equals(other: Any?): Boolean {
@@ -164,7 +153,6 @@ data class BookChapter(
                     } catch (_: CancellationException) {
                         return@run
                     } catch (e: Exception) {
-                        AppLog.put("${item.name}替换出错\n替换内容\n${displayTitle}", e)
                         appCtx.toastOnUi("${item.name}替换出错")
                     }
                 }
@@ -176,7 +164,7 @@ data class BookChapter(
     fun getAbsoluteURL(): String {
         //二级目录解析的卷链接为空 返回目录页的链接
         if (url.startsWith(title) && isVolume) return baseUrl
-        val urlMatcher = AnalyzeUrl.paramPattern.matcher(url)
+        val urlMatcher = paramPattern.matcher(url)
         val urlBefore = if (urlMatcher.find()) url.substring(0, urlMatcher.start()) else url
         val urlAbsoluteBefore = NetworkUtils.getAbsoluteURL(baseUrl, urlBefore)
         return if (urlBefore.length == url.length) {

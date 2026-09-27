@@ -3,7 +3,6 @@ package io.legado.app.model.localBook
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.ParcelFileDescriptor
-import io.legado.app.constant.AppLog
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookHelp
@@ -90,7 +89,6 @@ class MobiFile(var book: Book) : AutoCloseable {
             }
         }.onFailure {
             close()
-            AppLog.put("读取Mobi文件失败\n${it.localizedMessage}", it)
         }.getOrThrow()
     }
 
@@ -297,7 +295,6 @@ class MobiFile(var book: Book) : AutoCloseable {
                 }
             }
         } catch (e: Exception) {
-            AppLog.put("加载书籍封面失败\n${e.localizedMessage}", e)
         }
     }
 

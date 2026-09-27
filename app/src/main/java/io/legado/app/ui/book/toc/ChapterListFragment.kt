@@ -11,12 +11,10 @@ import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.VMBaseFragment
 import io.legado.app.constant.EventBus
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.databinding.FragmentChapterListBinding
-import io.legado.app.help.audio.AudioCacheManager
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isAudio
 import io.legado.app.help.book.isEpub
@@ -24,11 +22,8 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.isPdf
 import io.legado.app.help.book.isVideo
 import io.legado.app.help.book.simulatedTotalChapterNum
-import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
-import io.legado.app.model.AudioCacheKey
-import io.legado.app.model.AudioCacheStateChanged
 import io.legado.app.model.localBook.PdfFile
 import io.legado.app.model.localBook.EpubFile
 import io.legado.app.model.localBook.EpubTocNode
@@ -73,8 +68,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
     private var currentSearchKey: String? = null
     private var chapterListJob: Job? = null
     private var cacheFileJob: Job? = null
-    private var audioCacheStateReady = false
-    private val pendingAudioCacheChanges = linkedMapOf<AudioCacheKey, Boolean>()
     private var pendingScrollItemKey: String? = null
     private var pendingChapterScroll: Int? = null
 
@@ -146,9 +139,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
         binding.tvCurrentChapterInfo.text =
             "${book.durChapterTitle}(${book.durChapterIndex + 1}/${book.simulatedTotalChapterNum()})"
         adapter.cacheFileNames.clear()
-        adapter.audioCacheKeys.clear()
-        audioCacheStateReady = !book.isAudio
-        pendingAudioCacheChanges.clear()
         tocListState.clear()
         chapterList = emptyList()
         adapter.clearDisplayTitle()
@@ -164,7 +154,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    AppLog.put("读取 EPUB 目录失败", e)
                     null
                 }
                 epubTocLoading = false
@@ -175,7 +164,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                 } catch (e: CancellationException) {
                     throw e
                 } catch (e: Exception) {
-                    AppLog.put("读取 PDF 目录失败", e)
                     emptyList()
                 }
                 pdfOutlineLoading = false
@@ -211,34 +199,7 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
         }
         cacheFileJob = viewLifecycleOwner.lifecycleScope.launch {
             if (book.isPdf) return@launch
-            if (book.isAudio) {
-                var treeUri = AppConfig.audioCacheTreeUri
-                var cachedKeys: Set<AudioCacheKey>
-                while (true) {
-                    cachedKeys = withContext(IO) {
-                        runCatching {
-                            AudioCacheManager.listCachedChapterKeys(
-                                treeUri,
-                                book.bookUrl,
-                            )
-                        }.getOrDefault(emptySet())
-                    }
-                    if (viewModel.bookData.value?.bookUrl != book.bookUrl) return@launch
-                    val currentTreeUri = AppConfig.audioCacheTreeUri
-                    if (treeUri == currentTreeUri) break
-                    pendingAudioCacheChanges.clear()
-                    treeUri = currentTreeUri
-                }
-                adapter.audioCacheKeys.addAll(cachedKeys)
-                pendingAudioCacheChanges.forEach { (key, cached) ->
-                    if (cached) adapter.audioCacheKeys.add(key)
-                    else adapter.audioCacheKeys.remove(key)
-                }
-                pendingAudioCacheChanges.clear()
-                audioCacheStateReady = true
-            } else {
-                adapter.cacheFileNames.addAll(withContext(IO) { BookHelp.getChapterFiles(book) })
-            }
+            adapter.cacheFileNames.addAll(withContext(IO) { BookHelp.getChapterFiles(book) })
             adapter.notifyItemRangeChanged(0, adapter.itemCount, true)
         }
     }
@@ -250,19 +211,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
                     adapter.cacheFileNames.add(chapter.getFileName())
                     notifyVisibleChapterChanged(chapter.index)
                 }
-            }
-        }
-        observeEvent<AudioCacheStateChanged>(EventBus.AUDIO_CACHE_CHANGED) { event ->
-            val currentBook = viewModel.bookData.value ?: return@observeEvent
-            if (!currentBook.isAudio || currentBook.bookUrl != event.bookUrl) return@observeEvent
-            if (event.treeUri != AppConfig.audioCacheTreeUri) return@observeEvent
-            if (!audioCacheStateReady) {
-                pendingAudioCacheChanges[event.key] = event.cached
-            } else {
-                if (event.cached) adapter.audioCacheKeys.add(event.key)
-                else adapter.audioCacheKeys.remove(event.key)
-                val position = adapter.findVisiblePositionByAudioCacheKey(event.key)
-                if (position >= 0) adapter.notifyItemChanged(position, true)
             }
         }
     }
@@ -288,6 +236,8 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
             pendingScrollItemKey = null
             pendingChapterScroll = null
             val currentBook = book ?: return@launch
+            // 历史版本把错误字数固化在 chapters 表里，光重新分段修不好，这里自检一次。
+            viewModel.repairLocalChapterWordCount(currentBook)
             val reverseOrder = currentBook.getReverseToc()
             if (normalizedSearchKey == null) {
                 if (resetCollapse || !tocListState.hasFullChapters()) {
@@ -494,12 +444,6 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
 
     override val isLocalBook: Boolean
         get() = viewModel.bookData.value?.isLocal == true
-
-    override val isAudioBook: Boolean
-        get() = viewModel.bookData.value?.isAudio == true
-
-    override val isAudioCacheStateReady: Boolean
-        get() = audioCacheStateReady
 
     override fun durChapterIndex(): Int {
         return durChapterIndex

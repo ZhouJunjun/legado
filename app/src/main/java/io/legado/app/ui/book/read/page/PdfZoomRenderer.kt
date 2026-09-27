@@ -7,7 +7,6 @@ import android.graphics.Paint
 import android.graphics.Rect
 import android.graphics.RectF
 import androidx.core.graphics.createBitmap
-import io.legado.app.constant.AppLog
 import io.legado.app.data.entities.Book
 import io.legado.app.model.localBook.PdfFile
 import io.legado.app.ui.book.read.page.entities.TextPage
@@ -84,7 +83,6 @@ internal class PdfZoomRenderer(private val view: ContentTextView) {
                 } } catch (error: CancellationException) {
                     throw error
                 } catch (error: Exception) {
-                    AppLog.put("PDF 区域渲染失败", error)
                     continue
                 }
                 if (requested == work.request) {

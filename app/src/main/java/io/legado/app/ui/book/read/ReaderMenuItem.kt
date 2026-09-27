@@ -19,9 +19,6 @@ enum class ReaderMenuItem(
     HighlightRule("highlightRule", intArrayOf(R.id.menu_highlight_rule), R.string.highlight_rule),
     EditContent("editContent", intArrayOf(R.id.menu_edit_content), R.string.edit_content),
     PageAnim("pageAnim", intArrayOf(R.id.menu_page_anim), R.string.book_page_anim),
-    GetProgress("getProgress", intArrayOf(R.id.menu_get_progress), R.string.get_book_progress),
-    CoverProgress("coverProgress", intArrayOf(R.id.menu_cover_progress), R.string.cover_book_progress),
-    ReverseContent("reverseContent", intArrayOf(R.id.menu_reverse_content), R.string.reverse_content),
     SimulatedReading(
         "simulatedReading",
         intArrayOf(R.id.menu_simulated_reading),
@@ -47,7 +44,6 @@ enum class ReaderMenuItem(
         intArrayOf(R.id.menu_effective_replaces),
         R.string.effective_replaces
     ),
-    Log("log", intArrayOf(R.id.menu_log), R.string.log),
     Help("help", intArrayOf(R.id.menu_help), R.string.help);
 
     fun findVisible(menu: Menu): MenuItem? {

@@ -6,21 +6,6 @@
 
 
     <io.legado.app.lib.prefs.Preference
-        android:icon="@drawable/ic_auto_page"
-        android:key="autoTaskManage"
-        android:summary="@string/auto_task_manage_desc"
-        android:title="@string/auto_task_manage"
-        app:iconSpaceReserved="false" />
-
-    <io.legado.app.lib.prefs.SwitchPreference
-        android:defaultValue="false"
-        android:icon="@drawable/ic_auto_page"
-        android:key="autoTaskService"
-        android:summary="@string/auto_task_service_desc"
-        android:title="@string/auto_task_service"
-        app:iconSpaceReserved="false" />
-
-    <io.legado.app.lib.prefs.Preference
         android:icon="@drawable/ic_cfg_source"
         android:key="txtTocRuleManage"
         android:summary="@string/config_txt_toc_rule"
@@ -34,13 +19,6 @@
         android:title="@string/replace_purify"
         app:iconSpaceReserved="false" />
 
-    <io.legado.app.lib.prefs.Preference
-        android:icon="@drawable/ic_translate"
-        android:key="dictRuleManage"
-        android:summary="@string/config_dict_rule"
-        android:title="@string/dict_rule"
-        app:iconSpaceReserved="false" />
-
     <io.legado.app.lib.prefs.NameListPreference
         android:defaultValue="0"
         android:entries="@array/theme_mode"
@@ -51,24 +29,6 @@
         android:title="@string/theme_mode"
         app:iconSpaceReserved="false" />
 
-    <io.legado.app.lib.prefs.SwitchPreference
-        android:defaultValue="false"
-        android:icon="@drawable/ic_cfg_web"
-        android:key="webService"
-        android:summary="@string/web_service_desc"
-        android:title="@string/web_service"
-        app:allowDividerBelow="false"
-        app:iconSpaceReserved="false" />
-
-    <io.legado.app.lib.prefs.SwitchPreference
-        android:defaultValue="false"
-        android:icon="@drawable/ic_cfg_web"
-        android:key="mcpService"
-        android:summary="@string/mcp_service_desc"
-        android:title="@string/mcp_service"
-        app:allowDividerBelow="false"
-        app:iconSpaceReserved="false" />
-
     <io.legado.app.lib.prefs.PreferenceCategory
         android:title="@string/setting"
         app:allowDividerAbove="false"
@@ -77,8 +37,8 @@
 
         <io.legado.app.lib.prefs.Preference
             android:icon="@drawable/ic_cfg_backup"
-            android:key="web_dav_setting"
-            android:summary="@string/web_dav_set_import_old"
+            android:key="backupRestore"
+            android:summary="@string/backup_destination_summary"
             android:title="@string/backup_restore"
             app:iconSpaceReserved="false" />
 
@@ -132,18 +92,6 @@
             android:icon="@drawable/ic_cfg_about"
             android:key="about"
             android:title="@string/about"
-            app:iconSpaceReserved="false" />
-
-        <io.legado.app.lib.prefs.Preference
-            android:icon="@drawable/ic_download"
-            android:key="check_update"
-            android:title="@string/check_update"
-            app:iconSpaceReserved="false" />
-
-        <io.legado.app.lib.prefs.Preference
-            android:icon="@drawable/ic_download"
-            android:key="check_beta_update"
-            android:title="@string/check_beta_update"
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference

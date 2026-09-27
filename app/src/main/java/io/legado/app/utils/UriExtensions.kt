@@ -9,14 +9,9 @@ import androidx.appcompat.app.AppCompatActivity
 import androidx.documentfile.provider.DocumentFile
 import androidx.fragment.app.Fragment
 import io.legado.app.R
-import io.legado.app.constant.AppLog
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
-import okhttp3.MediaType
-import okhttp3.RequestBody
-import okio.BufferedSink
-import okio.source
 import splitties.init.appCtx
 import java.io.File
 import java.io.FileInputStream
@@ -61,7 +56,6 @@ fun AppCompatActivity.readUri(
                 .request()
         }
     } catch (e: Exception) {
-        AppLog.put("读取Uri出错\n$uri\n$e", e, true)
         if (e is SecurityException) {
             throw e
         }
@@ -97,7 +91,6 @@ fun Fragment.readUri(uri: Uri?, success: (fileDoc: FileDoc, inputStream: InputSt
                 .request()
         }
     } catch (e: Exception) {
-        AppLog.put("读取Uri出错\n$uri\n$e", e, true)
     }
 }
 
@@ -187,7 +180,6 @@ fun Uri.inputStream(context: Context): Result<InputStream> {
                 }
             }
         } catch (e: Exception) {
-            AppLog.put("读取inputStream失败：${e.localizedMessage}", e)
             throw e
         }
     }
@@ -212,7 +204,6 @@ fun Uri.outputStream(context: Context): Result<OutputStream> {
                 }
             }
         } catch (e: Exception) {
-            AppLog.put("读取inputStream失败：${e.localizedMessage}", e)
             throw e
         }
     }
@@ -242,7 +233,6 @@ fun Uri.toReadPfd(context: Context): Result<ParcelFileDescriptor> {
 
 
         } catch (e: Exception) {
-            AppLog.put("读取inputStream失败：${e.localizedMessage}", e)
             throw e
         }
     }
@@ -272,29 +262,7 @@ fun Uri.toWritePfd(context: Context): Result<ParcelFileDescriptor> {
 
 
         } catch (e: Exception) {
-            AppLog.put("读取inputStream失败：${e.localizedMessage}", e)
             throw e
-        }
-    }
-}
-
-fun Uri.toRequestBody(contentType: MediaType? = null): RequestBody {
-    val uri = this
-    return object : RequestBody() {
-        override fun contentType() = contentType
-
-        override fun contentLength(): Long {
-            return uri.toReadPfd(appCtx)
-                .getOrNull()
-                ?.use { it.statSize }
-                ?.takeIf { it >= 0L }
-                ?: -1L
-        }
-
-        override fun writeTo(sink: BufferedSink) {
-            uri.inputStream(appCtx).getOrThrow().source().use { source ->
-                sink.writeAll(source)
-            }
         }
     }
 }

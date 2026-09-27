@@ -1,6 +1,5 @@
 package io.legado.app.ui.book.toc.rule
 
-import android.annotation.SuppressLint
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
@@ -11,15 +10,11 @@ import androidx.lifecycle.lifecycleScope
 import androidx.recyclerview.widget.ItemTouchHelper
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.databinding.ActivityTxtTocRuleBinding
 import io.legado.app.databinding.DialogEditTextBinding
-import io.legado.app.help.DirectLinkUpload
-import io.legado.app.help.SourceSharePassphrase
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.dialogs.sourceSharePassphraseButton
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.ui.association.ImportTxtTocRuleDialog
@@ -29,17 +24,14 @@ import io.legado.app.ui.widget.SelectActionBar
 import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
-import io.legado.app.utils.ACache
 import io.legado.app.utils.GSON
 import io.legado.app.utils.applyTint
-import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.launch
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.share
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.showHelp
-import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -61,7 +53,6 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
     private val adapter: TxtTocRuleAdapter by lazy {
         TxtTocRuleAdapter(this, this)
     }
-    private val importTocRuleKey = "tocRuleUrl"
     private val searchView: SearchView by lazy { binding.root.findViewById(R.id.search_view) }
     private lateinit var itemTouchCallback: ItemTouchCallback
     private var allRules: List<TxtTocRule> = emptyList()
@@ -79,14 +70,6 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
         it.uri?.let { uri ->
             val url = uri.toString()
             alert(R.string.export_success) {
-                if (url.isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                    sourceSharePassphraseButton(
-                        layoutInflater,
-                        url,
-                        SourceSharePassphrase.Type.TOC_RULE,
-                    )
-                }
                 val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
                     editView.hint = getString(R.string.path)
                     editView.setText(url)
@@ -149,7 +132,6 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
     private fun initData() {
         lifecycleScope.launch {
             appDb.txtTocRuleDao.observeAll().catch {
-                AppLog.put("TXT目录规则界面获取数据失败\n${it.localizedMessage}", it)
             }.flowOn(IO).conflate().collect { tocRules ->
                 allRules = tocRules
                 updateAdapter()
@@ -185,7 +167,6 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
                 allowExtensions = arrayOf("txt", "json")
             }
 
-            R.id.menu_import_onLine -> showImportDialog()
             R.id.menu_import_qr -> qrCodeResult.launch()
             R.id.menu_import_default -> viewModel.importDefault()
             R.id.menu_help -> showHelp("txtTocRuleHelp")
@@ -253,42 +234,6 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
         alert(titleResource = R.string.draw, messageResource = R.string.sure_del) {
             yesButton { viewModel.del(*adapter.selection.toTypedArray()) }
             noButton()
-        }
-    }
-
-    @SuppressLint("InflateParams")
-    private fun showImportDialog() {
-        val aCache = ACache.get(cacheDir = false)
-        val defaultUrl = "https://gitee.com/fisher52/YueDuJson/raw/master/myTxtChapterRule.json"
-        val cacheUrls: MutableList<String> = aCache
-            .getAsString(importTocRuleKey)
-            ?.splitNotBlank(",")
-            ?.toMutableList()
-            ?: mutableListOf()
-        if (!cacheUrls.contains(defaultUrl)) {
-            cacheUrls.add(0, defaultUrl)
-        }
-        alert(titleResource = R.string.import_on_line) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = "url"
-                editView.setFilterValues(cacheUrls)
-                editView.delCallBack = {
-                    cacheUrls.remove(it)
-                    aCache.put(importTocRuleKey, cacheUrls.joinToString(","))
-                }
-            }
-            customView { alertBinding.root }
-            okButton {
-                val text = alertBinding.editView.text?.toString()
-                text?.let {
-                    if (it.isAbsUrl() && !cacheUrls.contains(it)) {
-                        cacheUrls.add(0, it)
-                        aCache.put(importTocRuleKey, cacheUrls.joinToString(","))
-                    }
-                    showDialogFragment(ImportTxtTocRuleDialog(it))
-                }
-            }
-            cancelButton()
         }
     }
 

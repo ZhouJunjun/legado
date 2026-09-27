@@ -3,7 +3,6 @@ package io.legado.app.ui.book.bookmark
 import android.app.Application
 import android.net.Uri
 import io.legado.app.base.BaseViewModel
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.GSON
@@ -30,7 +29,6 @@ class AllBookmarkViewModel(application: Application) : BaseViewModel(application
                 GSON.writeToOutputStream(it, appDb.bookmarkDao.all)
             }
         }.onError {
-            AppLog.put("导出失败\n${it.localizedMessage}", it, true)
         }.onSuccess {
             context.toastOnUi("导出成功")
         }
@@ -58,7 +56,6 @@ class AllBookmarkViewModel(application: Application) : BaseViewModel(application
                 }
             }
         }.onError {
-            AppLog.put("导出失败\n${it.localizedMessage}", it, true)
         }.onSuccess {
             context.toastOnUi("导出成功")
         }

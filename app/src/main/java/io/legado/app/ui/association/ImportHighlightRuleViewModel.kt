@@ -7,7 +7,6 @@ import com.google.gson.JsonObject
 import com.google.gson.JsonElement
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.HighlightRule
 import io.legado.app.data.entities.HighlightRuleFile
@@ -162,7 +161,6 @@ class ImportHighlightRuleViewModel(app: Application) : BaseViewModel(app) {
         }.onError {
             val message = context.getString(R.string.wrong_format)
             errorLiveData.postValue(message)
-            AppLog.put("ImportHighlightRuleError:${it.localizedMessage}", it)
         }.onSuccess {
             successLiveData.postValue(items.size)
         }

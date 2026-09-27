@@ -5,7 +5,6 @@ import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import io.legado.app.R
 import io.legado.app.constant.AppConst
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.MediaHelp
@@ -15,7 +14,6 @@ import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
 import io.legado.app.utils.GSON
-import io.legado.app.utils.LogUtils
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.servicePendingIntent
@@ -36,6 +34,9 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
     private var ttsInitFinish = false
     private val ttsUtteranceListener = TTSUtteranceListener()
     private var speakJob: Coroutine<*>? = null
+    private var playRetryJob: Coroutine<*>? = null
+    /** 「朗读列表为空」已重试过的 书+章节 键, 避免章节确实无内容时反复重试。 */
+    private var emptyContentRetriedKey: String? = null
     private val playbackSessionId = AtomicLong()
     private val callbackHandler by lazy { buildMainHandler() }
     private val TAG = "TTSReadAloudService"
@@ -45,7 +46,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         kotlin.runCatching {
             initTts()
         }.onFailure {
-            AppLog.put("${getString(R.string.tts_init_failed)}\n$it", it, true)
         }
     }
 
@@ -58,7 +58,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
     private fun initTts() {
         ttsInitFinish = false
         val engine = GSON.fromJsonObject<SelectItem<String>>(ReadAloud.ttsEngine).getOrNull()?.value
-        LogUtils.d(TAG, "initTts engine:$engine")
         textToSpeech = if (engine.isNullOrBlank()) {
             TextToSpeech(this, this)
         } else {
@@ -96,9 +95,20 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         if (!ttsInitFinish) return
         if (!requestFocus()) return
         if (contentList.isEmpty()) {
-            AppLog.putDebug("朗读列表为空")
-            // 隐式重启: 不得把正在朗读的会话切到当前打开的书
-            ReadBook.readAloud(allowBookSwitch = false)
+            // 隐式重启: 不得把正在朗读的会话切到当前打开的书。
+            // 但本方法是在会话"准备中"窗口内被调用的(BaseReadAloudService 的准备协程末尾
+            // 调用 play()), 此刻 isSessionPreparing() 仍为 true, 直接调用会被
+            // ReadBook.readAloud() 的准备窗口守卫丢弃 —— 现象是点了朗读毫无反应。
+            // 故延后到准备窗口关闭后再重试; 同一书+章节只重试一次, 避免空内容时无限循环。
+            val retryKey = "${ReadBook.book?.bookUrl}#${ReadBook.durChapterIndex}"
+            if (emptyContentRetriedKey != retryKey) {
+                emptyContentRetriedKey = retryKey
+                playRetryJob?.cancel()
+                playRetryJob = execute {
+                    delay(500)
+                    ReadBook.readAloud(allowBookSwitch = false)
+                }
+            }
             return
         }
         super.play()
@@ -111,8 +121,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         val pageStarts = speechChapter.pages.map { it.chapterPosition }
         val queuedContent = contentList
         speakJob = execute {
-            LogUtils.d(TAG, "朗读列表大小 ${contentList.size}")
-            LogUtils.d(TAG, "朗读页数 ${textChapter?.pageSize}")
             if (textToSpeech == null) throw NoStackTraceException("tts is null")
             val contentList = queuedContent
             var isAddedText = false
@@ -140,18 +148,15 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
                     ) ?: return@execute
                     if (result == TextToSpeech.ERROR) {
                         if (!isAddedText) {
-                            AppLog.put("tts出错 尝试重新初始化")
                             clearTTS()
                             initTts()
                             return@execute
                         }
-                        AppLog.put("tts朗读出错:$chunk")
                     }
                     isAddedText = true
                     chunkStart = chunkEnd
                 }
             }
-            LogUtils.d(TAG, "朗读内容添加完成")
             if (!isAddedText && isCurrentPlayback(sessionId)) {
                 playStop()
                 val stoppedSessionId = playbackSessionId.get()
@@ -159,7 +164,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
                 if (stoppedSessionId == playbackSessionId.get()) nextChapter(auto = true)
             }
         }.onError {
-            AppLog.put("tts朗读出错\n${it.localizedMessage}", it, true)
         }
     }
 
@@ -209,17 +213,10 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
     private inner class TTSUtteranceListener : UtteranceProgressListener() {
 
         private val TAG = "TTSUtteranceListener"
-        private var startCallbackLogged = false
-        private var rangeCallbackLogged = false
 
         override fun onStart(s: String) {
             dispatchCurrentCallback(s) {
                 val msg = "onStart nowSpeak:$nowSpeak pageIndex:$pageIndex utteranceId:$s"
-                LogUtils.d(TAG, msg)
-                if (AppConfig.recordLog && !startCallbackLogged) {
-                    startCallbackLogged = true
-                    AppLog.putDebug("$TAG $msg")
-                }
                 if (textChapter != null) {
                     if (contentList[nowSpeak].matches(AppPattern.notReadAloudRegex)) {
                         nextParagraph()
@@ -233,7 +230,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
 
         override fun onDone(s: String) {
             dispatchCurrentCallback(s) {
-                LogUtils.d(TAG, "onDone utteranceId:$s")
                 if (s.substringAfterLast(':') != "false") nextParagraph()
             }
         }
@@ -243,11 +239,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
             dispatchCurrentCallback(utteranceId) {
                 val msg =
                     "onRangeStart nowSpeak:$nowSpeak pageIndex:$pageIndex utteranceId:$utteranceId start:$start end:$end frame:$frame"
-                LogUtils.d(TAG, msg)
-                if (AppConfig.recordLog && !rangeCallbackLogged) {
-                    rangeCallbackLogged = true
-                    AppLog.putDebug("$TAG $msg")
-                }
                 val position = utterancePosition(utteranceId) + start
                 moveToSpeechPage(position)
                 upTtsProgress(position)
@@ -256,10 +247,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
 
         override fun onError(utteranceId: String?, errorCode: Int) {
             dispatchCurrentCallback(utteranceId) {
-                LogUtils.d(
-                    TAG,
-                    "onError nowSpeak:$nowSpeak pageIndex:$pageIndex utteranceId:$utteranceId errorCode:$errorCode"
-                )
                 if (utteranceId?.substringAfterLast(':') != "false") nextParagraph()
             }
         }
@@ -280,7 +267,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         @Deprecated("Deprecated in Java")
         override fun onError(s: String) {
             dispatchCurrentCallback(s) {
-                LogUtils.d(TAG, "onError nowSpeak:$nowSpeak pageIndex:$pageIndex s:$s")
                 if (s.substringAfterLast(':') != "false") nextParagraph()
             }
         }
@@ -318,7 +304,6 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
             return tts.runCatching {
                 speak(text, queueMode, null, utteranceId(sessionId, index, position, last))
             }.getOrElse {
-                AppLog.put("tts出错\n${it.localizedMessage}", it, true)
                 TextToSpeech.ERROR
             }
         }

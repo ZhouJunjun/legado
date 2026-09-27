@@ -4,7 +4,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.ParcelFileDescriptor
 import android.text.TextUtils
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
@@ -135,7 +134,6 @@ class EpubFile(var book: Book) : AutoCloseable {
             }
         }.onFailure {
             close()
-            AppLog.put("读取Epub文件失败\n${it.localizedMessage}", it)
         }.getOrThrow()
     }
 
@@ -311,10 +309,9 @@ class EpubFile(var book: Book) : AutoCloseable {
                     cover.compress(Bitmap.CompressFormat.JPEG, 90, out)
                     out.flush()
                     out.close()
-                } ?: AppLog.putDebug("Epub: 封面获取为空. path: ${book.bookUrl}")
+                }
             }
         } catch (e: Exception) {
-            AppLog.put("加载书籍封面失败\n${e.localizedMessage}", e)
         }
     }
 
@@ -351,7 +348,6 @@ class EpubFile(var book: Book) : AutoCloseable {
         epubBook?.let { eBook ->
             val refs = eBook.tableOfContents.tocReferences
             if (refs == null || refs.isEmpty()) {
-                AppLog.putDebug("Epub: NCX file parse error, check the file: ${book.bookUrl}")
                 val spineReferences = eBook.spine.spineReferences
                 var i = 0
                 val size = spineReferences.size

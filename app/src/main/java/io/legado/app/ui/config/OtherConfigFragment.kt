@@ -1,52 +1,30 @@
 package io.legado.app.ui.config
 
-import android.annotation.SuppressLint
 import android.content.ComponentName
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
 import android.os.Bundle
 import android.provider.Settings
-import android.text.InputType
 import android.view.View
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.view.postDelayed
-import androidx.fragment.app.activityViewModels
-import androidx.preference.EditTextPreference
+import androidx.fragment.app.viewModels
 import androidx.preference.ListPreference
 import androidx.preference.Preference
-import com.jeremyliao.liveeventbus.LiveEventBus
 import io.legado.app.R
-import io.legado.app.constant.EventBus
+import io.legado.app.model.ImageProvider
 import io.legado.app.constant.PreferKey
-import io.legado.app.databinding.DialogEditCodeBinding
-import io.legado.app.databinding.DialogEditTextBinding
-import io.legado.app.help.AppFreezeMonitor
-import io.legado.app.help.DispatchersMonitor
 import io.legado.app.help.config.AppConfig
-import io.legado.app.help.config.normalizeJsSourceApiToken
-import io.legado.app.help.http.Cronet
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.model.ImageProvider
 import io.legado.app.receiver.SharedReceiverActivity
-import io.legado.app.service.McpService
-import io.legado.app.service.WebService
 import io.legado.app.ui.file.HandleFileContract
-import io.legado.app.ui.video.config.SettingsDialog
-import io.legado.app.ui.widget.code.addJsonPattern
 import io.legado.app.ui.widget.number.NumberPickerDialog
-import io.legado.app.utils.LogUtils
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.isJsonObject
-import io.legado.app.utils.postEvent
 import io.legado.app.utils.putPrefBoolean
-import io.legado.app.utils.putPrefString
-import io.legado.app.utils.removePref
 import io.legado.app.utils.restart
 import io.legado.app.utils.setEdgeEffectColor
-import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.supportsPromotedNotifications
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
@@ -57,7 +35,7 @@ import splitties.init.appCtx
 class OtherConfigFragment : PreferenceFragment(),
     SharedPreferences.OnSharedPreferenceChangeListener {
 
-    private val viewModel by activityViewModels<ConfigViewModel>()
+    private val viewModel by viewModels<ConfigViewModel>()
     private val packageManager = appCtx.packageManager
     private val componentName = ComponentName(
         appCtx,
@@ -74,39 +52,6 @@ class OtherConfigFragment : PreferenceFragment(),
     override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
         putPrefBoolean(PreferKey.processText, isProcessTextEnabled())
         addPreferencesFromResource(R.xml.pref_config_other)
-        upPreferenceSummary(PreferKey.userAgent, AppConfig.userAgent)
-        upPreferenceSummary(PreferKey.preDownloadNum, AppConfig.preDownloadNum.toString())
-        upPreferenceSummary(PreferKey.threadCount, AppConfig.threadCount.toString())
-        upPreferenceSummary(PreferKey.webPort, AppConfig.webPort.toString())
-        upPreferenceSummary(PreferKey.mcpPort, AppConfig.mcpPort.toString())
-        findPreference<EditTextPreference>(PreferKey.jsSourceApiToken)?.let {
-            it.isPersistent = false
-            it.text = AppConfig.jsSourceApiToken
-            it.setOnPreferenceChangeListener { _, newValue ->
-                val previousToken = AppConfig.jsSourceApiToken
-                val token = normalizeJsSourceApiToken(newValue?.toString())
-                AppConfig.jsSourceApiToken = token
-                upPreferenceSummary(PreferKey.jsSourceApiToken, token)
-                if (
-                    McpService.isRun &&
-                    AppConfig.jsSourceApiTokenRequired &&
-                    previousToken != token
-                ) {
-                    if (token == null) {
-                        McpService.stop(requireContext())
-                    } else {
-                        McpService.restart(requireContext())
-                    }
-                }
-                true
-            }
-            it.setOnBindEditTextListener { editText ->
-                editText.inputType =
-                    InputType.TYPE_TEXT_VARIATION_PASSWORD or InputType.TYPE_CLASS_TEXT
-                editText.setSelection(editText.text.length)
-            }
-        }
-        upPreferenceSummary(PreferKey.jsSourceApiToken, AppConfig.jsSourceApiToken)
         AppConfig.defaultBookTreeUri?.let {
             upPreferenceSummary(PreferKey.defaultBookTreeUri, it)
         }
@@ -134,52 +79,12 @@ class OtherConfigFragment : PreferenceFragment(),
 
     override fun onPreferenceTreeClick(preference: Preference): Boolean {
         when (preference.key) {
-            PreferKey.userAgent -> showUserAgentDialog()
-            PreferKey.customHosts -> showCustomHostsDialog()
-            PreferKey.videoSetting -> showDialogFragment(SettingsDialog(requireActivity()))
             PreferKey.defaultBookTreeUri -> localBookTreeSelect.launch {
                 title = getString(R.string.select_book_folder)
                 mode = HandleFileContract.DIR_SYS
             }
 
-            PreferKey.preDownloadNum -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.pre_download))
-                .setMaxValue(9999)
-                .setMinValue(0)
-                .setValue(AppConfig.preDownloadNum)
-                .show {
-                    AppConfig.preDownloadNum = it
-                }
-
-            PreferKey.threadCount -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.threads_num_title))
-                .setMaxValue(999)
-                .setMinValue(1)
-                .setValue(AppConfig.threadCount)
-                .show {
-                    AppConfig.threadCount = it
-                }
-
-            PreferKey.webPort -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.web_port_title))
-                .setMaxValue(60000)
-                .setMinValue(1024)
-                .setValue(AppConfig.webPort)
-                .show {
-                    AppConfig.webPort = it
-                }
-
-            PreferKey.mcpPort -> NumberPickerDialog(requireContext())
-                .setTitle(getString(R.string.mcp_port_title))
-                .setMaxValue(65530)
-                .setMinValue(1024)
-                .setValue(AppConfig.mcpPort)
-                .show {
-                    AppConfig.mcpPort = it
-                }
-
             PreferKey.cleanCache -> clearCache()
-            PreferKey.uploadRule -> showDialogFragment<DirectLinkUploadConfig>()
             PreferKey.bitmapCacheSize -> {
                 NumberPickerDialog(requireContext())
                     .setTitle(getString(R.string.bitmap_cache_size))
@@ -211,7 +116,6 @@ class OtherConfigFragment : PreferenceFragment(),
                     }
             }
 
-            PreferKey.clearWebViewData -> clearWebViewData()
             PreferKey.shrinkDatabase -> shrinkDatabase()
         }
         return super.onPreferenceTreeClick(preference)
@@ -219,55 +123,8 @@ class OtherConfigFragment : PreferenceFragment(),
 
     override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
         when (key) {
-            PreferKey.preDownloadNum -> {
-                upPreferenceSummary(key, AppConfig.preDownloadNum.toString())
-            }
-
-            PreferKey.threadCount -> {
-                upPreferenceSummary(key, AppConfig.threadCount.toString())
-                postEvent(PreferKey.threadCount, "")
-            }
-
-            PreferKey.webPort -> {
-                upPreferenceSummary(key, AppConfig.webPort.toString())
-                if (WebService.isRun) {
-                    WebService.stop(requireContext())
-                    WebService.start(requireContext())
-                }
-            }
-
-            PreferKey.mcpPort -> {
-                upPreferenceSummary(key, AppConfig.mcpPort.toString())
-                if (McpService.isRun) {
-                    McpService.restart(requireContext())
-                }
-            }
-
-            PreferKey.jsSourceApiTokenRequired -> {
-                if (WebService.isRun) {
-                    WebService.stop(requireContext())
-                    WebService.start(requireContext())
-                }
-                if (McpService.isRun) {
-                    McpService.restart(requireContext())
-                }
-            }
-
             PreferKey.defaultBookTreeUri -> {
                 upPreferenceSummary(key, AppConfig.defaultBookTreeUri)
-            }
-
-            PreferKey.recordLog -> {
-                AppConfig.recordLog = appCtx.getPrefBoolean(PreferKey.recordLog)
-                LogUtils.upLevel()
-                LogUtils.logDeviceInfo()
-                LiveEventBus.config().enableLogger(AppConfig.recordLog)
-                AppFreezeMonitor.init(appCtx)
-                DispatchersMonitor.init()
-            }
-
-            PreferKey.cronet -> if (appCtx.getPrefBoolean(PreferKey.cronet)) {
-                Cronet.preDownload()
             }
 
             PreferKey.processText -> sharedPreferences?.let {
@@ -276,10 +133,6 @@ class OtherConfigFragment : PreferenceFragment(),
 
             PreferKey.language -> listView.postDelayed(1000) {
                 appCtx.restart()
-            }
-
-            PreferKey.userAgent -> listView.post {
-                upPreferenceSummary(PreferKey.userAgent, AppConfig.userAgent)
             }
 
             PreferKey.bitmapCacheSize -> {
@@ -333,17 +186,7 @@ class OtherConfigFragment : PreferenceFragment(),
     private fun upPreferenceSummary(preferenceKey: String, value: String?) {
         val preference = findPreference<Preference>(preferenceKey) ?: return
         when (preferenceKey) {
-            PreferKey.preDownloadNum -> preference.summary =
-                getString(R.string.pre_download_s, value)
-
             PreferKey.threadCount -> preference.summary = getString(R.string.threads_num, value)
-            PreferKey.webPort -> preference.summary = getString(R.string.web_port_summary, value)
-            PreferKey.mcpPort -> preference.summary = getString(R.string.mcp_port_summary, value)
-            PreferKey.jsSourceApiToken -> preference.summary = if (value.isNullOrBlank()) {
-                getString(R.string.js_source_api_token_summary)
-            } else {
-                getString(R.string.js_source_api_token_configured)
-            }
             PreferKey.bitmapCacheSize -> preference.summary =
                 getString(R.string.bitmap_cache_size_summary, value)
             PreferKey.imageRetainNum -> preference.summary =
@@ -359,47 +202,6 @@ class OtherConfigFragment : PreferenceFragment(),
             } else {
                 preference.summary = value
             }
-        }
-    }
-
-    @SuppressLint("InflateParams")
-    private fun showUserAgentDialog() {
-        alert(getString(R.string.user_agent)) {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
-                editView.hint = getString(R.string.user_agent)
-                editView.setText(AppConfig.userAgent)
-            }
-            customView { alertBinding.root }
-            okButton {
-                val userAgent = alertBinding.editView.text?.toString()
-                if (userAgent.isNullOrBlank()) {
-                    removePref(PreferKey.userAgent)
-                } else {
-                    putPrefString(PreferKey.userAgent, userAgent)
-                }
-            }
-            cancelButton()
-        }
-    }
-
-    @SuppressLint("InflateParams")
-    private fun showCustomHostsDialog() {
-        alert(getString(R.string.custom_hosts)) {
-            val alertBinding = DialogEditCodeBinding.inflate(layoutInflater).apply {
-                editViewC.hint = getString(R.string.json_format)
-                editView.addJsonPattern()
-                editView.setText(AppConfig.customHosts)
-            }
-            customView { alertBinding.root }
-            okButton {
-                val customHosts = alertBinding.editView.text?.toString()
-                if (customHosts.isJsonObject()) {
-                    putPrefString(PreferKey.customHosts, customHosts!!)
-                } else {
-                    removePref(PreferKey.customHosts)
-                }
-            }
-            cancelButton()
         }
     }
 
@@ -419,15 +221,6 @@ class OtherConfigFragment : PreferenceFragment(),
         alert(R.string.sure, R.string.shrink_database) {
             okButton {
                 viewModel.shrinkDatabase()
-            }
-            noButton()
-        }
-    }
-
-    private fun clearWebViewData() {
-        alert(R.string.clear_webview_data, R.string.sure_del) {
-            okButton {
-                viewModel.clearWebViewData()
             }
             noButton()
         }

@@ -11,7 +11,6 @@ import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
-import io.legado.app.constant.AppLog
 import io.legado.app.databinding.ActivityTranslucenceBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.IntentData
@@ -95,11 +94,7 @@ class HandleFileActivity :
             HandleFileContract.DIR_SYS -> getDirActions(true)
             HandleFileContract.DIR -> getDirActions()
             HandleFileContract.FILE -> getFileActions()
-            HandleFileContract.EXPORT -> arrayListOf(
-                SelectItem(getString(R.string.upload_url), 111)
-            ).apply {
-                addAll(getDirActions())
-            }
+            HandleFileContract.EXPORT -> getDirActions()
 
             HandleFileContract.IMAGE -> getImageActions()
             else -> arrayListOf()
@@ -121,7 +116,6 @@ class HandleFileActivity :
                     HandleFileContract.DIR -> kotlin.runCatching {
                         selectDocTree.launch()
                     }.onFailure {
-                        AppLog.put(getString(R.string.open_sys_dir_picker_error), it, true)
                         checkPermissions {
                             FilePickerDialog.show(
                                 supportFragmentManager,
@@ -133,7 +127,6 @@ class HandleFileActivity :
                     HandleFileContract.FILE -> kotlin.runCatching {
                         selectDoc.launch(typesOfExtensions(allowExtensions))
                     }.onFailure {
-                        AppLog.put(getString(R.string.open_sys_dir_picker_error), it, true)
                         checkPermissions {
                             FilePickerDialog.show(
                                 supportFragmentManager,
@@ -165,14 +158,6 @@ class HandleFileActivity :
                                 mode = HandleFileContract.FILE,
                                 allowExtensions = allowExtensions
                             )
-                        }
-                    }
-
-                    111 -> getFileData()?.let {
-                        viewModel.upload(it.first, it.second, it.third) { url ->
-                            val uri = url.toUri()
-                            setResult(RESULT_OK, Intent().setData(uri))
-                            finish()
                         }
                     }
 

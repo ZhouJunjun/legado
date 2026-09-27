@@ -16,7 +16,6 @@ import androidx.core.view.isVisible
 import androidx.lifecycle.lifecycleScope
 import com.bumptech.glide.load.resource.bitmap.CenterCrop
 import com.bumptech.glide.load.resource.bitmap.RoundedCorners
-import com.bumptech.glide.request.RequestOptions
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
 import io.legado.app.base.BaseActivity
@@ -32,12 +31,10 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.book.ReadRecordCoverCache
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryTextColor
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.ui.book.search.SearchActivity
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.cnCompare
@@ -47,6 +44,7 @@ import io.legado.app.utils.getCompatDrawable
 import io.legado.app.utils.getInt
 import io.legado.app.utils.getPrefString
 import io.legado.app.utils.putInt
+import io.legado.app.utils.longToastOnUi
 import io.legado.app.utils.startActivityForBook
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import kotlinx.coroutines.Dispatchers.IO
@@ -264,18 +262,10 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
             .transform(CenterCrop(), RoundedCorners(4.dpToPx()))
         val book = booksByIdentity[record.bookName to record.author]
         val cover = book?.getDisplayCover()?.takeIf { it.isNotBlank() } ?: record.coverUrl
-        var options = RequestOptions().set(
-            OkHttpModelLoader.loadOnlyWifiOption, AppConfig.loadCoverOnlyWifi,
-        )
-        book?.getCoverSourceOrigin()?.let {
-            options = options.set(OkHttpModelLoader.sourceOriginOption, it)
-        }
         image.contentDescription = record.bookName
         ImageLoader.load(this, cover)
-            .apply(options)
             .placeholder(placeholder)
             .error(ImageLoader.load(this, record.coverUrl)
-                .apply(options)
                 .error(fallbackRequest)
                 .transform(CenterCrop(), RoundedCorners(4.dpToPx())))
             .transform(CenterCrop(), RoundedCorners(4.dpToPx()))
@@ -356,7 +346,7 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
                                 .maxByOrNull { it.durChapterTime }
                         }
                         if (book == null) {
-                            SearchActivity.start(this@ReadRecordActivity, item.bookName)
+                            longToastOnUi(R.string.book_not_exist)
                         } else {
                             startActivityForBook(book)
                         }

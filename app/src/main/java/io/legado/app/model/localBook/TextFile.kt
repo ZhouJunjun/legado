@@ -3,7 +3,6 @@ package io.legado.app.model.localBook
 import androidx.annotation.Keep
 import com.script.ScriptBindings
 import com.script.rhino.RhinoScriptEngine
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
@@ -88,6 +87,12 @@ class TextFile(private var book: Book) {
     @Throws(FileNotFoundException::class, SecurityException::class, EmptyFileException::class)
     fun getChapterList(): ArrayList<BookChapter> {
         val modified = book.isLocalModified()
+        // 历史 tocUrl 必须形如 "规则 + spaceChars + 替换"。缺分隔符说明它是旧版本
+        // 或旧数据留下的半成品，解析出来的正则是坏的（典型表现：整本书被分成一章）。
+        // 直接丢弃，走下面的规则重新识别。
+        if (book.tocUrl.isNotBlank() && !book.tocUrl.contains(spaceChars)) {
+            book.tocUrl = ""
+        }
         if (book.charset == null || book.tocUrl.isBlank() || modified) {
             LocalBook.getBookInputStream(book).use { bis ->
                 val buffer = ByteArray(bufferSize)
@@ -218,6 +223,10 @@ class TextFile(private var book: Book) {
                             it.isVolume = true
                             lastVolumeTitle.value = it.title
                             it.tag = null
+                            // 卷占位节点只用于分组。这里必须清掉拆分前的累计字数
+                            // (相当于本卷全部子章之和)，否则它会随节点写进 chapters 表，
+                            // 并在下次重新分段时被 getWordCount() 搬回真实章节。
+                            it.wordCount = null
                             it.title
                         }
                         val title = replacement(
@@ -371,6 +380,8 @@ class TextFile(private var book: Book) {
                     chapter.end = chapter.start
                     chapter.isVolume = true
                     chapter.tag = null
+                    // 同上: 卷占位节点不能保留拆分前的累计字数。
+                    chapter.wordCount = null
                     val lastTitle = chapter.title
                     lastVolumeTitle.value = lastTitle
                     val (chapters, _) = analyze(
@@ -502,7 +513,6 @@ class TextFile(private var book: Book) {
             val pattern = try {
                 tocRule.rule.toPattern(Pattern.MULTILINE)
             } catch (e: PatternSyntaxException) {
-                AppLog.put("TXT目录规则正则语法错误:${tocRule.name}\n$e", e)
                 continue
             }
             val matcher = pattern.matcher(content)
@@ -605,6 +615,14 @@ class TextFile(private var book: Book) {
         return rules
     }
 
+    /**
+     * 只给 analyze() 没算出字数的章节补一个值，**绝不覆盖刚算出来的值**。
+     *
+     * chapters 表里的字数是「上一次分段/上一次阅读」留下的历史值。一旦当前分段与
+     * 历史分段不一致（改过目录规则、旧版本残留、重新分段），旧值就会把正确的每章
+     * 字数覆盖成错误的数字 —— 典型现象就是目录里某一章的字数变成"全书剩余内容"的字数。
+     * 本地 TXT 的分章在 analyze() 阶段就能精确算出字数，因此本地值优先。
+     */
     private fun getWordCount(list: ArrayList<BookChapter>, book: Book) {
         if (!AppConfig.tocCountWords) {
             return
@@ -613,6 +631,7 @@ class TextFile(private var book: Book) {
         if (chapterList.isNotEmpty()) {
             val map = chapterList.associateBy({ it.getFileName() }, { it.wordCount })
             for (bookChapter in list) {
+                if (!bookChapter.wordCount.isNullOrEmpty()) continue
                 val wordCount = map[bookChapter.getFileName()]
                 if (wordCount != null) {
                     bookChapter.wordCount = wordCount

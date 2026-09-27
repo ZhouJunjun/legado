@@ -9,7 +9,6 @@ import android.view.ViewGroup
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.constant.AppLog
 import io.legado.app.databinding.ItemFontBinding
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.utils.*
@@ -48,7 +47,6 @@ class FontAdapter(context: Context, private val curFilePath: String, val callBac
                     Typeface.createFromFile(doc.uri.path!!)
                 }
             }.onFailure {
-                AppLog.put("读取字体 ${doc.name} 出错\n${it.localizedMessage}", it, true)
             }.getOrNull() ?: Typeface.DEFAULT
             tvFont.text = context.getString(
                 if (item.privateFolder) R.string.font_item_private else R.string.font_item_external,

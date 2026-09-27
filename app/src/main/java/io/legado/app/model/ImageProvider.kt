@@ -5,9 +5,7 @@ import android.graphics.BitmapFactory
 import android.util.Size
 import androidx.collection.LruCache
 import io.legado.app.R
-import io.legado.app.constant.AppLog.putDebug
 import io.legado.app.data.entities.Book
-import io.legado.app.data.entities.BookSource
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isEpub
@@ -28,6 +26,12 @@ import java.io.File
 import java.io.FileOutputStream
 import kotlin.math.min
 
+/**
+ * 本地书（txt/epub/pdf/mobi）正文图片的提取与位图缓存。
+ *
+ * 在线书源子系统已移除，因此不再支持「按书源规则联网抓图」，
+ * 仅保留从本地书籍文件内提取图片的能力。
+ */
 object ImageProvider {
 
     private val errorBitmap: Bitmap by lazy {
@@ -73,8 +77,6 @@ object ImageProvider {
             //错误图片不能释放,占位用,防止一直重复获取图片
             if (oldValue != errorBitmap) {
                 oldValue.recycle()
-                //putDebug("ImageProvider: trigger bitmap recycle. URI: $filePath")
-                //putDebug("ImageProvider : cacheUsage ${size()}bytes / ${maxSize()}bytes")
             }
         }
 
@@ -137,13 +139,9 @@ object ImageProvider {
     }
 
     /**
-     *缓存网络图片和epub图片
+     * 缓存本地书内嵌图片
      */
-    suspend fun cacheImage(
-        book: Book,
-        src: String,
-        bookSource: BookSource?
-    ): File {
+    suspend fun cacheImage(book: Book, src: String): File {
         return withContext(IO) {
             val vFile = BookHelp.getImage(book, src)
             if (!BookHelp.isImageExist(book, src)) {
@@ -151,10 +149,7 @@ object ImageProvider {
                     book.isEpub -> EpubFile.getImage(book, src)
                     book.isPdf -> PdfFile.getImage(book, src)
                     book.isMobi -> MobiFile.getImage(book, src)
-                    else -> {
-                        BookHelp.saveImage(bookSource, book, src)
-                        null
-                    }
+                    else -> null
                 }
                 inputStream?.use { input ->
                     val newFile = FileUtils.createFileIfNotExist(vFile.absolutePath)
@@ -168,29 +163,22 @@ object ImageProvider {
     }
 
     /**
-     *获取图片宽度高度信息
+     * 获取图片宽度高度信息
      */
-    suspend fun getImageSize(
-        book: Book,
-        src: String,
-        bookSource: BookSource?
-    ): Size {
-        val file = cacheImage(book, src, bookSource)
+    suspend fun getImageSize(book: Book, src: String): Size {
+        val file = cacheImage(book, src)
         BitmapUtils.getImageSize(file.absolutePath)?.let { return it }
         run {
             //svg size
             val size = SvgUtils.getSize(file.absolutePath)
             if (size != null) return size
-            putDebug("ImageProvider: $src Unsupported image type")
-            //file.delete() 重复下载
             return Size(errorBitmap.width, errorBitmap.height)
         }
     }
 
     /**
-     *获取bitmap 使用LruCache缓存
+     * 获取bitmap 使用LruCache缓存
      */
-    // ponytail: serialize local bitmap decode with invalidation; use per-path locks if contention matters.
     @Synchronized
     fun getImage(
         book: Book,

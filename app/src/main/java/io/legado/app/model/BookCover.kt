@@ -19,24 +19,13 @@ import com.bumptech.glide.request.target.Target
 import com.bumptech.glide.request.target.Target.SIZE_ORIGINAL
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
-import io.legado.app.data.entities.BaseSource
-import io.legado.app.data.entities.Book
-import io.legado.app.help.CacheManager
-import io.legado.app.help.DefaultData
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.BlurTransformation
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.help.glide.OkHttpModelLoader
-import io.legado.app.model.analyzeRule.AnalyzeRule
-import io.legado.app.model.analyzeRule.AnalyzeRule.Companion.setCoroutineContext
-import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.BitmapUtils
-import io.legado.app.utils.GSON
-import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.getPrefInt
 import io.legado.app.utils.getPrefString
-import kotlinx.coroutines.currentCoroutineContext
 import splitties.init.appCtx
 import java.io.File
 import androidx.core.graphics.drawable.toDrawable
@@ -52,8 +41,6 @@ data class CoverFontSizes(
 @Suppress("ConstPropertyName")
 object BookCover {
 
-    private const val coverRuleConfigKey = "legadoCoverRuleConfig"
-    const val configFileName = "coverRule.json"
     const val fontBackupFileName = "coverFont.ttf"
 
     var drawBookName = true
@@ -130,10 +117,7 @@ object BookCover {
             return ImageLoader.load(context, defaultDrawable)
                 .centerCrop()
         }
-        var options = RequestOptions().set(OkHttpModelLoader.loadOnlyWifiOption, loadOnlyWifi)
-        if (sourceOrigin != null) {
-            options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
-        }
+        var options = RequestOptions()
         var builder = ImageLoader.load(context, path)
             .apply(options)
         if (onLoadFinish != null) {
@@ -175,11 +159,7 @@ object BookCover {
         sourceOrigin: String? = null,
         transformation: Transformation<Bitmap>? = null,
     ): RequestBuilder<Drawable> {
-        var options = RequestOptions().set(OkHttpModelLoader.loadOnlyWifiOption, loadOnlyWifi)
-            .set(OkHttpModelLoader.mangaOption, true)
-        if (sourceOrigin != null) {
-            options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
-        }
+        var options = RequestOptions()
         return ImageLoader.load(context, path)
             .apply(options)
             .override(context.resources.displayMetrics.widthPixels, SIZE_ORIGINAL)
@@ -199,11 +179,7 @@ object BookCover {
         loadOnlyWifi: Boolean = false,
         sourceOrigin: String? = null,
     ): RequestBuilder<File> {
-        var options = RequestOptions().set(OkHttpModelLoader.loadOnlyWifiOption, loadOnlyWifi)
-            .set(OkHttpModelLoader.mangaOption, true)
-        if (sourceOrigin != null) {
-            options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
-        }
+        var options = RequestOptions()
         return ImageLoader.loadFile(context, path).apply(options)
     }
 
@@ -221,79 +197,12 @@ object BookCover {
         if (AppConfig.useDefaultCover) {
             return loadBlur
         }
-        var options = RequestOptions().set(OkHttpModelLoader.loadOnlyWifiOption, loadOnlyWifi)
-        if (sourceOrigin != null) {
-            options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
-        }
+        var options = RequestOptions()
         return ImageLoader.load(context, path)
             .apply(options)
             .transform(BlurTransformation(25), CenterCrop())
             .transition(DrawableTransitionOptions.withCrossFade(1500))
             .thumbnail(loadBlur)
-    }
-
-    fun getCoverRule(): CoverRule {
-        return getConfig() ?: DefaultData.coverRule
-    }
-
-    fun getConfig(): CoverRule? {
-        return GSON.fromJsonObject<CoverRule>(CacheManager.get(coverRuleConfigKey))
-            .getOrNull()
-    }
-
-    suspend fun searchCover(book: Book): String? {
-        val config = getCoverRule()
-        if (!config.enable || config.searchUrl.isBlank() || config.coverRule.isBlank()) {
-            return null
-        }
-        val analyzeUrl = AnalyzeUrl(
-            config.searchUrl,
-            book.name,
-            source = config,
-            coroutineContext = currentCoroutineContext(),
-            hasLoginHeader = false
-        )
-        val res = analyzeUrl.getStrResponseAwait()
-        val analyzeRule = AnalyzeRule(book, config)
-        analyzeRule.setCoroutineContext(currentCoroutineContext())
-        analyzeRule.setContent(res.body)
-        analyzeRule.setRedirectUrl(res.url)
-        return analyzeRule.getString(config.coverRule, isUrl = true)
-    }
-
-    fun saveCoverRule(config: CoverRule) {
-        val json = GSON.toJson(config)
-        saveCoverRule(json)
-    }
-
-    fun saveCoverRule(json: String) {
-        CacheManager.put(coverRuleConfigKey, json)
-    }
-
-    fun delCoverRule() {
-        CacheManager.delete(coverRuleConfigKey)
-    }
-
-    @Keep
-    data class CoverRule(
-        var enable: Boolean = true,
-        var searchUrl: String,
-        var coverRule: String,
-        override var concurrentRate: String? = null,
-        override var loginUrl: String? = null,
-        override var loginUi: String? = null,
-        override var header: String? = null,
-        override var jsLib: String? = null,
-        override var enabledCookieJar: Boolean? = false,
-    ) : BaseSource {
-
-        override fun getTag(): String {
-            return "CoverRule"
-        }
-
-        override fun getKey(): String {
-            return searchUrl
-        }
     }
 
 }

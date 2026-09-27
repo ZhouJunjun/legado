@@ -13,7 +13,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
-import io.legado.app.constant.AppLog
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.registerForActivityResult
@@ -55,7 +54,6 @@ class PermissionActivity : AppCompatActivity() {
                             openSettingsActivity()
                         }
                     } catch (e: Exception) {
-                        AppLog.put("请求权限出错\n$e", e, true)
                         RequestPlugins.sRequestCallback?.onError(e)
                         finish()
                     }
@@ -79,7 +77,6 @@ class PermissionActivity : AppCompatActivity() {
                         throw NoStackTraceException("no MANAGE_ALL_FILES_ACCESS_PERMISSION")
                     }
                 } catch (e: Exception) {
-                    AppLog.put("请求所有文件的管理权限出错\n$e", e, true)
                     RequestPlugins.sRequestCallback?.onError(e)
                     finish()
                 }
@@ -103,7 +100,6 @@ class PermissionActivity : AppCompatActivity() {
                             openSettingsActivity()
                         }
                     } catch (e: Exception) {
-                        AppLog.put("请求通知权限出错\n$e", e, true)
                         RequestPlugins.sRequestCallback?.onError(e)
                         finish()
                     }
@@ -133,7 +129,6 @@ class PermissionActivity : AppCompatActivity() {
                         intent.component = null
                         settingActivityResult.launch(intent)
                     } catch (e: Exception) {
-                        AppLog.put("请求后台权限出错\n$e", e, true)
                         RequestPlugins.sRequestCallback?.onError(e)
                         finish()
                     }
@@ -149,7 +144,6 @@ class PermissionActivity : AppCompatActivity() {
                             settingActivityResult.launch(intent)
                         }
                     } catch (e: Exception) {
-                        AppLog.put("请求悬浮窗权限出错\n$e", e, true)
                         RequestPlugins.sRequestCallback?.onError(e)
                     }
                 }

@@ -3,7 +3,6 @@ package io.legado.app.help
 import android.speech.tts.TextToSpeech
 import android.speech.tts.UtteranceProgressListener
 import io.legado.app.R
-import io.legado.app.constant.AppLog
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.splitNotBlank
 import io.legado.app.utils.toastOnUi
@@ -79,20 +78,16 @@ class TTS {
     private fun addTextToSpeakList() {
         val tts = textToSpeech ?: return
         kotlin.runCatching {
-            var result = tts.speak("", TextToSpeech.QUEUE_FLUSH, null, null)
+            val result = tts.speak("", TextToSpeech.QUEUE_FLUSH, null, null)
             if (result == TextToSpeech.ERROR) {
                 clearTts()
                 textToSpeech = TextToSpeech(appCtx, initListener)
                 return
             }
             text?.splitNotBlank("\n")?.forEachIndexed { i, s ->
-                result = tts.speak(s, TextToSpeech.QUEUE_ADD, null, tag + i)
-                if (result == TextToSpeech.ERROR) {
-                    AppLog.put("tts朗读出错:$text")
-                }
+                tts.speak(s, TextToSpeech.QUEUE_ADD, null, tag + i)
             }
         }.onFailure {
-            AppLog.put("tts朗读出错", it)
             appCtx.toastOnUi(it.localizedMessage)
         }
     }

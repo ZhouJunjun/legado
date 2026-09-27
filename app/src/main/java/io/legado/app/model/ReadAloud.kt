@@ -3,40 +3,39 @@ package io.legado.app.model
 import android.content.Context
 import android.content.Intent
 import io.legado.app.R
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.IntentAction
-import io.legado.app.data.appDb
-import io.legado.app.data.entities.HttpTTS
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.service.BaseReadAloudService
-import io.legado.app.service.HttpReadAloudService
 import io.legado.app.service.TTSReadAloudService
 import io.legado.app.utils.GSON
-import io.legado.app.utils.LogUtils
 import io.legado.app.utils.fromJsonObject
 import io.legado.app.utils.startForegroundServiceCompat
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
 
+/**
+ * 朗读引擎显示名: 空值回落到「系统默认」, 否则取被选系统引擎的显示名。
+ */
 internal fun resolveReadAloudEngineName(
     ttsEngine: String?,
     systemTtsName: String,
-    httpTtsName: (Long) -> String?,
 ): String {
     val engine = ttsEngine?.takeIf { it.isNotBlank() } ?: return systemTtsName
-    engine.toLongOrNull()?.let { id ->
-        return httpTtsName(id)?.takeIf { it.isNotBlank() } ?: systemTtsName
-    }
     return GSON.fromJsonObject<SelectItem<String>>(engine).getOrNull()
         ?.title?.takeIf { it.isNotBlank() }
         ?: systemTtsName
 }
 
 object ReadAloud {
-    var httpTTS: HttpTTS? = null
-    val ttsEngine get() = ReadBook.book?.getTtsEngine() ?: AppConfig.ttsEngine
-    private var aloudClass: Class<*> = getReadAloudClass()
+
+    /**
+     * 朗读引擎全局生效: 只使用系统提供的 TTS 引擎。
+     * 自建 HTTP 引擎及其「按书覆盖」已整体移除。
+     */
+    val ttsEngine get() = AppConfig.ttsEngine
+
+    private val aloudClass: Class<*> = TTSReadAloudService::class.java
 
     val followReadAloudPosition: Boolean
         get() = BaseReadAloudService.followReadAloudPosition
@@ -55,24 +54,12 @@ object ReadAloud {
         BaseReadAloudService.restoreReadAloudFollow()
     }
 
-    private fun getReadAloudClass(): Class<*> {
-        httpTTS = null
-        val ttsEngine = ttsEngine
-        if (ttsEngine.isNullOrBlank()) {
-            return TTSReadAloudService::class.java
-        }
-        ttsEngine.toLongOrNull()?.let { id ->
-            httpTTS = appDb.httpTTSDao.get(id)
-            if (httpTTS != null) {
-                return HttpReadAloudService::class.java
-            }
-        }
-        return TTSReadAloudService::class.java
-    }
-
+    /**
+     * 引擎变更后重启会话: 停止当前会话, 使下一次朗读用新引擎。
+     * (引擎类恒为 [TTSReadAloudService], 无需重算 class)
+     */
     fun upReadAloudClass() {
         stop(appCtx)
-        aloudClass = getReadAloudClass()
     }
 
     /**
@@ -108,12 +95,10 @@ object ReadAloud {
         // 显式发起的会话(点朗读/从此处朗读)才允许把正在朗读的会话切到另一本书;
         // 隐式重启(换书后阅读页加载完成)必须被服务拒绝, 否则朗读会串到新书。
         intent.putExtra("allowBookSwitch", allowBookSwitch)
-        LogUtils.d("ReadAloud", intent.toString())
         try {
             context.startForegroundServiceCompat(intent)
         } catch (e: Exception) {
             val msg = "启动朗读服务出错\n${e.localizedMessage}"
-            AppLog.put(msg, e)
             context.toastOnUi(msg)
         }
     }
@@ -202,9 +187,7 @@ object ReadAloud {
 
     fun getEngineName(context: Context): String {
         val systemTtsName = context.getString(R.string.system_tts)
-        return resolveReadAloudEngineName(ttsEngine, systemTtsName) { id ->
-            appDb.httpTTSDao.getName(id)
-        }
+        return resolveReadAloudEngineName(ttsEngine, systemTtsName)
     }
 
 }

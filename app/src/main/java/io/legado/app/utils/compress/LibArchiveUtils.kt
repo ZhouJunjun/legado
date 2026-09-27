@@ -9,7 +9,6 @@ import io.legado.app.lib.icu4j.CharsetDetector
 import me.zhanghai.android.libarchive.Archive
 import me.zhanghai.android.libarchive.ArchiveEntry
 import me.zhanghai.android.libarchive.ArchiveException
-import okio.Buffer
 import java.io.File
 import java.io.FileDescriptor
 import java.io.IOException
@@ -266,44 +265,6 @@ object LibArchiveUtils {
 
     fun getFilesName(pfd: ParcelFileDescriptor, filter: ((String) -> Boolean)?): List<String> {
         return getFilesName(openArchive(pfd), filter)
-    }
-
-    fun getByteArrayContent(inputStream: InputStream, path: String): ByteArray? {
-        val archive = openArchive(inputStream)
-        try {
-            var entry: Long
-            while (Archive.readNextHeader(archive).also { entry = it } != 0L) {
-                val entryName =
-                    getEntryString(ArchiveEntry.pathnameUtf8(entry), ArchiveEntry.pathname(entry))
-                        ?: continue
-
-                val entryStat = ArchiveEntry.stat(entry)
-
-                //判断是否是文件夹
-                if (entryStat.isDir()) {
-                    continue
-                }
-
-                if (entryName == path) {
-                    val byteBuffer = ByteBuffer.allocateDirect(DEFAULT_BUFFER_SIZE)
-                    val buffer = Buffer()
-                    while (true) {
-                        Archive.readData(archive, byteBuffer)
-                        byteBuffer.flip()
-                        if (!byteBuffer.hasRemaining()) {
-                            return buffer.readByteArray()
-                        }
-                        buffer.write(byteBuffer)
-                        byteBuffer.clear()
-                    }
-                }
-
-
-            }
-        } finally {
-            Archive.free(archive)
-        }
-        return null
     }
 
     @Throws(SecurityException::class)

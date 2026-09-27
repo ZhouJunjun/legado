@@ -14,21 +14,15 @@ import io.github.rosemoe.sora.langs.textmate.registry.provider.AssetsFileResolve
 import io.github.rosemoe.sora.widget.CodeEditor
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.help.CacheManager
 import io.legado.app.help.config.AppConfig
-import io.legado.app.help.http.BackstageWebView
-import io.legado.app.help.webView.WebJsExtensions.Companion.nameCache
 import io.legado.app.utils.toastOnUi
 import org.eclipse.tm4e.core.registry.IThemeSource
 import org.jsoup.Jsoup
 import splitties.init.appCtx
 
 class CodeEditViewModel(application: Application, private val savedState: SavedStateHandle) : BaseViewModel(application) {
-    private val beautifyJs by lazy {
-        appCtx.assets.open("scripts/beautify.min.js").bufferedReader().use { it.readText() }
-    }
     private val themeFileNames = arrayOf(
         "d_monokai_dimmed",
         "d_monokai",
@@ -154,7 +148,7 @@ class CodeEditViewModel(application: Application, private val savedState: SavedS
             if (isHtml) {
                 return@execute formatCodeHtml(text)
             }
-            formatRuleExpression(text, ::webFormatCode)?.let {
+            formatRuleExpression(text) { formatJsCode(it) }?.let {
                 return@execute it
             }
             var result = ""
@@ -167,7 +161,7 @@ class CodeEditViewModel(application: Application, private val savedState: SavedS
                 val indexE = text.indexOf("</js>", indexS)
                 val jsCode = text.substring(indexS + 4, indexE)
                 result += "<js>\n"
-                result += webFormatCode(jsCode)
+                result += formatJsCode(jsCode)
                 result += "\n</js>"
                 start = indexE + 5
             }
@@ -178,7 +172,7 @@ class CodeEditViewModel(application: Application, private val savedState: SavedS
                 }
                 val jsCode = text.substring(indexS2 + 4)
                 result += "@js:\n"
-                result += webFormatCode(jsCode)
+                result += formatJsCode(jsCode)
                 start = text.length
             } else {
                 val indexS2 = text.indexOf("@webjs:")
@@ -188,12 +182,12 @@ class CodeEditViewModel(application: Application, private val savedState: SavedS
                     }
                     val jsCode = text.substring(indexS2 + 7)
                     result += "@webjs:\n"
-                    result += webFormatCode(jsCode)
+                    result += formatJsCode(jsCode)
                     start = text.length
                 }
             }
             if (start == 0) {
-                result += webFormatCode(text)
+                result += formatJsCode(text)
                 start = text.length
             }
             if (text.length > start) {
@@ -205,7 +199,6 @@ class CodeEditViewModel(application: Application, private val savedState: SavedS
                 editor.text.replace(0, editor.text.length, formatted)
             }
         }.onError {
-            AppLog.put("格式化失败",it, true)
         }
     }
 
@@ -225,38 +218,68 @@ class CodeEditViewModel(application: Application, private val savedState: SavedS
                 editor.setSelection(position.line, position.column, true)
                 editor.requestFocus()
             }
-            AppLog.put(
-                error.localizedMessage ?: context.getString(R.string.javascript_syntax_error),
-                error,
-                true,
-            )
         }.start()
     }
 
-    private suspend fun webFormatCode(jsCode: String): String? {
-        CacheManager.putMemory("web_format_code", jsCode)
-        return BackstageWebView(
-            url = null,
-            html = """<html><body><script>
-                $beautifyJs
-                window.re = js_beautify($nameCache.getFromMemory('web_format_code'), {
-                indent_size: 4,
-                indent_char: ' ',
-                preserve_newlines: true,
-                max_preserve_newlines: 5,
-                brace_style: 'collapse',
-                space_before_conditional: true,
-                unescape_strings: false,
-                jslint_happy: false,
-                end_with_newline: false,
-                wrap_line_length: 0,
-                comma_first: false
-                });
-                </script></body></html>""".trimIndent(),
-            javaScript = "window.re",
-            timeout = 5000,
-            isRule = true
-        ).getStrResponse().body
+    /**
+     * 轻量 JS 缩进格式化：按大括号层级重排缩进，丢弃空行（不改动代码语义）。
+     *
+     * 原实现借后台 WebView 执行 js_beautify，后台 WebView 已随书源逻辑一并剥离，
+     * 这里改为纯本地实现，保留「格式化」入口的基本可用性。
+     */
+    private fun formatJsCode(jsCode: String): String {
+        val out = StringBuilder()
+        var indent = 0
+        var inBlockComment = false
+        jsCode.lines().forEach { rawLine ->
+            val line = rawLine.trim()
+            if (line.isEmpty()) return@forEach
+            var opens = 0
+            var closes = 0
+            var quote: Char? = null
+            var escaped = false
+            var lineComment = false
+            var i = 0
+            while (i < line.length) {
+                val c = line[i]
+                if (inBlockComment) {
+                    if (c == '*' && i + 1 < line.length && line[i + 1] == '/') {
+                        inBlockComment = false
+                        i++
+                    }
+                } else if (lineComment) {
+                    // 行内注释：忽略本行后续字符
+                } else if (quote != null) {
+                    if (escaped) {
+                        escaped = false
+                    } else if (c == '\\') {
+                        escaped = true
+                    } else if (c == quote) {
+                        quote = null
+                    }
+                } else when {
+                    c == '/' && i + 1 < line.length && line[i + 1] == '/' -> {
+                        lineComment = true
+                        i++
+                    }
+
+                    c == '/' && i + 1 < line.length && line[i + 1] == '*' -> {
+                        inBlockComment = true
+                        i++
+                    }
+
+                    c == '\'' || c == '"' || c == '`' -> quote = c
+                    c == '{' -> opens++
+                    c == '}' -> closes++
+                }
+                i++
+            }
+            val net = opens - closes
+            if (net < 0) indent = (indent + net).coerceAtLeast(0)
+            out.append("    ".repeat(indent)).append(line).append('\n')
+            if (net > 0) indent += net
+        }
+        return out.toString().trimEnd()
     }
 
     private fun formatCodeHtml(html: String): String? {

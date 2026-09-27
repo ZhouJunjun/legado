@@ -7,24 +7,18 @@ import androidx.lifecycle.SavedStateHandle
 import com.google.gson.JsonArray
 import com.google.gson.JsonElement
 import io.legado.app.R
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.AppPattern.bookFileRegex
-import io.legado.app.constant.AppPattern.jsFileRegex
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.HighlightRuleFile
 import io.legado.app.model.localBook.LocalBook
-import io.legado.app.model.jsSource.JsSourceConfig
 import io.legado.app.help.storage.Restore
 import io.legado.app.help.storage.selectedBackupFileNames
-import io.legado.app.ui.main.bookshelf.importBookshelfJson
 import io.legado.app.ui.book.import.local.ImportBook
 import io.legado.app.utils.*
-import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import java.io.File
 import java.util.UUID
 import kotlinx.coroutines.Dispatchers.Main
-import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.withContext
 
 class FileAssociationViewModel(application: Application, private val savedState: SavedStateHandle) : BaseAssociationViewModel(application) {
@@ -43,7 +37,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
         get() = savedState["choosingLocalBookDirectory"] ?: false
         set(value) { savedState["choosingLocalBookDirectory"] = value }
     private var stagingDirectory: File? = null
-    val onLineImportLive = MutableLiveData<Uri>()
     val openBookLiveData = MutableLiveData<Book>()
     val notSupportedLiveData = MutableLiveData<Pair<Uri, String>>()
     val importingData = MutableLiveData(false)
@@ -67,7 +60,7 @@ class FileAssociationViewModel(application: Application, private val savedState:
                 }
                 if (savedState.get<Boolean>("localBookDestination") == true) localBookDestination.value = true
                 initialIntentDispatched = true
-            }.onFailure { AppLog.put("恢复分享书籍预览失败", it) }
+            }.onFailure { Unit }
         }
     }
 
@@ -83,12 +76,11 @@ class FileAssociationViewModel(application: Application, private val savedState:
             if (uri.isContentScheme() || uri.isFileScheme()) {
                 dispatchFile(FileDoc.fromUri(uri, false))
             } else {
-                onLineImportLive.postValue(uri)
+                notSupportedLiveData.postValue(Pair(uri, uri.toString()))
             }
         }.onError {
             val msg = "无法打开文件\n${it.localizedMessage}"
             errorLive.postValue(msg)
-            AppLog.put(msg, it)
         }
     }
 
@@ -112,17 +104,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
 
     fun dispatchSharedText(text: String) {
         execute {
-            extractSharedImportUrl(text)?.let { url ->
-                onLineImportLive.postValue(
-                    Uri.Builder()
-                        .scheme("legado")
-                        .authority("import")
-                        .appendPath("auto")
-                        .appendQueryParameter("src", url)
-                        .build()
-                )
-                return@execute
-            }
             val file = File.createTempFile("shared_import_", ".json", context.cacheDir)
             sharedImportFile = file
             file.writeText(text)
@@ -158,7 +139,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
         importingData.value = true
         execute {
             when (type) {
-                "bookshelf" -> importBookshelfJson(Uri.parse(source).readText(context), 0)
                 "backup" -> Restore.restoreOrThrow(context, Uri.parse(source))
                 else -> error("Unsupported import")
             }
@@ -166,7 +146,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
             importedData.value = true
         }.onError {
             errorLive.value = it.localizedMessage ?: context.getString(R.string.wrong_format)
-            AppLog.put("导入分享数据失败\n${it.localizedMessage}", it)
         }.onFinally {
             importingData.value = false
         }
@@ -179,11 +158,6 @@ class FileAssociationViewModel(application: Application, private val savedState:
                 return
             }
         }.onFailure {
-            AppLog.put("尝试导入为JSON文件失败\n${it.localizedMessage}", it)
-        }
-        if (fileDoc.name.matches(jsFileRegex)) {
-            successLive.postValue("bookSource" to fileDoc.uri.toString())
-            return
         }
         if (fileDoc.name.matches(bookFileRegex)) {
             prepareLocalBooks(listOf(fileDoc.uri), !shared)
@@ -197,8 +171,7 @@ class FileAssociationViewModel(application: Application, private val savedState:
         stagingDirectory = staging
         val files = collectSharedImportFiles(uris, staging)
         val dataFiles = files.mapNotNull { file ->
-            val type = if (file.name.matches(jsFileRegex)) "bookSource"
-            else kotlin.runCatching {
+            val type = kotlin.runCatching {
                 if (!file.inputStream().looksLikeJson()) return@runCatching null
                 val map = file.inputStream().use { jsonPath.parse(it).read<Map<String, *>>("$[0]") }
                     ?: file.inputStream().use { jsonPath.parse(it).read("$") }
@@ -218,9 +191,7 @@ class FileAssociationViewModel(application: Application, private val savedState:
             val file = if (dataFiles.size == 1) dataFiles.single().second else {
                 val merged = JsonArray()
                 dataFiles.forEach { (_, source) ->
-                    val json = if (source.name.matches(jsFileRegex)) {
-                        GSON.toJsonTree(JsSourceConfig.extract(source.readText(), currentCoroutineContext()))
-                    } else source.reader().use { GSON.fromJson(it, JsonElement::class.java) }
+                    val json = source.reader().use { GSON.fromJson(it, JsonElement::class.java) }
                     val records = if (type == "highlightRule" && json.isJsonObject &&
                         json.asJsonObject.get("type")?.asString == HighlightRuleFile.TYPE) {
                         json.asJsonObject.getAsJsonArray("rules")
@@ -307,7 +278,7 @@ class FileAssociationViewModel(application: Application, private val savedState:
                         }
                     }
                     copies[uri] = preview
-                }.onFailure { AppLog.put("复制分享书籍失败\n${it.localizedMessage}", it) }
+                }.onFailure { Unit }
             }
             val (_, books) = LocalBook.importFiles(copies.keys.toList(), copies)
             books
@@ -318,13 +289,11 @@ class FileAssociationViewModel(application: Application, private val savedState:
             else importedLocalBooks.value = true
         }.onError {
             errorLive.value = it.localizedMessage ?: context.getString(R.string.wrong_format)
-            AppLog.put("导入分享书籍失败\n${it.localizedMessage}", it)
         }.onFinally { importingLocalBooks.value = false }
     }
 
     private fun reportSharedImportError(error: Throwable) {
         errorLive.postValue(error.localizedMessage ?: context.getString(R.string.wrong_format))
-        AppLog.put("尝试导入分享内容失败\n${error.localizedMessage}", error)
     }
 
     override fun onCleared() {
@@ -338,37 +307,4 @@ class FileAssociationViewModel(application: Application, private val savedState:
         stagingDirectory?.deleteRecursively()
         super.onCleared()
     }
-}
-
-private val sharedImportUrlRegex =
-    Regex("""(?<!["'])https?://[^\s"'<>]+""", RegexOption.IGNORE_CASE)
-
-private val sharedImportUrlTrailingPunctuation =
-    setOf(
-        '.', ',', ';', ':', '!', '?',
-        '\u3002', '\uff0c', '\uff1b', '\uff1a', '\uff01', '\uff1f', '\u3001'
-    )
-
-private val sharedImportUrlBrackets =
-    listOf(
-        '(' to ')', '[' to ']', '{' to '}',
-        '\uff08' to '\uff09', '\u3010' to '\u3011', '\u300a' to '\u300b'
-    )
-
-internal fun extractSharedImportUrl(text: String): String? {
-    if (text.isJson()) return null
-    return sharedImportUrlRegex.findAll(text)
-        .map { it.value.trimSharedImportUrlSuffix() }
-        .filter { it.toHttpUrlOrNull() != null }
-        .singleOrNull()
-}
-
-private fun String.trimSharedImportUrlSuffix(): String {
-    var result = trimEnd { it in sharedImportUrlTrailingPunctuation }
-    sharedImportUrlBrackets.forEach { (open, close) ->
-        while (result.endsWith(close) && result.count { it == close } > result.count { it == open }) {
-            result = result.dropLast(1)
-        }
-    }
-    return result
 }

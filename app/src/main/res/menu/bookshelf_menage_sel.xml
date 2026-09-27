@@ -6,14 +6,6 @@
         android:title="@string/delete" />
 
     <item
-        android:id="@+id/menu_update_enable"
-        android:title="@string/allow_update" />
-
-    <item
-        android:id="@+id/menu_update_disable"
-        android:title="@string/disable_update" />
-
-    <item
         android:id="@+id/menu_add_to_group"
         android:title="@string/add_to_group" />
 
@@ -22,24 +14,8 @@
         android:title="@string/remove_group" />
 
     <item
-        android:id="@+id/menu_change_source"
-        android:title="@string/change_source_batch" />
-
-    <item
         android:id="@+id/menu_clear_cache"
         android:title="@string/clear_cache" />
-
-    <item
-        android:id="@+id/menu_persist_covers"
-        android:title="@string/persist_network_covers" />
-
-    <item
-        android:id="@+id/menu_restore_network_covers"
-        android:title="@string/restore_network_covers" />
-
-    <item
-        android:id="@+id/menu_restore_source_covers"
-        android:title="@string/restore_source_covers" />
 
     <item
         android:id="@+id/menu_check_selected_interval"
@@ -48,9 +24,5 @@
     <item
         android:id="@+id/menu_update_toc"
         android:title="@string/update_book_info_toc" />
-
-    <item
-        android:id="@+id/menu_create_book_update_tasks"
-        android:title="@string/create_book_update_task" />
 
 </menu>

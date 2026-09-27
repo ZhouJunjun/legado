@@ -5,8 +5,9 @@ import android.content.Intent
 import android.os.Build
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
-import io.legado.app.ui.book.search.SearchActivity
+import io.legado.app.R
 import io.legado.app.ui.main.MainActivity
+import io.legado.app.utils.longToastOnUi
 import io.legado.app.utils.startActivity
 import splitties.init.appCtx
 
@@ -51,10 +52,9 @@ class SharedReceiverActivity : AppCompatActivity() {
             if (url.matches("http.+".toRegex()))
                 result.append("\n").append(url.trim { it <= ' ' })
         }
-        if (result.length > 1) {
-            startActivity<MainActivity>()
-        } else {
-            SearchActivity.start(this, text)
+        startActivity<MainActivity>()
+        if (result.length <= 1) {
+            longToastOnUi(R.string.book_not_exist)
         }
     }
 }

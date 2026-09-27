@@ -11,13 +11,11 @@ import androidx.recyclerview.widget.ItemTouchHelper
 import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.HighlightRule
 import io.legado.app.data.entities.HighlightRuleFile
 import io.legado.app.databinding.ActivityHighlightRuleBinding
 import io.legado.app.databinding.DialogEditTextBinding
-import io.legado.app.help.DirectLinkUpload
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
@@ -29,7 +27,6 @@ import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.GSON
-import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.sendToClip
 import io.legado.app.utils.share
 import io.legado.app.utils.stackTraceStr
@@ -61,9 +58,6 @@ class HighlightRuleActivity :
         it.uri?.let { uri ->
             val url = uri.toString()
             alert(R.string.export_success) {
-                if (url.isAbsUrl()) {
-                    setMessage(DirectLinkUpload.getSummary())
-                }
                 val alertBinding = DialogEditTextBinding.inflate(layoutInflater).apply {
                     editView.hint = getString(R.string.path)
                     editView.setText(url)
@@ -206,7 +200,7 @@ class HighlightRuleActivity :
     private fun observeData() {
         lifecycleScope.launch {
             appDb.highlightRuleDao.flowAll()
-                .catch { AppLog.put("高亮规则界面更新数据出错", it) }
+                .catch { Unit }
                 .flowOn(IO)
                 .conflate()
                 .collect { rules ->

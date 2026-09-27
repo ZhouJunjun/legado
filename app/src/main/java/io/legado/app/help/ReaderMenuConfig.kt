@@ -39,9 +39,6 @@ data class ReaderMenuConfig(
             "highlightRule",
             "editContent",
             "pageAnim",
-            "getProgress",
-            "coverProgress",
-            "reverseContent",
             "simulatedReading",
             "replace",
             "sameTitleRemoved",
@@ -51,7 +48,6 @@ data class ReaderMenuConfig(
             "imageStyle",
             "updateToc",
             "effectiveReplaces",
-            "log",
             "help"
         )
 

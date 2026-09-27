@@ -7,7 +7,6 @@ import android.provider.Settings
 import androidx.annotation.Keep
 import cn.hutool.crypto.digest.DigestUtil
 import io.legado.app.BuildConfig
-import io.legado.app.help.update.AppVariant
 import org.apache.commons.lang3.time.FastDateFormat
 import splitties.init.appCtx
 
@@ -20,9 +19,7 @@ object AppConst {
 
     const val APP_TAG = "Legado"
 
-    const val channelIdDownload = "channel_download"
     const val channelIdReadAloud = "channel_read_aloud"
-    const val channelIdWeb = "channel_web"
 
     const val UA_NAME = "User-Agent"
 
@@ -111,11 +108,7 @@ object AppConst {
 
     private val isOfficial = sha256Signature == OFFICIAL_SIGNATURE
 
-    private val isBeta = sha256Signature == BETA_SIGNATURE || BuildConfig.DEBUG
-
-    val betaUpdateVariant: AppVariant? by lazy {
-        resolveBetaUpdateVariant(appCtx.packageName, sha256Signatures)
-    }
+    private val isBeta = sha256Signature == BETA_SIGNATURE
 
     val charsets =
         arrayListOf("UTF-8", "GB2312", "GB18030", "GBK", "Unicode", "UTF-16", "UTF-16LE", "ASCII")
@@ -132,17 +125,4 @@ object AppConst {
      */
     const val authority = BuildConfig.APPLICATION_ID + ".fileProvider"
 
-}
-
-internal fun resolveBetaUpdateVariant(
-    packageName: String,
-    signatureSha256: List<String>
-): AppVariant? {
-    val currentSignature = signatureSha256.singleOrNull() ?: return null
-    if (!currentSignature.equals(BETA_SIGNATURE, ignoreCase = true)) return null
-    return when (packageName) {
-        "com.legado.app.release" -> AppVariant.BETA_RELEASE
-        "com.legado.app.releaseA" -> AppVariant.BETA_RELEASEA
-        else -> null
-    }
 }

@@ -8,7 +8,6 @@ import androidx.core.graphics.toColorInt
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import io.legado.app.R
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.PageAnim
 import io.legado.app.constant.PreferKey
 import io.legado.app.constant.PunctuationCompressMode
@@ -264,7 +263,6 @@ object ReadBookConfig {
                 val json = configFile.readText()
                 configs = parseReadConfigArray(json).getOrThrow()
             } catch (e: Exception) {
-                AppLog.put("读取排版配置文件出错", e)
             }
         }
         (configs ?: DefaultData.readConfigs).let {

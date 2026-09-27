@@ -6,18 +6,15 @@ import android.net.Uri
 import androidx.lifecycle.MutableLiveData
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.help.book.update
 import io.legado.app.help.book.isPdf
 import io.legado.app.help.book.isEpub
+import io.legado.app.help.book.isLocalTxt
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.globalExecutor
-import io.legado.app.model.AudioPlay
 import io.legado.app.model.ReadBook
-import io.legado.app.model.ReadManga
-import io.legado.app.model.VideoPlay
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.GSON
@@ -25,6 +22,8 @@ import io.legado.app.utils.createFileIfNotExist
 import io.legado.app.utils.openOutputStream
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.writeText
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class TocViewModel(application: Application) : BaseViewModel(application) {
     var bookUrl: String = ""
@@ -46,8 +45,10 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
     fun upBookTocRule(book: Book, complete: (Throwable?) -> Unit) {
         execute {
             book.update()
+            // 必须先删旧章节再重新分段：否则 getChapterList() 内部的 getWordCount()
+            // 会从 chapters 表读到上一次留下的旧字数，把它当成新值写回，错误数字被固化。
+            appDb.bookChapterDao.delByBook(book.bookUrl)
             LocalBook.getChapterList(book).let {
-                appDb.bookChapterDao.delByBook(book.bookUrl)
                 appDb.bookChapterDao.insert(*it.toTypedArray())
                 book.update()
                 ReadBook.onChapterListUpdated(book)
@@ -60,12 +61,72 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
         }
     }
 
+    /**
+     * 自愈历史上被固化的错误章字数。
+     *
+     * chapters 表里的章字数是「上一次分段」的产物。历史版本里 getWordCount() 会无条件用它
+     * 覆盖 analyze() 刚算出的正确值，而 upBookTocRule() 又是「先算后删」，于是错误数字被
+     * 当成新值反复写回、永久固化 —— 典型表现就是目录里某一章显示成"全书剩余内容"的字数。
+     * 又因为章节文件名是「序号 + 标题MD5」，重新分段时新旧章节一一对应，所以光靠重新分段
+     * 也修不好，只能在打开目录时自检一次并重建。
+     *
+     * 判定依据: 本地 TXT 中超过 TextFile.maxLengthWithToc(102400 字节) 的章节一定会被拆成
+     * 子章，而任何编码下「字节数 >= 字符数」，因此字符数超过 102400 的章节，其字数必定是
+     * 历史脏数据。
+     */
+    suspend fun repairLocalChapterWordCount(book: Book) {
+        if (!book.isLocalTxt || !book.getSplitLongChapter()) return
+        val stored = withContext(Dispatchers.IO) {
+            appDb.bookChapterDao.getChapterList(book.bookUrl)
+        }
+        if (stored.isEmpty()) return
+        if (stored.none { parseStoredWordCount(it.wordCount) > localChapterWordLimit }) return
+        // 同一本书本次运行只重建一次，避免无法修复时反复做无用功。
+        if (!repairedBookUrls.add(book.bookUrl)) return
+        try {
+            withContext(Dispatchers.IO) {
+                book.update()
+                appDb.bookChapterDao.delByBook(book.bookUrl)
+                LocalBook.getChapterList(book).let { chapters ->
+                    appDb.bookChapterDao.insert(*chapters.toTypedArray())
+                    book.update()
+                    ReadBook.onChapterListUpdated(book)
+                }
+            }
+            bookData.postValue(book)
+        } catch (e: kotlinx.coroutines.CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            // 重建失败(例如源文件已被移走)时把原章节放回去，避免目录变空。
+            // 先清掉可能已写入的新章节，避免新旧两套章节同时留在目录里。
+            runCatching {
+                appDb.bookChapterDao.delByBook(book.bookUrl)
+                appDb.bookChapterDao.insert(*stored.toTypedArray())
+            }
+        }
+    }
+
+    private val repairedBookUrls = hashSetOf<String>()
+
+    /** TextFile.maxLengthWithToc = 102400 字节; 任何编码下字节数 >= 字符数。 */
+    private val localChapterWordLimit = 102400
+
+    /** 把 "1.2万字" / "3456字" 还原成整数, 解析不出来返回 0。 */
+    private fun parseStoredWordCount(value: String?): Int {
+        val text = value?.trim().orEmpty()
+        if (text.isEmpty()) return 0
+        val cut = text.indexOfFirst { it == '万' || it == '字' }
+        val head = (if (cut < 0) text else text.substring(0, cut)).replace(',', '.').trim()
+        val number = head.toDoubleOrNull() ?: return 0
+        return if (text.contains('万')) (number * 10000).toInt() else number.toInt()
+    }
+
     fun reverseToc(success: (book: Book) -> Unit) {
         execute {
             bookData.value?.apply {
                 if (isPdf || isEpub) {
                     setReverseToc(!getReverseToc())
-                    listOf(ReadBook.book, ReadManga.book, AudioPlay.book, VideoPlay.book)
+                    listOf(ReadBook.book)
                         .filter { it?.bookUrl == bookUrl }
                         .forEach { it?.setReverseToc(getReverseToc()) }
                     appDb.bookDao.updateReverseToc(bookUrl, getReverseToc())
@@ -73,7 +134,7 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
                 }
                 // Keep source parsing and index-based reading/cache identities unchanged.
                 setReverseTocDisplay(!getReverseTocDisplay())
-                listOf(ReadBook.book, ReadManga.book, AudioPlay.book, VideoPlay.book)
+                listOf(ReadBook.book)
                     .filter { it?.bookUrl == bookUrl }
                     .forEach { it?.setReverseTocDisplay(getReverseTocDisplay()) }
                 appDb.bookDao.updateReverseTocDisplay(bookUrl, getReverseTocDisplay())
@@ -96,13 +157,12 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
             runCatching {
                 appDb.bookDao.updateTocExpanded(book.bookUrl, expanded)
             }.onFailure {
-                AppLog.put("保存目录展开设置失败\n${it.localizedMessage}", it)
             }
         }
     }
 
     private fun updateActiveReaderBooks(bookUrl: String, expanded: Boolean) {
-        listOf(ReadBook.book, ReadManga.book, AudioPlay.book, VideoPlay.book)
+        listOf(ReadBook.book)
             .filter { it?.bookUrl == bookUrl }
             .forEach { it?.setTocExpanded(expanded) }
     }
@@ -135,7 +195,6 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
                 )
             )
         }.onError {
-            AppLog.put("导出失败\n${it.localizedMessage}", it, true)
         }.onSuccess {
             context.toastOnUi("导出成功")
         }
@@ -159,7 +218,6 @@ class TocViewModel(application: Application) : BaseViewModel(application) {
                 }
             }
         }.onError {
-            AppLog.put("导出失败\n${it.localizedMessage}", it, true)
         }.onSuccess {
             context.toastOnUi("导出成功")
         }

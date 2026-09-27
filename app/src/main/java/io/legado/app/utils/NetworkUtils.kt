@@ -1,20 +1,8 @@
 package io.legado.app.utils
 
-import android.annotation.SuppressLint
-import android.net.ConnectivityManager
-import android.net.NetworkCapabilities
-import android.os.Build
 import cn.hutool.core.lang.Validator
-import io.legado.app.constant.AppLog
-import io.legado.app.help.config.AppConfig
-import okhttp3.internal.publicsuffix.PublicSuffixDatabase
-import splitties.systemservices.connectivityManager
-import java.net.InetAddress
-import java.net.NetworkInterface
-import java.net.SocketException
 import java.net.URL
 import java.util.BitSet
-import java.util.Enumeration
 
 @Suppress("unused", "MemberVisibilityCanBePrivate")
 object NetworkUtils {
@@ -22,40 +10,6 @@ object NetworkUtils {
     /**
      * 判断是否联网
      */
-    @SuppressLint("ObsoleteSdkInt")
-    @Suppress("DEPRECATION")
-    fun isAvailable(): Boolean {
-        if (Build.VERSION.SDK_INT < 23) {
-            val mWiFiNetworkInfo = connectivityManager.activeNetworkInfo
-            if (mWiFiNetworkInfo != null) {
-                // WIFI
-                return mWiFiNetworkInfo.type == ConnectivityManager.TYPE_WIFI ||
-                        // 移动数据
-                        mWiFiNetworkInfo.type == ConnectivityManager.TYPE_MOBILE ||
-                        // 以太网
-                        mWiFiNetworkInfo.type == ConnectivityManager.TYPE_ETHERNET ||
-                        // VPN
-                        mWiFiNetworkInfo.type == ConnectivityManager.TYPE_VPN
-            }
-        } else {
-            val network = connectivityManager.activeNetwork
-            if (network != null) {
-                val nc = connectivityManager.getNetworkCapabilities(network)
-                if (nc != null) {
-                    // WIFI
-                    return nc.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
-                            // 移动数据
-                            nc.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
-                            // 以太网
-                            nc.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET) ||
-                            // VPN
-                            nc.hasTransport(NetworkCapabilities.TRANSPORT_VPN)
-                }
-            }
-        }
-        return false
-    }
-
     private val notNeedEncodingQuery: BitSet by lazy {
         val bitSet = BitSet(256)
         for (i in 'a'.code..'z'.code) {
@@ -183,7 +137,6 @@ object NetworkUtils {
             relativeUrl = parseUrl.toString()
             return relativeUrl
         } catch (e: Exception) {
-            AppLog.put("网址拼接出错\n${e.localizedMessage}", e)
         }
         return relativeUrl
     }
@@ -200,72 +153,6 @@ object NetworkUtils {
         val parsed = kotlin.runCatching { URL(urlToParse) }.getOrNull() ?: return null
         if (parsed.host.isEmpty()) return null
         return "${urlToParse.substringBefore("://")}://${parsed.authority}"
-    }
-
-    /**
-     * 获取域名，供cookie保存和读取，处理失败返回传入的url
-     * http://1.2.3.4 => 1.2.3.4
-     * https://www.example.com =>  example.com
-     * http://www.biquge.com.cn => biquge.com.cn
-     * http://www.content.example.com => example.com
-     */
-    fun getSubDomain(url: String): String {
-        val baseUrl = getBaseUrl(url) ?: return url
-        return kotlin.runCatching {
-            val mURL = URL(baseUrl)
-            val host: String = mURL.host
-            //mURL.scheme https/http
-            //判断是否为ip
-            if (isIPAddress(host)) return host
-            //PublicSuffixDatabase处理域名
-            PublicSuffixDatabase.get().getEffectiveTldPlusOne(host) ?: host
-        }.getOrDefault(baseUrl)
-    }
-
-    fun getSubDomainOrNull(url: String): String? {
-        val baseUrl = getBaseUrl(url) ?: return null
-        return kotlin.runCatching {
-            val mURL = URL(baseUrl)
-            val host: String = mURL.host
-            //mURL.scheme https/http
-            //判断是否为ip
-            if (isIPAddress(host)) return host
-            //PublicSuffixDatabase处理域名
-            PublicSuffixDatabase.get().getEffectiveTldPlusOne(host) ?: host
-        }.getOrDefault(null)
-    }
-
-    fun getDomain(url: String): String {
-        val baseUrl = getBaseUrl(url) ?: return url
-        return kotlin.runCatching {
-            URL(baseUrl).host
-        }.getOrDefault(baseUrl)
-    }
-
-    /**
-     * Get local Ip address.
-     */
-    fun getLocalIPAddress(): List<InetAddress> {
-        val enumeration: Enumeration<NetworkInterface>
-        try {
-            enumeration = NetworkInterface.getNetworkInterfaces()
-        } catch (e: SocketException) {
-            return emptyList()
-        }
-
-        val addressList = mutableListOf<InetAddress>()
-
-        while (enumeration.hasMoreElements()) {
-            val nif = enumeration.nextElement()
-            val addresses = nif.inetAddresses ?: continue
-            while (addresses.hasMoreElements()) {
-                val address = addresses.nextElement()
-                if (!address.isLoopbackAddress && isIPv4Address(address.hostAddress)) {
-                    addressList.add(address)
-                }
-            }
-        }
-        return addressList
     }
 
     /**

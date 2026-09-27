@@ -14,13 +14,9 @@ Legado 是一款免费的 Android 平台开源小说阅读器。
 
 # Grateful-感谢 [![](https://img.shields.io/badge/-Grateful-F5F5F5.svg)](#Grateful-感谢-)
 > * org.jsoup:jsoup
-> * cn.wanghaomiao:JsoupXpath
 > * com.jayway.jsonpath:json-path
 > * com.github.gedoor:rhino-android
-> * com.squareup.okhttp3:okhttp
 > * com.github.bumptech.glide:glide
-> * org.nanohttpd:nanohttpd
-> * org.nanohttpd:nanohttpd-websocket
 > * cn.bingoogolapple:bga-qrcode-zxing
 > * com.jaredrummler:colorpicker
 > * org.apache.commons:commons-text

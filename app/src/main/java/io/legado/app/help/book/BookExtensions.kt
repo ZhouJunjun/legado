@@ -6,7 +6,6 @@ import android.net.Uri
 import androidx.core.net.toUri
 import com.script.buildScriptBindings
 import com.script.rhino.RhinoScriptEngine
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.BookSourceType
 import io.legado.app.constant.BookType
@@ -14,11 +13,8 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.BaseBook
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
-import io.legado.app.data.entities.BookSource
 import io.legado.app.exception.NoStackTraceException
-import io.legado.app.help.RuleBigDataHelp
 import io.legado.app.help.config.AppConfig
-import io.legado.app.model.analyzeRule.CustomUrl
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.GSON
@@ -75,9 +71,6 @@ val Book.isMobi: Boolean
 val Book.isOnLineTxt: Boolean
     get() = !isLocal && isType(BookType.text)
 
-val Book.isWebFile: Boolean
-    get() = isType(BookType.webFile)
-
 val Book.isUpError: Boolean
     get() = isType(BookType.updateError)
 
@@ -92,9 +85,7 @@ val Book.archiveName: String
         if (!isArchive) throw NoStackTraceException("Book is not deCompressed from archive")
         // local_book::archive.rar
         // webDav::https://...../archive.rar
-        val archivePath = origin.substringAfter("::").let {
-            if (origin.startsWith(BookType.webDavTag)) CustomUrl(it).getUrl() else it
-        }
+        val archivePath = origin.substringAfter("::")
         return archivePath.substringAfterLast("/")
     }
 
@@ -295,17 +286,13 @@ fun Book.updateTo(newBook: Book): Book {
 }
 
 fun Book.hasVariable(key: String): Boolean {
-    return variableMap.contains(key) || RuleBigDataHelp.hasBookVariable(bookUrl, key)
+    return variableMap.contains(key)
 }
 
 fun Book.getFolderNameNoCache(): String {
     return name.replace(AppPattern.fileNameRegex, "").let {
         it.substring(0, min(9, it.length)) + MD5Utils.md5Encode16(bookUrl)
     }
-}
-
-fun Book.getBookSource(): BookSource? {
-    return appDb.bookSourceDao.getBookSource(origin)
 }
 
 fun Book.isLocalModified(): Boolean {
@@ -348,7 +335,6 @@ fun Book.getExportFileName(suffix: String): String {
             ?: return@runCatching default
         normalizeExportFileName(customName, suffix)
     }.onFailure {
-        AppLog.put("导出书名规则错误,使用默认规则\n${it.localizedMessage}", it)
     }.getOrDefault(default)
 }
 
@@ -378,7 +364,6 @@ fun Book.getExportFileName(
             ?: return@runCatching default
         normalizeExportFileName(customName, suffix)
     }.onFailure {
-        AppLog.put("导出书名规则错误,使用默认规则\n${it.localizedMessage}", it)
     }.getOrDefault(default)
 }
 

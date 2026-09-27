@@ -10,37 +10,21 @@ import androidx.preference.PreferenceGroup
 import androidx.preference.Preference
 import io.legado.app.R
 import io.legado.app.base.BaseFragment
-import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.databinding.FragmentMyConfigBinding
-import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.config.ThemeConfig
-import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.prefs.NameListPreference
-import io.legado.app.lib.prefs.SwitchPreference
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.service.McpService
-import io.legado.app.service.AutoTaskScheduler
-import io.legado.app.service.WebService
-import io.legado.app.ui.about.checkAppUpdate
 import io.legado.app.ui.about.AboutActivity
 import io.legado.app.ui.about.ReadRecordActivity
-import io.legado.app.ui.autoTask.AutoTaskActivity
 import io.legado.app.ui.book.bookmark.AllBookmarkActivity
 import io.legado.app.ui.book.toc.rule.TxtTocRuleActivity
 import io.legado.app.ui.config.ConfigActivity
 import io.legado.app.ui.config.ConfigTag
-import io.legado.app.ui.dict.rule.DictRuleActivity
 import io.legado.app.ui.file.FileManageActivity
 import io.legado.app.ui.main.MainFragmentInterface
 import io.legado.app.ui.replace.ReplaceRuleActivity
-import io.legado.app.utils.LogUtils
-import io.legado.app.utils.getPrefBoolean
-import io.legado.app.utils.observeEventSticky
-import io.legado.app.utils.openUrl
-import io.legado.app.utils.putPrefBoolean
-import io.legado.app.utils.sendToClip
 import io.legado.app.utils.setEdgeEffectColor
 import io.legado.app.utils.showHelp
 import io.legado.app.utils.startActivity
@@ -110,8 +94,6 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
         }
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
-            putPrefBoolean(PreferKey.webService, WebService.isRun)
-            putPrefBoolean(PreferKey.mcpService, McpService.isRun)
             addPreferencesFromResource(R.xml.pref_main)
             if (isMore) activity?.setTitle(R.string.reader_menu_more)
             val available = mutableListOf<Preference>()
@@ -129,56 +111,11 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
                 dialogTitle = getString(R.string.my_more_items)
                 entries = available.map { it.title }.toTypedArray()
                 entryValues = available.map { it.key }.toTypedArray()
-                setDefaultValue(setOf("check_update", "check_beta_update"))
+                setDefaultValue(emptySet<String>())
                 isVisible = false
             }
             preferenceScreen.addPreference(customization)
             applyVisibility()
-            findPreference<SwitchPreference>("webService")?.onLongClick {
-                if (!WebService.isRun) {
-                    return@onLongClick false
-                }
-                context?.selector(arrayListOf("复制地址", "浏览器打开")) { _, i ->
-                    when (i) {
-                        0 -> context?.sendToClip(it.summary.toString())
-                        1 -> context?.openUrl(it.summary.toString())
-                    }
-                }
-                true
-            }
-            observeEventSticky<String>(EventBus.WEB_SERVICE) {
-                findPreference<SwitchPreference>(PreferKey.webService)?.let {
-                    it.isChecked = WebService.isRun
-                    it.summary = if (WebService.isRun) {
-                        WebService.hostAddress
-                    } else {
-                        getString(R.string.web_service_desc)
-                    }
-                }
-            }
-            findPreference<SwitchPreference>(PreferKey.mcpService)?.let {
-                it.isChecked = McpService.isRun
-                it.summary = if (McpService.isRun) {
-                    McpService.hostAddress
-                } else {
-                    getString(R.string.mcp_service_desc)
-                }
-                it.onLongClick {
-                    if (!McpService.isRun) return@onLongClick false
-                    context?.sendToClip(it.summary.toString())
-                    true
-                }
-            }
-            observeEventSticky<String>(EventBus.MCP_SERVICE) {
-                findPreference<SwitchPreference>(PreferKey.mcpService)?.let {
-                    it.isChecked = McpService.isRun
-                    it.summary = if (McpService.isRun) {
-                        McpService.hostAddress
-                    } else {
-                        getString(R.string.mcp_service_desc)
-                    }
-                }
-            }
             findPreference<NameListPreference>(PreferKey.themeMode)?.let {
                 it.setOnPreferenceChangeListener { _, _ ->
                     view?.post { ThemeConfig.applyDayNight(requireContext()) }
@@ -195,8 +132,9 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
         override fun onResume() {
             super.onResume()
             preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
-            customization.values = preferenceManager.sharedPreferences?.getStringSet(PreferKey.myMoreItems,
-                setOf("check_update", "check_beta_update")).orEmpty()
+            customization.values = preferenceManager.sharedPreferences?.getStringSet(
+                PreferKey.myMoreItems, emptySet<String>()
+            ).orEmpty()
             applyVisibility()
         }
 
@@ -211,54 +149,25 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
         ) {
             when (key) {
                 PreferKey.myMoreItems -> {
-                    customization.values = sharedPreferences?.getStringSet(key,
-                        setOf("check_update", "check_beta_update")).orEmpty()
+                    customization.values = sharedPreferences?.getStringSet(
+                        key, emptySet<String>()
+                    ).orEmpty()
                     applyVisibility()
                 }
-                PreferKey.webService -> {
-                    if (requireContext().getPrefBoolean("webService")) {
-                        WebService.start(requireContext())
-                    } else {
-                        WebService.stop(requireContext())
-                    }
-                }
-
-                PreferKey.mcpService -> {
-                    if (requireContext().getPrefBoolean(PreferKey.mcpService)) {
-                        McpService.start(requireContext())
-                    } else {
-                        McpService.stop(requireContext())
-                    }
-                }
-
-                PreferKey.autoTaskService -> {
-                    val appContext = requireContext().applicationContext
-                    if (appContext.getPrefBoolean(PreferKey.autoTaskService)) {
-                        Coroutine.async { AutoTaskScheduler.refresh(appContext) }
-                    } else {
-                        AutoTaskScheduler.cancelAll(appContext)
-                    }
-                }
-
-                "recordLog" -> LogUtils.upLevel()
             }
         }
 
         override fun onPreferenceTreeClick(preference: Preference): Boolean {
             when (preference.key) {
                 "myMore" -> startActivity<ConfigActivity> { putExtra("configTag", ConfigTag.MY_MORE) }
-                "check_update" -> checkAppUpdate()
-                "check_beta_update" -> checkAppUpdate(beta = true)
-                "autoTaskManage" -> startActivity<AutoTaskActivity>()
                 "replaceManage" -> startActivity<ReplaceRuleActivity>()
-                "dictRuleManage" -> startActivity<DictRuleActivity>()
                 "txtTocRuleManage" -> startActivity<TxtTocRuleActivity>()
                 "bookmark" -> startActivity<AllBookmarkActivity>()
                 "setting" -> startActivity<ConfigActivity> {
                     putExtra("configTag", ConfigTag.OTHER_CONFIG)
                 }
 
-                "web_dav_setting" -> startActivity<ConfigActivity> {
+                "backupRestore" -> startActivity<ConfigActivity> {
                     putExtra("configTag", ConfigTag.BACKUP_CONFIG)
                 }
 

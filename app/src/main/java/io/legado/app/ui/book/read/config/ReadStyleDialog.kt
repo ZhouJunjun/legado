@@ -93,7 +93,13 @@ class ReadStyleDialog : BaseDialogFragment(R.layout.dialog_read_book_style),
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        (activity as ReadBookActivity).bottomDialog++
+        // 重复 show 时先自毁, 避免两个界面面板叠加(bottomDialog 只处理 0/1)。
+        // 与 ReadAloudDialog 的守卫保持一致。
+        val bottomDialog = (activity as ReadBookActivity).bottomDialog++
+        if (bottomDialog > 0) {
+            dismissAllowingStateLoss()
+            return
+        }
         initView()
         initData()
         initViewEvent()

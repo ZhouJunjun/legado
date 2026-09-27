@@ -19,7 +19,6 @@ import io.legado.app.help.book.isImage
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.isVideo
 import io.legado.app.help.book.removeType
-import io.legado.app.ui.book.changecover.ChangeCoverDialog
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.MD5Utils
@@ -27,7 +26,6 @@ import io.legado.app.utils.externalFiles
 import io.legado.app.utils.inputStream
 import io.legado.app.utils.readUri
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
-import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import splitties.init.appCtx
@@ -35,8 +33,7 @@ import splitties.views.bottomPadding
 import java.io.FileOutputStream
 
 class BookInfoEditActivity :
-    VMBaseActivity<ActivityBookInfoEditBinding, BookInfoEditViewModel>(),
-    ChangeCoverDialog.CallBack {
+    VMBaseActivity<ActivityBookInfoEditBinding, BookInfoEditViewModel>() {
 
     private val selectCover = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
@@ -80,13 +77,6 @@ class BookInfoEditActivity :
     }
 
     private fun initEvent() = binding.run {
-        tvChangeCover.setOnClickListener {
-            viewModel.bookData.value?.let {
-                showDialogFragment(
-                    ChangeCoverDialog(it.name, it.author)
-                )
-            }
-        }
         tvSelectCover.setOnClickListener {
             selectCover.launch {
                 mode = HandleFileContract.IMAGE
@@ -149,18 +139,7 @@ class BookInfoEditActivity :
         }
     }
 
-    override fun coverChangeTo(coverUrl: String) {
-        viewModel.book?.customCoverUrl = coverUrl
-        viewModel.book?.persistedCoverUrl = null
-        binding.tieCoverUrl.setText(coverUrl)
-        upCover()
-    }
-
     private fun coverChangeTo(uri: Uri) {
-        if (uri.scheme?.lowercase() in listOf("http", "https")) {
-            coverChangeTo(uri.toString())
-            return
-        }
         readUri(uri) { fileDoc, inputStream ->
             runCatching {
                 inputStream.use {
@@ -177,7 +156,7 @@ class BookInfoEditActivity :
                     FileOutputStream(file).use { outputStream ->
                         inputStream.copyTo(outputStream)
                     }
-                    coverChangeTo(file.absolutePath)
+                    binding.tieCoverUrl.setText(file.absolutePath)
                 }
             }.onFailure {
                 appCtx.toastOnUi(it.localizedMessage)

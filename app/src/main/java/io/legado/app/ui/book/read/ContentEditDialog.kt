@@ -29,12 +29,10 @@ import io.legado.app.databinding.DialogContentEditBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.ContentProcessor
-import io.legado.app.help.book.isLocal
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.model.ReadBook
-import io.legado.app.model.webBook.WebBook
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.hideSoftInput
@@ -632,14 +630,6 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
                     ?: return@execute null
                 if (request.reset) {
                     BookHelp.delContent(book, chapter)
-                    if (!book.isLocal) {
-                        val bookSource = ReadBook.bookSource?.takeIf {
-                            it.bookSourceUrl == book.origin
-                        } ?: appDb.bookSourceDao.getBookSource(book.origin)
-                        bookSource?.let {
-                            WebBook.getContentAwait(it, book, chapter)
-                        }
-                    }
                 }
                 val contentProcessor = ContentProcessor.get(book.name, book.origin)
                 val content = BookHelp.getContent(book, chapter) ?: return@execute null

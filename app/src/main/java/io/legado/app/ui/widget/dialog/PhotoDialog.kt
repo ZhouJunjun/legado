@@ -6,14 +6,12 @@ import android.view.View
 import android.view.ViewGroup
 import com.bumptech.glide.load.engine.DiskCacheStrategy
 import com.bumptech.glide.load.resource.bitmap.DownsampleStrategy
-import com.bumptech.glide.request.RequestOptions
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogPhotoViewBinding
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.model.BookCover
 import io.legado.app.model.ImageProvider
 import io.legado.app.model.ReadBook
@@ -68,11 +66,8 @@ class PhotoDialog() : BaseDialogFragment(R.layout.dialog_photo_view) {
                 .diskCacheStrategy(DiskCacheStrategy.NONE)
                 .into(binding.photoView)
         } else {
-            ImageLoader.load(requireContext(), src).apply {
-                arguments.getString("sourceOrigin")?.let { sourceOrigin ->
-                    apply(RequestOptions().set(OkHttpModelLoader.sourceOriginOption, sourceOrigin))
-                }
-            }.error(if (isBook) BookCover.defaultDrawable else R.drawable.image_loading_error)
+            ImageLoader.load(requireContext(), src)
+                .error(if (isBook) BookCover.defaultDrawable else R.drawable.image_loading_error)
                 .dontTransform()
                 .downsample(DownsampleStrategy.NONE)
                 .into(binding.photoView)

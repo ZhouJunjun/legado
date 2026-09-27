@@ -8,7 +8,6 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.BookSourceType
 import io.legado.app.constant.BookType
-import io.legado.app.data.entities.BOOK_SOURCE_PART_VIEW
 import io.legado.app.help.book.isLegacyPersistedCoverPath
 import java.util.UUID
 
@@ -25,8 +24,25 @@ object DatabaseMigrations {
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
             migration_100_101, migration_104_105, migration_105_106, migration_106_107,
-            migration_107_108, migration_108_109, migration_109_110,
+            migration_107_108, migration_108_109, migration_109_110, migration_114_115,
         )
+    }
+
+    /**
+     * 在线书 / 书源子系统整体移除：
+     * 删除书源视图与相关数据表（书源、搜索历史、字典规则、服务端、自动任务规则）。
+     * 视图无法用 AutoMigrationSpec 的 @DeleteTable 处理，故采用手写迁移。
+     */
+    private val migration_114_115 = object : Migration(114, 115) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP VIEW IF EXISTS `book_sources_part`")
+            db.execSQL("DROP TABLE IF EXISTS `book_sources`")
+            db.execSQL("DROP TABLE IF EXISTS `searchBooks`")
+            db.execSQL("DROP TABLE IF EXISTS `search_keywords`")
+            db.execSQL("DROP TABLE IF EXISTS `dictRules`")
+            db.execSQL("DROP TABLE IF EXISTS `servers`")
+            db.execSQL("DROP TABLE IF EXISTS `auto_task_rules`")
+        }
     }
 
     private val migration_109_110 = object : Migration(109, 110) {
@@ -93,7 +109,20 @@ object DatabaseMigrations {
                 SELECT bookSourceUrl, lower(hex(randomblob(16))), lower(hex(randomblob(16))), 'NEEDS_CHECK', 0, ''
                 FROM book_sources""")
             db.execSQL("DROP VIEW IF EXISTS book_sources_part")
-            db.execSQL("CREATE VIEW `book_sources_part` AS $BOOK_SOURCE_PART_VIEW")
+            // 书源视图 SQL 原定义在 BookSourcePart.kt，随在线书子系统一并删除，这里内联保留
+            // 以保证 104→105 的历史升级链路仍能通过 Room 的 schema 校验。
+            db.execSQL(
+                """CREATE VIEW `book_sources_part` AS select b.bookSourceUrl, bookSourceName, bookSourceGroup, customOrder, enabled, enabledExplore,
+    (loginUrl is not null and trim(loginUrl) <> ''
+     or (mainJs is not null and trim(mainJs) <> ''
+         and loginUi is not null
+         and replace(replace(replace(replace(loginUi, ' ', ''), char(9), ''), char(10), ''), char(13), '') not in ('', '[]'))) hasLoginUrl,
+    lastUpdateTime, respondTime, weight,
+    (exploreUrl is not null and trim(exploreUrl) <> '') hasExploreUrl,
+    eventListener, bookSourceType,
+    (mainJs is not null and trim(mainJs) <> '') hasJs
+    from book_sources b"""
+            )
         }
     }
 
@@ -609,5 +638,14 @@ object DatabaseMigrations {
         DeleteTable(tableName = "ruleSubs"),
     )
     class Migration_112_113 : AutoMigrationSpec
+
+    /**
+     * 自建 HTTP 朗读引擎(httpTTS)整体移除，相关数据表一并删除。
+     */
+    @Suppress("ClassName")
+    @DeleteTable.Entries(
+        DeleteTable(tableName = "httpTTS")
+    )
+    class Migration_113_114 : AutoMigrationSpec
 
 }

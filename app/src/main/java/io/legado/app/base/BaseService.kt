@@ -11,7 +11,6 @@ import io.legado.app.help.LifecycleHelp
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
-import io.legado.app.utils.LogUtils
 import io.legado.app.utils.isForegroundServiceStartDenied
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
@@ -20,8 +19,6 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Semaphore
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlin.coroutines.CoroutineContext
-import android.provider.Settings
-import androidx.annotation.RequiresApi
 
 abstract class BaseService : LifecycleService() {
 
@@ -50,9 +47,6 @@ abstract class BaseService : LifecycleService() {
 
     @CallSuper
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        LogUtils.d(simpleName) {
-            "onStartCommand $intent ${intent?.toUri(0)}"
-        }
         if (!isForeground) {
             if (!tryStartForegroundNotification()) {
                 stopSelfResult(startId)
@@ -65,7 +59,6 @@ abstract class BaseService : LifecycleService() {
 
     @CallSuper
     override fun onTaskRemoved(rootIntent: Intent?) {
-        LogUtils.d(simpleName, "onTaskRemoved")
         super.onTaskRemoved(rootIntent)
         stopSelf()
     }
@@ -84,7 +77,6 @@ abstract class BaseService : LifecycleService() {
     @CallSuper
     override fun onTimeout(startId: Int, fgsType: Int) {
         super.onTimeout(startId, fgsType)
-        LogUtils.d(simpleName, "onTimeout startId:$startId fgsType:$fgsType")
         stopSelf()
     }
 
@@ -136,10 +128,6 @@ abstract class BaseService : LifecycleService() {
             onSuccess = { true },
             onFailure = { error ->
                 if (!error.isForegroundServiceStartDenied()) throw error
-                LogUtils.e(
-                    simpleName,
-                    "Foreground notification start denied: ${error.localizedMessage}"
-                )
                 false
             }
         )

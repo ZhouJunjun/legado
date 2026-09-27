@@ -16,7 +16,6 @@ import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookCacheCleanupSnapshot
 import io.legado.app.data.entities.BookCacheInfo
 import io.legado.app.data.entities.BookGroup
-import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.BookshelfBook
 import io.legado.app.help.book.isNotShelf
 import io.legado.app.utils.GSON
@@ -128,19 +127,11 @@ interface BookDao {
     @Query("SELECT * FROM books WHERE name = :name and author = :author")
     fun getBook(name: String, author: String): Book?
 
-    @Query("""select distinct bs.* from books, book_sources bs 
-        where origin == bookSourceUrl and origin not like '${BookType.localTag}%' 
-        and origin not like '${BookType.webDavTag}%'""")
-    fun getAllUseBookSource(): List<BookSource>
-
     @Query("SELECT * FROM books WHERE name = :name and origin = :origin")
     fun getBookByOrigin(name: String, origin: String): Book?
 
     @get:Query("select count(bookUrl) from books where (SELECT sum(groupId) FROM book_groups)")
     val noGroupSize: Int
-
-    @get:Query("SELECT * FROM books where type & ${BookType.local} = 0")
-    val webBooks: List<Book>
 
     @get:Query("SELECT * FROM books where type & ${BookType.local} = 0 and canUpdate = 1")
     val hasUpdateBooks: List<Book>

@@ -18,7 +18,6 @@ import androidx.recyclerview.widget.RecyclerView
 import io.legado.app.R
 import io.legado.app.base.adapter.ItemViewHolder
 import io.legado.app.base.adapter.RecyclerAdapter
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.KeyboardAssist
@@ -169,7 +168,6 @@ class KeyboardToolPop(
     fun upAdapterData() {
         scope.launch {
             appDb.keyboardAssistsDao.flowByType(0).catch {
-                AppLog.put("键盘帮助浮窗获取数据失败\n${it.localizedMessage}", it)
             }.flowOn(IO).collect {
                 adapter.setItems(it)
             }

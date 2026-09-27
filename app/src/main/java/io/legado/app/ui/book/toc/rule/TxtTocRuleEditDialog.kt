@@ -10,7 +10,6 @@ import androidx.fragment.app.viewModels
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.base.BaseViewModel
-import io.legado.app.constant.AppLog
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.databinding.DialogTocRegexEditBinding
@@ -85,7 +84,6 @@ class TxtTocRuleEditDialog() : BaseDialogFragment(R.layout.dialog_toc_regex_edit
         try {
             Pattern.compile(tocRule.rule, Pattern.MULTILINE)
         } catch (ex: PatternSyntaxException) {
-            AppLog.put("正则语法错误或不支持(txt)：${ex.localizedMessage}", ex, true)
             return false
         }
 

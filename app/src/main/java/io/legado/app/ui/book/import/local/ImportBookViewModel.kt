@@ -4,7 +4,6 @@ import android.app.Application
 import android.net.Uri
 import io.legado.app.R
 import io.legado.app.base.BaseViewModel
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern.archiveFileRegex
 import io.legado.app.constant.AppPattern.bookFileRegex
 import io.legado.app.constant.PreferKey
@@ -146,10 +145,8 @@ class ImportBookViewModel(application: Application) : BaseViewModel(application)
                 it.localizedMessage
                     ?: context.getString(R.string.add_loaded_books_to_bookshelf_failed)
             )
-            AppLog.put("添加书架失败\n${it.localizedMessage}", it)
         }.onSuccess { (importedUris, importedBookCount, groupError) ->
             if (groupError != null) {
-                AppLog.put("创建本地书籍目录分组失败\n${groupError.localizedMessage}", groupError)
                 context.toastOnUi(
                     context.getString(
                         R.string.import_directory_group_failed,

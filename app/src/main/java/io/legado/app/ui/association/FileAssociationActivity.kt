@@ -14,12 +14,10 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
-import io.legado.app.ui.autoTask.ImportAutoTaskDialog
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.buildMainHandler
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.showDialogFragment
-import io.legado.app.utils.startActivity
 import io.legado.app.utils.startActivityForBook
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -68,13 +66,6 @@ class FileAssociationActivity :
                 }
             }
         }
-        viewModel.onLineImportLive.observe(this) {
-            binding.rotateLoading.gone()
-            startActivity<OnLineImportActivity> {
-                data = it
-            }
-            finish()
-        }
         viewModel.successLive.observe(this) {
             binding.rotateLoading.gone()
             if (supportFragmentManager.fragments.any { fragment -> fragment is DialogFragment }) {
@@ -83,12 +74,9 @@ class FileAssociationActivity :
             when (it.first) {
                 "replaceRule" -> showDialogFragment(ImportReplaceRuleDialog(it.second, true))
                 "highlightRule" -> showImportHighlightRuleDialog(it.second, true)
-                "httpTts" -> showDialogFragment(ImportHttpTtsDialog(it.second, true))
                 "theme" -> showDialogFragment(ImportThemeDialog(it.second, true))
                 "txtRule" -> showDialogFragment(ImportTxtTocRuleDialog(it.second, true))
-                "dictRule" -> showDialogFragment(ImportDictRuleDialog(it.second, true))
-                "autoTask" -> showDialogFragment(ImportAutoTaskDialog(it.second, true))
-                "bookshelf", "backup" -> showDialogFragment(ImportDataDialog(it.first, it.second))
+                "backup" -> showDialogFragment(ImportDataDialog("backup", it.second))
             }
         }
         viewModel.errorLive.observe(this) {

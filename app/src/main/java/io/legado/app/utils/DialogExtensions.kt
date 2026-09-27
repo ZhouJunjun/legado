@@ -1,11 +1,6 @@
 package io.legado.app.utils
 
-import android.app.Activity
 import android.app.Dialog
-import android.os.Build
-import android.view.View
-import android.view.WindowInsets
-import android.view.WindowInsetsController
 import android.view.WindowManager
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.WindowCompat

@@ -1,6 +1,7 @@
 package io.legado.app.ui.book.read.page
 
 import android.content.Context
+import android.content.Intent
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.os.SystemClock
@@ -8,6 +9,7 @@ import android.util.AttributeSet
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewConfiguration
+import androidx.core.net.toUri
 import io.legado.app.R
 import io.legado.app.data.entities.BookHighlight
 import io.legado.app.data.entities.Bookmark
@@ -18,7 +20,6 @@ import io.legado.app.help.book.isOnLineTxt
 import io.legado.app.help.config.AppConfig
 import io.legado.app.model.ReadBook
 import io.legado.app.model.isForBook
-import io.legado.app.ui.association.OpenUrlConfirmActivity
 import io.legado.app.ui.book.read.page.delegate.PageDelegate
 import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.ui.book.read.page.entities.TextPage
@@ -441,10 +442,14 @@ class ContentTextView(context: Context, attrs: AttributeSet?) : View(context, at
                 is TextHtmlColumn -> {
                     val linkUrl = column.linkUrl
                     if (linkUrl != null) {
-                        activity?.startActivity<OpenUrlConfirmActivity> {
-                            putExtra("uri", linkUrl)
-                        }
                         handled = true
+                        activity?.let { act ->
+                            runCatching {
+                                act.startActivity(
+                                    Intent(Intent.ACTION_VIEW, linkUrl.toUri())
+                                )
+                            }
+                        }
                     } else if (highlightActionTrigger != "longPress" && column.highlightStyle != null) {
                         handled = highlightTap(
                             column,

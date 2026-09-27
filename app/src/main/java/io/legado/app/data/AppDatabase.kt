@@ -3,53 +3,36 @@ package io.legado.app.data
 import android.content.ContentValues
 import android.database.sqlite.SQLiteDatabase
 import android.os.Build
-import android.util.Log
 import androidx.room.AutoMigration
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
 import androidx.sqlite.db.SupportSQLiteDatabase
-import io.legado.app.constant.PreferKey
 import io.legado.app.data.dao.BookChapterDao
 import io.legado.app.data.dao.BookDao
 import io.legado.app.data.dao.BookGroupDao
 import io.legado.app.data.dao.BookHighlightDao
 import io.legado.app.data.dao.BookMemoDao
-import io.legado.app.data.dao.BookSourceDao
 import io.legado.app.data.dao.BookmarkDao
-import io.legado.app.data.dao.AutoTaskRuleDao
 import io.legado.app.data.dao.CacheDao
 import io.legado.app.data.dao.CookieDao
-import io.legado.app.data.dao.DictRuleDao
-import io.legado.app.data.dao.HttpTTSDao
 import io.legado.app.data.dao.HighlightRuleDao
 import io.legado.app.data.dao.KeyboardAssistsDao
 import io.legado.app.data.dao.ReadRecordDao
 import io.legado.app.data.dao.ReplaceRuleDao
-import io.legado.app.data.dao.SearchBookDao
-import io.legado.app.data.dao.SearchKeywordDao
-import io.legado.app.data.dao.ServerDao
 import io.legado.app.data.dao.TxtTocRuleDao
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookHighlight
 import io.legado.app.data.entities.BookMemo
-import io.legado.app.data.entities.BookSource
-import io.legado.app.data.entities.BookSourcePart
 import io.legado.app.data.entities.Bookmark
-import io.legado.app.data.entities.AutoTaskRule
 import io.legado.app.data.entities.Cache
 import io.legado.app.data.entities.Cookie
-import io.legado.app.data.entities.DictRule
-import io.legado.app.data.entities.HttpTTS
 import io.legado.app.data.entities.HighlightRule
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.ReadRecord
 import io.legado.app.data.entities.ReplaceRule
-import io.legado.app.data.entities.SearchBook
-import io.legado.app.data.entities.SearchKeyword
-import io.legado.app.data.entities.Server
 import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.help.DefaultData
 import org.intellij.lang.annotations.Language
@@ -66,15 +49,14 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 113,
+    version = 115,
     exportSchema = true,
-    entities = [Book::class, BookGroup::class, BookSource::class, BookChapter::class,
-        ReplaceRule::class, SearchBook::class, SearchKeyword::class, Cookie::class,
-        Bookmark::class, TxtTocRule::class, ReadRecord::class, HttpTTS::class, Cache::class,
-        DictRule::class, KeyboardAssist::class, Server::class,
-        AutoTaskRule::class, BookHighlight::class, HighlightRule::class,
+    entities = [Book::class, BookGroup::class, BookChapter::class,
+        ReplaceRule::class, Cookie::class,
+        Bookmark::class, TxtTocRule::class, ReadRecord::class, Cache::class,
+        KeyboardAssist::class,
+        BookHighlight::class, HighlightRule::class,
         BookMemo::class],
-    views = [BookSourcePart::class],
     autoMigrations = [
         AutoMigration(from = 43, to = 44),
         AutoMigration(from = 44, to = 45),
@@ -144,31 +126,28 @@ val appDb by lazy {
         AutoMigration(
             from = 112, to = 113,
             spec = DatabaseMigrations.Migration_112_113::class
+        ),
+        AutoMigration(
+            from = 113, to = 114,
+            spec = DatabaseMigrations.Migration_113_114::class
         )
     ]
 )
 abstract class AppDatabase : RoomDatabase() {
 
-    abstract val autoTaskRuleDao: AutoTaskRuleDao
     abstract val bookDao: BookDao
     abstract val bookGroupDao: BookGroupDao
     abstract val bookHighlightDao: BookHighlightDao
     abstract val bookMemoDao: BookMemoDao
     abstract val highlightRuleDao: HighlightRuleDao
-    abstract val bookSourceDao: BookSourceDao
     abstract val bookChapterDao: BookChapterDao
     abstract val replaceRuleDao: ReplaceRuleDao
-    abstract val searchBookDao: SearchBookDao
-    abstract val searchKeywordDao: SearchKeywordDao
     abstract val bookmarkDao: BookmarkDao
     abstract val cookieDao: CookieDao
     abstract val txtTocRuleDao: TxtTocRuleDao
     abstract val readRecordDao: ReadRecordDao
-    abstract val httpTTSDao: HttpTTSDao
     abstract val cacheDao: CacheDao
-    abstract val dictRuleDao: DictRuleDao
     abstract val keyboardAssistsDao: KeyboardAssistsDao
-    abstract val serverDao: ServerDao
 
     companion object {
 
@@ -184,15 +163,10 @@ abstract class AppDatabase : RoomDatabase() {
                 // 只在 API 级别 23 (Marshmallow) 及以上版本尝试设置区域设置
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     try {
-                        Log.d("AppDatabaseCallback", "准备 设置 locale for API ${Build.VERSION.SDK_INT}...")
                         db.setLocale(Locale.CHINESE)
                         // 在 21 上报错，但无法拦截
-                        Log.d("AppDatabaseCallback", "成功 设置 locale for API ${Build.VERSION.SDK_INT}.")
-                    } catch (e: Exception) {
-                        Log.e("AppDatabaseCallback", "错误 设置 locale in onCreate for API ${Build.VERSION.SDK_INT}", e)
+                    } catch (_: Exception) {
                     }
-                } else {
-                    Log.i("AppDatabaseCallback", "跳过 setLocale for API ${Build.VERSION.SDK_INT} (below M).")
                 }
             }
 
@@ -246,14 +220,6 @@ abstract class AppDatabase : RoomDatabase() {
                     where not exists (select * from book_groups where groupId = ${BookGroup.IdError})
                 """.trimIndent()
                 db.execSQL(insertBookGroupErrorSql)
-                @Language("sql")
-                val upHttpTtsLoginUiSql =
-                    "update httpTTS set loginUi = null where loginUi = 'null'"
-                db.execSQL(upHttpTtsLoginUiSql)
-                @Language("sql")
-                val upHttpTtsConcurrentRateSql =
-                    "update httpTTS set concurrentRate = '0' where concurrentRate is null"
-                db.execSQL(upHttpTtsConcurrentRateSql)
                 db.query("select * from keyboardAssists order by serialNo").use {
                     if (it.count == 0) {
                         DefaultData.keyboardAssists.forEach { keyboardAssist ->

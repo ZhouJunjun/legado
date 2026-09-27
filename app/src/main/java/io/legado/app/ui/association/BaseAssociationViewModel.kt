@@ -56,9 +56,6 @@ internal fun jsonImportType(map: Map<String, *>): String? =
             map.containsKey("cron") && map.containsKey("script") ->
                 "autoTask"
 
-            map.containsKey("name") && map.containsKey("url") ->
-                "httpTts"
-
             map.containsKey("name") && map.containsKey("author") ->
                 "bookshelf"
 

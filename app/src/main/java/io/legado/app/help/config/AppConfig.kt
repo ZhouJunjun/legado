@@ -2,8 +2,6 @@ package io.legado.app.help.config
 
 import android.content.Context.MODE_PRIVATE
 import android.content.SharedPreferences
-import android.os.Build
-import io.legado.app.BuildConfig
 import io.legado.app.constant.AppConst
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.appDb
@@ -33,8 +31,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     private const val JS_SOURCE_API_PREFS = "js_source_api_credentials"
     private const val JS_SOURCE_API_TOKEN = "token"
 
-    val isCronet: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.cronet)
     var showSourceCheckStatus: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.showSourceCheckStatus, false)
         set(value) = appCtx.putPrefBoolean(PreferKey.showSourceCheckStatus, value)
@@ -61,8 +57,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     var useDefaultCover = appCtx.getPrefBoolean(PreferKey.useDefaultCover, false)
     var optimizeRender = CanvasRecorderFactory.isSupport
             && appCtx.getPrefBoolean(PreferKey.optimizeRender, false)
-    var recordLog = appCtx.getPrefBoolean(PreferKey.recordLog)
-    var recordHttpLog = appCtx.getPrefBoolean(PreferKey.recordHttpLog)
     var editFontScale = appCtx.getPrefInt(PreferKey.editFontScale, 16)
     var editNonPrintable = appCtx.getPrefInt(PreferKey.editNonPrintable, 0)
     var editAutoWrap = appCtx.getPrefBoolean(PreferKey.editAutoWrap, true)
@@ -147,10 +141,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
             PreferKey.optimizeRender -> optimizeRender = CanvasRecorderFactory.isSupport
                     && appCtx.getPrefBoolean(PreferKey.optimizeRender, false)
-
-            PreferKey.recordLog -> recordLog = appCtx.getPrefBoolean(PreferKey.recordLog)
-            PreferKey.recordHttpLog -> recordHttpLog =
-                appCtx.getPrefBoolean(PreferKey.recordHttpLog)
 
         }
     }
@@ -369,12 +359,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val onlyUpdateRead: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.onlyUpdateRead)
 
-    var enableReview: Boolean
-        get() = BuildConfig.DEBUG && appCtx.getPrefBoolean(PreferKey.enableReview, false)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.enableReview, value)
-        }
-
     var threadCount: Int
         get() = appCtx.getPrefInt(PreferKey.threadCount, 32)
         set(value) {
@@ -487,11 +471,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.exportUseReplace, value)
         }
 
-    var exportToWebDav: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.exportToWebDav)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.exportToWebDav, value)
-        }
     var exportNoChapterName: Boolean
         get() = appCtx.getPrefBoolean(PreferKey.exportNoChapterName)
         set(value) {
@@ -743,17 +722,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefBoolean(PreferKey.manualReplaceRule, false)
         set(value) = appCtx.putPrefBoolean(PreferKey.manualReplaceRule, value)
 
-    val webDavDir get() = appCtx.getPrefString(PreferKey.webDavDir, "legado")
-
-    val webDavDeviceName get() = appCtx.getPrefString(PreferKey.webDavDeviceName, Build.MODEL)
-
-    val webDavBookAutoRestore
-        get() = appCtx.getPrefBoolean(PreferKey.webDavBookAutoRestore, false)
-
-    val recordHeapDump get() = appCtx.getPrefBoolean(PreferKey.recordHeapDump, false)
-
-    val loadCoverOnlyWifi get() = appCtx.getPrefBoolean(PreferKey.loadCoverOnlyWifi, false)
-
     val showAddToShelfAlert get() = appCtx.getPrefBoolean(PreferKey.showAddToShelfAlert, true)
 
     val ignoreAudioFocus get() = appCtx.getPrefBoolean(PreferKey.ignoreAudioFocus, false)
@@ -767,8 +735,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val autoCheckNewBackup get() = appCtx.getPrefBoolean(PreferKey.autoCheckNewBackup, true)
 
     val autoBackup get() = appCtx.getPrefBoolean(PreferKey.autoBackup, true)
-
-    val autoBackupWebDav get() = appCtx.getPrefBoolean(PreferKey.autoBackupWebDav, true)
 
     val autoBackupIntervalDays get() = appCtx.getPrefInt(PreferKey.autoBackupIntervalDays, 1).coerceAtLeast(1)
 
@@ -870,7 +836,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     private fun getPrefUserAgent(): String {
         val ua = appCtx.getPrefString(PreferKey.userAgent)
         if (ua.isNullOrBlank()) {
-            return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/" + BuildConfig.Cronet_Main_Version + " Safari/537.36"
+            return "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         }
         return ua
     }
@@ -1077,7 +1043,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
             appCtx.putPrefBoolean(PreferKey.welcomeShowIconDark, value)
         }
 
-    val autoUpdateVariant get() = appCtx.getPrefBoolean("autoUpdateVariant", true)
 }
 
 internal fun normalizeJsSourceApiToken(value: String?): String? {

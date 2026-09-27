@@ -1,12 +1,9 @@
 package io.legado.app.help.book
 
 import com.bumptech.glide.Glide
-import com.bumptech.glide.request.RequestOptions
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReadRecord
-import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.utils.externalFiles
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -38,11 +35,7 @@ object ReadRecordCoverCache {
         return scope.launch {
             try {
                 permits.withPermit {
-                    var options = RequestOptions().set(
-                        OkHttpModelLoader.loadOnlyWifiOption, AppConfig.loadCoverOnlyWifi,
-                    )
-                    sourceOrigin?.let { options = options.set(OkHttpModelLoader.sourceOriginOption, it) }
-                    val target = ImageLoader.loadFile(appCtx, path).apply(options).submit()
+                    val target = ImageLoader.loadFile(appCtx, path).submit()
                     try {
                         val downloaded = runInterruptible { target.get(10, TimeUnit.SECONDS) }
                         val validation = Glide.with(appCtx).load(downloaded).submit(1, 1)
@@ -86,7 +79,6 @@ object ReadRecordCoverCache {
     fun prune() = appDb.runInTransaction {
         val referenced = appDb.readRecordDao.all.mapNotNull { ownedFile(it.coverUrl)?.name }.toSet()
         root.listFiles()?.filter { it.isFile && it.name !in referenced }?.forEach(File::delete)
-        Unit
     }
 
     private fun ownedFile(path: String?): File? {

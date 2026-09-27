@@ -36,7 +36,6 @@ import androidx.core.view.marginBottom
 import androidx.core.view.updateLayoutParams
 import androidx.recyclerview.widget.RecyclerView
 import androidx.viewpager.widget.ViewPager
-import io.legado.app.help.GlideImageGetter
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.TintHelper
 import io.legado.app.utils.canvasrecorder.CanvasRecorder
@@ -45,12 +44,12 @@ import splitties.systemservices.inputMethodManager
 import splitties.views.bottomPadding
 import splitties.views.topPadding
 import androidx.core.graphics.createBitmap
+import android.text.Html
 import androidx.core.text.HtmlCompat
 import androidx.core.view.isVisible
 import androidx.core.text.parseAsHtml
 import androidx.core.view.postDelayed
 import io.legado.app.help.TextViewTagHandler
-import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
 import io.noties.markwon.Markwon
 import io.noties.markwon.image.AsyncDrawableSpan
 
@@ -230,11 +229,11 @@ fun RadioGroup.checkByIndex(index: Int) {
     check(get(index).id)
 }
 
-fun TextView.setHtml(html: String, imageGetter: GlideImageGetter? = null, textViewTagHandler: TextViewTagHandler? = null) {
+fun TextView.setHtml(html: String, imageGetter: Html.ImageGetter? = null, textViewTagHandler: TextViewTagHandler? = null) {
     text = html.parseAsHtml(HtmlCompat.FROM_HTML_MODE_COMPACT, imageGetter, textViewTagHandler)
 }
 
-fun TextView.setHtml(html: String, imageGetter: GlideImageGetter? = null, textViewTagHandler: TextViewTagHandler? = null, imgOnLongClickListener: (source: String) -> Unit, imgOnClickListener: (click: String) -> Unit) {
+fun TextView.setHtml(html: String, imageGetter: Html.ImageGetter? = null, textViewTagHandler: TextViewTagHandler? = null, imgOnLongClickListener: (source: String) -> Unit, imgOnClickListener: (click: String) -> Unit) {
     val spanned = html.parseAsHtml(HtmlCompat.FROM_HTML_MODE_COMPACT, imageGetter, textViewTagHandler)
     val imageSpans = spanned.getSpans(0, spanned.length, ImageSpan::class.java)
     val clickSpans = mutableListOf<Triple<Pair<Int, Int>, String, String?>>()

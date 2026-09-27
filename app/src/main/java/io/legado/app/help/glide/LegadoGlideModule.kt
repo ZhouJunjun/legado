@@ -8,11 +8,8 @@ import com.bumptech.glide.Registry
 import com.bumptech.glide.annotation.GlideModule
 import com.bumptech.glide.load.engine.cache.InternalCacheDiskCacheFactory
 import com.bumptech.glide.load.engine.cache.MemorySizeCalculator
-import com.bumptech.glide.load.model.GlideUrl
 import com.bumptech.glide.module.AppGlideModule
-import io.legado.app.help.config.AppConfig
 import java.io.File
-import java.io.InputStream
 
 
 @Suppress("unused")
@@ -20,16 +17,6 @@ import java.io.InputStream
 class LegadoGlideModule : AppGlideModule() {
 
     override fun registerComponents(context: Context, glide: Glide, registry: Registry) {
-        registry.replace(
-            GlideUrl::class.java,
-            InputStream::class.java,
-            OkHttpModeLoaderFactory
-        )
-        registry.prepend(
-            String::class.java,
-            InputStream::class.java,
-            LegadoDataUrlLoader.Factory()
-        )
         registry.prepend(
             String::class.java,
             File::class.java,
@@ -45,8 +32,6 @@ class LegadoGlideModule : AppGlideModule() {
         builder.setBitmapPool(bitmapPool)
         builder.setImageDecoderEnabledForBitmaps(true)
         builder.setDiskCache(InternalCacheDiskCacheFactory(context, 1024 * 1024 * 1000))
-        if (!AppConfig.recordLog) {
-            builder.setLogLevel(Log.ERROR)
-        }
+        builder.setLogLevel(Log.ERROR)
     }
 }

@@ -26,7 +26,6 @@ import io.legado.app.utils.postEvent
 import io.legado.app.utils.readUri
 import io.legado.app.utils.removePref
 import io.legado.app.utils.setEdgeEffectColor
-import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.startActivity
 import io.legado.app.utils.toastOnUi
 import splitties.init.appCtx
@@ -110,7 +109,6 @@ class CoverConfigFragment : PreferenceFragment(),
             ConfigTag.COVER_FONT_CONFIG -> startActivity<ConfigActivity> {
                 putExtra("configTag", ConfigTag.COVER_FONT_CONFIG)
             }
-            "coverRule" -> showDialogFragment(CoverRuleConfigDialog())
             in coverKeys ->
                 if (getPrefString(preference.key).isNullOrEmpty()) {
                     selectImage.launch {

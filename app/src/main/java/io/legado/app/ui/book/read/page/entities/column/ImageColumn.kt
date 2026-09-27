@@ -3,9 +3,9 @@ package io.legado.app.ui.book.read.page.entities.column
 import android.graphics.Canvas
 import android.graphics.RectF
 import androidx.annotation.Keep
-import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
-import io.legado.app.model.ImageProvider
+import io.legado.app.utils.paramPattern
 import io.legado.app.model.ReadBook
+import io.legado.app.model.ImageProvider
 import io.legado.app.ui.book.read.page.ContentTextView
 import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.ui.book.read.page.entities.TextLine.Companion.emptyTextLine

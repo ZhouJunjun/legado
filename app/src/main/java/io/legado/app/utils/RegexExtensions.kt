@@ -5,8 +5,6 @@ import com.script.rhino.RhinoScriptEngine
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.data.entities.ReplaceBook
 import io.legado.app.exception.RegexTimeoutException
-import io.legado.app.help.CrashHandler
-import io.legado.app.help.RegexJsExtensions
 import io.legado.app.help.coroutine.Coroutine
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -81,7 +79,6 @@ fun CharSequence.replace(
                         val exception = RegexTimeoutException(timeoutMsg)
                         block.cancel(exception)
                         appCtx.longToastOnUi(timeoutMsg)
-                        CrashHandler.saveCrashInfo2File(exception)
                         select {
                             job.onJoin {}
                             onTimeout(3000) {

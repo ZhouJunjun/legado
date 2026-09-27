@@ -8,7 +8,6 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import io.legado.app.BuildConfig
 import io.legado.app.databinding.ViewToastBinding
-import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
 import splitties.systemservices.layoutInflater
@@ -44,7 +43,7 @@ fun Context.toastOnUi(message: CharSequence?, duration: Int = Toast.LENGTH_SHORT
 fun Context.toastOnUiLegacy(message: CharSequence) {
     runOnUI {
         kotlin.runCatching {
-            if (toastLegacy == null || BuildConfig.DEBUG || AppConfig.recordLog) {
+            if (toastLegacy == null || BuildConfig.DEBUG) {
                 toastLegacy = Toast.makeText(this, message, Toast.LENGTH_SHORT)
             } else {
                 toastLegacy?.setText(message)
@@ -66,7 +65,7 @@ fun Context.longToastOnUi(message: CharSequence?) {
 fun Context.longToastOnUiLegacy(message: CharSequence) {
     runOnUI {
         kotlin.runCatching {
-            if (toastLegacy == null || BuildConfig.DEBUG || AppConfig.recordLog) {
+            if (toastLegacy == null || BuildConfig.DEBUG) {
                 toastLegacy = Toast.makeText(this, message, Toast.LENGTH_LONG)
             } else {
                 toastLegacy?.setText(message)

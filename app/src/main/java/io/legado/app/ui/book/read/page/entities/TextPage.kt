@@ -22,7 +22,6 @@ import io.legado.app.utils.dpToPx
 import splitties.init.appCtx
 import java.text.DecimalFormat
 import kotlin.math.ceil
-import kotlin.math.max
 import kotlin.math.min
 
 /**

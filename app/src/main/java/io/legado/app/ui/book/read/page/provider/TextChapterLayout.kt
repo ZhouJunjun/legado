@@ -10,20 +10,15 @@ import android.text.style.ImageSpan
 import android.text.style.RelativeSizeSpan
 import android.text.style.ReplacementSpan
 import android.text.style.URLSpan
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.constant.PageAnim
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
 import io.legado.app.help.book.BookContent
-import io.legado.app.help.book.BookHelp
-import io.legado.app.help.book.getBookSource
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.model.ImageProvider
-import io.legado.app.model.ReadBook
-import io.legado.app.model.jsSource.JsSourceReview
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.ui.book.read.page.entities.TextLine
 import io.legado.app.ui.book.read.page.entities.TextPage
@@ -40,7 +35,6 @@ import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
 import java.util.LinkedList
 import kotlin.math.roundToInt
 import kotlin.math.ceil
@@ -56,12 +50,10 @@ import io.legado.app.ui.book.read.page.provider.ChapterProvider.srcReplaceChar
 import io.legado.app.ui.book.read.page.provider.ChapterProvider.srcReplacementChar
 import io.legado.app.utils.StringUtils
 import androidx.core.text.parseAsHtml
-import androidx.core.util.component1
-import androidx.core.util.component2
 import io.legado.app.help.TextViewTagHandler
 import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_CHAR
 import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_STR
-import io.legado.app.model.analyzeRule.AnalyzeUrl.Companion.paramPattern
+import io.legado.app.utils.paramPattern
 import io.legado.app.ui.book.read.page.entities.column.BaseColumn
 import io.legado.app.ui.book.read.page.entities.column.TextBaseColumn
 import io.legado.app.ui.book.read.page.provider.ChapterProvider.reviewChar
@@ -136,19 +128,8 @@ class TextChapterLayout(
         isTitle = true,
         chapterIndex = bookChapter.index,
     ) > 0
-    private val rightTitleMayHaveReview = isRightTitle && if (
-        ChapterProvider.hasReviewCountProvider(bookChapter.index)
-    ) {
-        rightTitleHasReview
-    } else {
-        ReadBook.bookSource?.let { source ->
-            if (source.isJsSource()) {
-                JsSourceReview.hasReviewCapability(source)
-            } else {
-                source.ruleReview?.configuredSummaryUrl() != null
-            }
-        } == true
-    }
+    // 本章说/书评内容全部来自书源，随书源一并剥离，不再有可用的书评入口。
+    private val rightTitleMayHaveReview = false
     private val rightTitleReviewInset = if (isRightTitle) {
         ReviewColumnGeometry.trailingInset(
             ChapterProvider.getReviewWidth(true),
@@ -191,12 +172,6 @@ class TextChapterLayout(
             start = CoroutineStart.LAZY,
             executeContext = IO
         ) {
-            if (saveChapterData) {
-                launch {
-                    val bookSource = book.getBookSource() ?: return@launch
-                    BookHelp.saveImages(bookSource, book, bookChapter, bookContent.toString())
-                }
-            }
             getTextChapter(book, bookChapter, displayTitle, bookContent)
         }.onError {
             exception = it
@@ -270,7 +245,6 @@ class TextChapterLayout(
             listener?.onLayoutPageCompleted(textPages.lastIndex, textPage)
         } catch (e: Exception) {
             e.printStackTrace()
-            AppLog.put("调用布局进度监听回调出错\n${e.localizedMessage}", e)
         }
     }
 
@@ -280,7 +254,6 @@ class TextChapterLayout(
             listener?.onLayoutCompleted()
         } catch (e: Exception) {
             e.printStackTrace()
-            AppLog.put("调用布局进度监听回调出错\n${e.localizedMessage}", e)
         } finally {
             listener = null
         }
@@ -296,7 +269,6 @@ class TextChapterLayout(
             listener?.onLayoutException(e)
         } catch (e: Exception) {
             e.printStackTrace()
-            AppLog.put("调用布局进度监听回调出错\n${e.localizedMessage}", e)
         } finally {
             listener = null
         }
@@ -326,7 +298,7 @@ class TextChapterLayout(
             if (titleImg != null) {
                 val urlMatcher = paramPattern.matcher(titleImg)
                 var style: String? = null
-                var imgSize = ImageProvider.getImageSize(book, titleImg, ReadBook.bookSource)
+                var imgSize = ImageProvider.getImageSize(book, titleImg)
                 if (urlMatcher.find()) {
                     var width: String? = null
                     val urlOptionStr = titleImg.substring(urlMatcher.end())
@@ -487,7 +459,7 @@ class TextChapterLayout(
                         val imgSrc = matcher.group(1)!!
                         var style: String? = null
                         var click: String? = null
-                        var imgSize = ImageProvider.getImageSize(book, imgSrc, ReadBook.bookSource)
+                        var imgSize = ImageProvider.getImageSize(book, imgSrc)
                         val urlMatcher = paramPattern.matcher(imgSrc)
                         if (urlMatcher.find()) {
                             var width: String? = null
@@ -821,7 +793,7 @@ class TextChapterLayout(
                         var iStyle = urlOption["style"]
                         val width = urlOption["width"]
                         val click = urlOption["click"]
-                        var imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
+                        var imgSize = ImageProvider.getImageSize(book, source)
                         width?.let {
                             if (width.endsWith("%")) {
                                 width.dropLast(1).toIntOrNull()?.let { percentage ->
@@ -845,7 +817,7 @@ class TextChapterLayout(
                         }
                         when (iStyle?.uppercase()) {
                             "TEXT" -> {
-                                ImageProvider.cacheImage(book, source, ReadBook.bookSource)
+                                ImageProvider.cacheImage(book, source)
                                 columns.add(
                                     ImageColumn(
                                         start = absStartX + leftInset + charX,
@@ -867,7 +839,7 @@ class TextChapterLayout(
                             }
                         }
                     } else {
-                        val imgSize = ImageProvider.getImageSize(book, source, ReadBook.bookSource)
+                        val imgSize = ImageProvider.getImageSize(book, source)
                         setTypeImage(
                             book,
                             source,
@@ -1513,7 +1485,7 @@ class TextChapterLayout(
             !srcList.isNullOrEmpty() && (char == srcReplaceStr || char == reviewStr) -> {
                 val src = srcList.removeFirst()
                 val click = clickList?.removeFirst()
-                ImageProvider.cacheImage(book, src, ReadBook.bookSource)
+                ImageProvider.cacheImage(book, src)
                 ImageColumn(
                     start = absStartX + xStart,
                     end = absStartX + xEnd,

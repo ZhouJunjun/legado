@@ -183,13 +183,6 @@
 
     <io.legado.app.lib.prefs.SwitchPreference
         android:defaultValue="true"
-        android:key="autoChangeSource"
-        android:title="@string/auto_change_source"
-        app:iconSpaceReserved="false"
-        app:isBottomBackground="true" />
-
-    <io.legado.app.lib.prefs.SwitchPreference
-        android:defaultValue="true"
         android:key="selectText"
         android:title="@string/selectText"
         app:iconSpaceReserved="false"

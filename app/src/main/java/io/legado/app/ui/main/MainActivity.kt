@@ -5,18 +5,14 @@ package io.legado.app.ui.main
 import android.graphics.Rect
 import android.graphics.drawable.StateListDrawable
 import android.os.Bundle
-import android.text.format.DateUtils
 import android.view.MenuItem
 import android.view.ViewGroup
 import androidx.activity.addCallback
 import androidx.activity.viewModels
 import androidx.core.view.doOnLayout
-import androidx.core.view.get
-import androidx.core.view.postDelayed
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.FragmentStatePagerAdapter
-import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.viewpager.widget.ViewPager
 import com.google.android.material.bottomnavigation.BottomNavigationView
@@ -28,36 +24,22 @@ import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.data.entities.Book
 import io.legado.app.databinding.ActivityMainBinding
-import io.legado.app.help.AppWebDav
 import io.legado.app.help.BottomBarSkinManager
-import io.legado.app.help.SourceSharePassphrase
-import io.legado.app.help.SourceSharePassphraseImportPolicy
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
-import io.legado.app.help.update.AppUpdate
-import io.legado.app.help.update.isIgnoredAppUpdate
-import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
 import io.legado.app.service.BaseReadAloudService
-import io.legado.app.ui.about.CrashLogsDialog
-import io.legado.app.ui.about.UpdateDialog
-import io.legado.app.ui.autoTask.ImportAutoTaskDialog
-import io.legado.app.ui.association.ImportDictRuleDialog
-import io.legado.app.ui.association.ImportHttpTtsDialog
 import io.legado.app.ui.association.ImportReplaceRuleDialog
-import io.legado.app.ui.association.ImportTxtTocRuleDialog
 import io.legado.app.ui.main.bookshelf.AloudMiniBar
 import io.legado.app.ui.main.bookshelf.BaseBookshelfFragment
 import io.legado.app.ui.main.bookshelf.style1.BookshelfFragment1
 import io.legado.app.ui.main.bookshelf.style2.BookshelfFragment2
 import io.legado.app.ui.main.my.MyFragment
 import io.legado.app.ui.widget.text.BadgeView
-import io.legado.app.utils.clearClip
 import io.legado.app.utils.dpToPx
-import io.legado.app.utils.getClipText
 import io.legado.app.utils.isCreated
 import io.legado.app.utils.imeHeight
 import io.legado.app.utils.navigationBarHeight
@@ -67,13 +49,10 @@ import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
 import io.legado.app.utils.showDialogFragment
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
-import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
-import kotlinx.coroutines.withContext
 import splitties.views.bottomPadding
 import kotlin.coroutines.resume
-import kotlin.time.Duration.Companion.hours
 
 /**
  * 主界面
@@ -105,9 +84,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         TabFragmentPageAdapter(supportFragmentManager)
     }
     private var onUpBooksBadgeView: BadgeView? = null
-    private var lastPassphraseText: String? = null
-    private var pendingPassphraseRead = false
-    private var passphraseReadGeneration = 0
     private val aloudMiniBar by lazy {
         AloudMiniBar(this, binding.aloudMiniBarContainer)
     }
@@ -146,26 +122,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         super.onPostCreate(savedInstanceState)
         lifecycleScope.launch {
             // 首页「用户隐私与协议」弹窗已按要求移除(2026-09-25)。
-            // 仍然把 privacyPolicyOk 置为 true: 该标记被「源分享口令自动导入」
-            // (SourceSharePassphraseImportPolicy) 等逻辑依赖, 保持 true 才能让它们照常工作。
             // 协议全文仍可查看: 「我的」→「关于」→ 隐私政策(AboutFragment -> privacyPolicy.md)。
             LocalConfig.privacyPolicyOk = true
-            //版本检查(仅自动检查新版本; 更新日志/帮助/设置密码的自动弹窗已按要求去掉,
-            // 详见 upVersion 的注释)
             upVersion()
-            notifyAppCrash()
-            //备份同步
-            backupSync()
             //设置回调
             viewModel.setActivityCallback(this@MainActivity)
-            scheduleSourceSharePassphraseRead(1500)
-            //自动更新书籍
-            val isAutoRefreshedBook = savedInstanceState?.getBoolean("isAutoRefreshedBook") ?: false
-            if (AppConfig.autoRefreshBook && !isAutoRefreshedBook) {
-                binding.viewPagerMain.postDelayed(2000) {
-                    viewModel.upAllBookToc()
-                }
-            }
             // 首次启动导入默认朗读引擎的 viewModel.postLoad() 已随「默认朗读引擎」一并删除
             // (2026-09-25, 百度/阿里云/Next引擎 三个默认引擎按用户要求移除)
         }
@@ -174,27 +135,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     override fun onResume() {
         super.onResume()
         upAloudMiniBar()
-        if (SourceSharePassphraseImportPolicy.shouldScheduleOnResume(
-                privacyPolicyOk = LocalConfig.privacyPolicyOk
-            )
-        ) {
-            scheduleSourceSharePassphraseRead(500)
-        }
-    }
-
-    override fun onPause() {
-        super.onPause()
-        pendingPassphraseRead = false
-        passphraseReadGeneration++
-    }
-
-    override fun onWindowFocusChanged(hasFocus: Boolean) {
-        super.onWindowFocusChanged(hasFocus)
-        if (hasFocus && pendingPassphraseRead && canAwaitPassphraseWindowFocus()) {
-            readSourceSharePassphrase(200)
-        } else if (hasFocus) {
-            pendingPassphraseRead = false
-        }
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean = binding.run {
@@ -256,32 +196,13 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
      * 版本更新日志
      *
      * ⚠️ 2026-09-24 用户要求删除「进入 app 时自动弹出的更新日志/设置 password 等弹窗」。
-     * 这里只去掉**自动弹出**的部分(更新日志 / 首次打开帮助), 自动检查新版本
-     * (AppConfig.autoUpdateVariant 命中时弹 UpdateDialog)属于用户自己开的开关, 保留。
+     * 这里只去掉**自动弹出**的部分(更新日志 / 首次打开帮助)。
+     * 2026-09-27 起「检查新版本」整条链路已随离线化删除, 不再联网。
      *
      * 保留 `LocalConfig.versionCode = appInfo.versionCode` 这一行是必要的: 它是「本版本
      * 已经走完首启流程」的标记, 去掉的话每次启动都会重新进入这个分支。
      */
     private suspend fun upVersion() = suspendCancellableCoroutine sc@{ block ->
-        if (LocalConfig.versionCode == appInfo.versionCode) {
-            if (AppConfig.autoUpdateVariant) {
-                if (LocalConfig.lastCheckUpdate + 24.hours.inWholeMilliseconds < System.currentTimeMillis()) {
-                    AppUpdate.gitHubUpdate.check(lifecycleScope)
-                        .onSuccess {
-                            if (isIgnoredAppUpdate(it.tagName, LocalConfig.ignoreUpdateVersion)) {
-                                return@onSuccess
-                            }
-                            if (supportFragmentManager.isStateSaved) return@onSuccess
-                            showDialogFragment(
-                                UpdateDialog(it)
-                            )
-                        }
-                    LocalConfig.lastCheckUpdate = System.currentTimeMillis()
-                }
-            }
-            block.resume(null)
-            return@sc
-        }
         LocalConfig.versionCode = appInfo.versionCode
         // 首次打开帮助(appHelp.md)与更新日志(updateLog.md)两个自动弹窗已按用户要求去掉。
         // · 更新日志: 仍可从「关于」页进入(AboutFragment 的 update_log -> updateLog.md)。
@@ -289,48 +210,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         //   (阅读菜单里的「帮助」是 readMenuHelp.md, 不是同一份)。若之后要补入口,
         //   在「我的」页加一项 showMdFile/getString(R.string.help) 即可, 文档本身没删。
         block.resume(null)
-    }
-
-    private fun notifyAppCrash() {
-        if (!LocalConfig.appCrash || BuildConfig.DEBUG) {
-            return
-        }
-        LocalConfig.appCrash = false
-        alert(getString(R.string.draw), "检测到阅读发生了崩溃，是否打开崩溃日志以便报告问题？") {
-            yesButton {
-                showDialogFragment<CrashLogsDialog>()
-            }
-            noButton()
-        }
-    }
-
-    /**
-     * 备份同步
-     */
-    private fun backupSync() {
-        if (!AppConfig.autoCheckNewBackup) {
-            return
-        }
-        lifecycleScope.launch {
-            val lastBackupFile =
-                withContext(IO) { AppWebDav.lastBackUp().getOrNull() } ?: return@launch
-            if (lastBackupFile.lastModify - LocalConfig.lastBackup > DateUtils.MINUTE_IN_MILLIS) {
-                alert(R.string.restore, R.string.webdav_after_local_restore_confirm) {
-                    cancelButton {
-                        LocalConfig.lastBackup = maxOf(
-                            LocalConfig.lastBackup,
-                            lastBackupFile.lastModify,
-                        )
-                    }
-                    okButton {
-                        viewModel.restoreWebDav(
-                            lastBackupFile.displayName,
-                            lastBackupFile.lastModify,
-                        )
-                    }
-                }
-            }
-        }
     }
 
     override fun onSaveInstanceState(outState: Bundle) {
@@ -426,86 +305,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             return
         }
         aloudMiniBar.upState()
-    }
-
-    private fun scheduleSourceSharePassphraseRead(delayMillis: Long) {
-        passphraseReadGeneration++
-        pendingPassphraseRead = true
-        if (hasWindowFocus()) {
-            readSourceSharePassphrase(delayMillis, passphraseReadGeneration)
-        }
-    }
-
-    private fun canAwaitPassphraseWindowFocus(): Boolean {
-        return SourceSharePassphraseImportPolicy.canAwaitWindowFocus(
-            privacyPolicyOk = LocalConfig.privacyPolicyOk,
-            isFinishing = isFinishing,
-            isResumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED),
-            isFragmentStateSaved = supportFragmentManager.isStateSaved
-        )
-    }
-
-    private fun readSourceSharePassphrase(
-        delayMillis: Long,
-        generation: Int = passphraseReadGeneration
-    ) {
-        pendingPassphraseRead = false
-        binding.viewPagerMain.postDelayed(delayMillis) {
-            if (generation != passphraseReadGeneration) return@postDelayed
-            val hasWindowFocus = hasWindowFocus()
-            if (!hasWindowFocus) {
-                pendingPassphraseRead = canAwaitPassphraseWindowFocus()
-            }
-            if (!SourceSharePassphraseImportPolicy.canReadClipboard(
-                    privacyPolicyOk = LocalConfig.privacyPolicyOk,
-                    isFinishing = isFinishing,
-                    isResumed = lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED),
-                    isFragmentStateSaved = supportFragmentManager.isStateSaved,
-                    hasWindowFocus = hasWindowFocus
-                )
-            ) {
-                return@postDelayed
-            }
-            val text = getClipText()?.takeIf { it.isNotBlank() } ?: return@postDelayed
-            if (text == lastPassphraseText) return@postDelayed
-            when (val result = SourceSharePassphrase.decode(text)) {
-                SourceSharePassphrase.DecodeResult.NotFound -> {
-                    lastPassphraseText = null
-                }
-
-                SourceSharePassphrase.DecodeResult.Invalid -> {
-                    lastPassphraseText = text
-                    toastOnUi(R.string.shibboleth_invalid)
-                }
-
-                SourceSharePassphrase.DecodeResult.Expired -> {
-                    lastPassphraseText = text
-                    toastOnUi(R.string.shibboleth_expired)
-                }
-
-                is SourceSharePassphrase.DecodeResult.Success -> {
-                    lastPassphraseText = text
-                    clearClip()
-                    val value = result.value
-                    when (value.type) {
-                        SourceSharePassphrase.Type.DICT_RULE ->
-                            showDialogFragment(ImportDictRuleDialog(value.url))
-
-                        SourceSharePassphrase.Type.REPLACE_RULE ->
-                            showDialogFragment(ImportReplaceRuleDialog(value.url))
-
-                        SourceSharePassphrase.Type.TOC_RULE ->
-                            showDialogFragment(ImportTxtTocRuleDialog(value.url))
-
-                        SourceSharePassphrase.Type.TTS_RULE ->
-                            showDialogFragment(ImportHttpTtsDialog(value.url))
-
-                        SourceSharePassphrase.Type.AUTO_TASK ->
-                            showDialogFragment(ImportAutoTaskDialog(value.url))
-                    }
-                }
-            }
-        }
     }
 
     private fun upBottomBarSkin() {

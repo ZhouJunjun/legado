@@ -12,7 +12,6 @@ import androidx.core.view.allViews
 import androidx.lifecycle.lifecycleScope
 import io.legado.app.R
 import io.legado.app.base.VMBaseActivity
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
@@ -231,7 +230,6 @@ class SearchContentActivity :
                     }
                 }
             }.onFailure {
-                AppLog.put("全文搜索出错\n${it.localizedMessage}", it)
             }
             binding.tvCurrentSearchInfo.post {
                 binding.fbStop.invisible()

@@ -22,7 +22,6 @@ import androidx.recyclerview.widget.RecyclerView
 import com.jaredrummler.android.colorpicker.ColorPickerDialog
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.databinding.DialogReadBgTextBinding
@@ -30,9 +29,6 @@ import io.legado.app.databinding.ItemBgImageBinding
 import io.legado.app.help.DefaultData
 import io.legado.app.help.book.isImage
 import io.legado.app.help.config.ReadBookConfig
-import io.legado.app.help.http.newCallResponseBody
-import io.legado.app.help.http.okHttpClient
-import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.borderedDialogBackground
@@ -68,18 +64,12 @@ import io.legado.app.utils.outputStream
 import io.legado.app.utils.postEvent
 import io.legado.app.utils.readBytes
 import io.legado.app.utils.readUri
-import io.legado.app.utils.stackTraceStr
 import io.legado.app.utils.toastOnUi
 import io.legado.app.utils.viewbindingdelegate.viewBinding
 import splitties.init.appCtx
 import java.io.File
 import java.io.FileOutputStream
-import androidx.lifecycle.lifecycleScope
-import io.legado.app.help.http.addHeaders
-import io.legado.app.help.http.newCallResponse
-import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.utils.setSelectionSafely
-import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
@@ -97,7 +87,6 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
     private val adapter by lazy { BgAdapter(requireContext(), secondaryTextColor) }
     private var primaryTextColor = 0
     private var secondaryTextColor = 0
-    private val importFormNet = "网络导入"
     private val selectBgImage = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             setBgFromUri(uri)
@@ -110,11 +99,7 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
     }
     private val selectImportDoc = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
-            if (uri.path == "/$importFormNet") {
-                importNetConfigAlert()
-            } else {
-                importConfig(uri)
-            }
+            importConfig(uri)
         }
     }
 
@@ -379,7 +364,6 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
                 mode = HandleFileContract.FILE
                 title = getString(R.string.import_str)
                 allowExtensions = arrayOf("zip")
-                otherActions = arrayListOf(SelectItem(importFormNet, -1))
             }
         }
         binding.ivExport.setOnClickListener {
@@ -648,7 +632,6 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
         }.onSuccess {
             toastOnUi("导出成功, 文件名为 $exportFileName")
         }.onError {
-            AppLog.put("导出失败:${it.localizedMessage}", it)
             longToast("导出失败:${it.localizedMessage}")
         }
     }
@@ -664,32 +647,6 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
             }
         }
         return null
-    }
-
-    @SuppressLint("InflateParams")
-    private fun importNetConfigAlert() {
-        alert("输入地址") {
-            val alertBinding = DialogEditTextBinding.inflate(layoutInflater)
-            customView { alertBinding.root }
-            okButton {
-                alertBinding.editView.text?.toString()?.let { url ->
-                    importNetConfig(url)
-                }
-            }
-            cancelButton()
-        }
-    }
-
-    private fun importNetConfig(url: String) {
-        execute {
-            okHttpClient.newCallResponseBody {
-                url(url)
-            }.bytes().let {
-                importConfig(it)
-            }
-        }.onError {
-            longToast(it.stackTraceStr)
-        }
     }
 
     private fun importConfig(uri: Uri) {
@@ -713,46 +670,6 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
     }
 
     private fun setBgFromUri(uri: Uri) {
-        if (uri.scheme?.lowercase() in listOf("http", "https")) {
-            lifecycleScope.launch {
-                kotlin.runCatching {
-                    appCtx.toastOnUi("下载图片中...")
-                    val analyzeUrl = AnalyzeUrl(uri.toString())
-                    val url = analyzeUrl.urlNoQuery
-                    var file = requireContext().externalFiles
-                    val res = okHttpClient.newCallResponse(0) {
-                        addHeaders(analyzeUrl.headerMap)
-                        url(url)
-                    }
-                    val contentType = res.header("Content-Type") ?: "image/jpeg"
-                    val imageType = when {
-                        contentType.contains("png", ignoreCase = true) -> "png"
-                        contentType.contains("gif", ignoreCase = true) -> "gif"
-                        contentType.contains("webp", ignoreCase = true) -> "webp"
-                        else -> "jpg"
-                    }
-                    val suffix = if (url.contains(".9.png", true)) {
-                        ".9.png"
-                    } else {
-                        ".$imageType"
-                    }
-                    val fileName = MD5Utils.md5Encode(url) + suffix
-                    file = FileUtils.createFileIfNotExist(file, "bg", fileName)
-                    res.body.byteStream().use { inputStream ->
-                        FileOutputStream(file).use { outputStream ->
-                            inputStream.copyTo(outputStream)
-                        }
-                    }
-                    ReadBookConfig.durConfig.setCurBg(2, fileName)
-                    postEvent(EventBus.UP_CONFIG, arrayListOf(1))
-                }.onSuccess {
-                    appCtx.toastOnUi("设定成功")
-                }.onFailure {
-                    appCtx.toastOnUi(it.localizedMessage)
-                }
-            }
-            return
-        }
         readUri(uri) { fileDoc, inputStream ->
             kotlin.runCatching {
                 var file = requireContext().externalFiles

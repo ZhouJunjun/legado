@@ -19,19 +19,14 @@ import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.SeekBar
 import androidx.appcompat.widget.AppCompatTextView
-import androidx.constraintlayout.widget.ConstraintSet
 import androidx.core.view.doOnLayout
-import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import io.legado.app.R
 import io.legado.app.constant.PreferKey
-import io.legado.app.data.appDb
 import io.legado.app.databinding.ViewReadMenuBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.help.config.ThemeConfig
-import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.help.source.getSourceType
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
@@ -40,10 +35,7 @@ import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.buttonDisabledColor
 import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadBook
-import io.legado.app.model.SourceCallBack
 import io.legado.app.service.BaseReadAloudService
-import io.legado.app.ui.browser.WebViewActivity
-import io.legado.app.ui.widget.popupActionMenu
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.ConstraintModify
@@ -56,14 +48,10 @@ import io.legado.app.utils.gone
 import io.legado.app.utils.invisible
 import io.legado.app.utils.loadAnimation
 import io.legado.app.utils.modifyBegin
-import io.legado.app.utils.openUrl
 import io.legado.app.utils.putPrefBoolean
-import io.legado.app.utils.startActivity
 import io.legado.app.utils.visible
-import splitties.views.onClick
 import splitties.views.onLongClick
 import androidx.core.graphics.toColorInt
-import io.legado.app.constant.BookType
 import io.legado.app.utils.buildMainHandler
 
 /**
@@ -149,14 +137,6 @@ class ReadMenu @JvmOverloads constructor(
         )
     private val menuInListener = object : Animation.AnimationListener {
         override fun onAnimationStart(animation: Animation) {
-            binding.tvSourceAction.text =
-                ReadBook.bookSource?.bookSourceName ?: context.getString(R.string.book_source)
-            binding.tvSourceAction.isGone = ReadBook.isLocalBook
-            ReadBook.bookSource?.let {
-                if (it.customButton) {
-                    binding.tvCustomBtn.visibility = VISIBLE
-                }
-            }
             callBack.upSystemUiVisibility()
             binding.llBrightness.visible(showBrightnessView)
         }
@@ -204,7 +184,6 @@ class ReadMenu @JvmOverloads constructor(
             fabNightTheme.setImageResource(R.drawable.ic_brightness)
         }
         initAnimation()
-        tvCustomBtn.setColorFilter(context.accentColor)
         if (immersiveMenu) {
             val lightTextColor = ColorUtils.withAlpha(ColorUtils.lightenColor(textColor), 0.75f)
             titleBar.setTextColor(textColor)
@@ -581,92 +560,6 @@ class ReadMenu @JvmOverloads constructor(
         titleBar.toolbar.setOnClickListener {
             callBack.openBookInfoActivity()
         }
-        val chapterViewClickListener = OnClickListener {
-            if (ReadBook.isLocalBook) {
-                return@OnClickListener
-            }
-            if (AppConfig.readUrlInBrowser) {
-                context.openUrl(tvChapterUrl.text.toString().substringBefore(",{"))
-            } else {
-                Coroutine.async {
-                    context.startActivity<WebViewActivity> {
-                        val url = tvChapterUrl.text.toString()
-                        val bookSource = ReadBook.bookSource
-                        putExtra("title", tvChapterName.text)
-                        putExtra("url", url)
-                        putExtra("sourceOrigin", bookSource?.bookSourceUrl)
-                        putExtra("sourceName", bookSource?.bookSourceName)
-                        putExtra("sourceType", bookSource?.getSourceType())
-                    }
-                }
-            }
-        }
-        val chapterViewLongClickListener = OnLongClickListener {
-            if (ReadBook.isLocalBook) {
-                return@OnLongClickListener true
-            }
-            context.alert(R.string.open_fun) {
-                setMessage(R.string.use_browser_open)
-                okButton {
-                    AppConfig.readUrlInBrowser = true
-                }
-                noButton {
-                    AppConfig.readUrlInBrowser = false
-                }
-            }
-            true
-        }
-        tvChapterName.setOnClickListener(chapterViewClickListener)
-        tvChapterName.setOnLongClickListener(chapterViewLongClickListener)
-        tvChapterUrl.setOnClickListener(chapterViewClickListener)
-        tvChapterUrl.setOnLongClickListener(chapterViewLongClickListener)
-        tvCustomBtn.setOnClickListener {
-            val book = ReadBook.book ?: return@setOnClickListener
-            val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
-            activity?.let { activity ->
-                SourceCallBack.callBackBtn(
-                    activity,
-                    SourceCallBack.CLICK_CUSTOM_BUTTON,
-                    ReadBook.bookSource,
-                    book,
-                    chapter,
-                    BookType.text
-                )
-            }
-        }
-        tvCustomBtn.setOnLongClickListener {
-            val book = ReadBook.book ?: return@setOnLongClickListener true
-            val chapter = appDb.bookChapterDao.getChapter(book.bookUrl, ReadBook.durChapterIndex)
-            activity?.let { activity ->
-                SourceCallBack.callBackBtn(
-                    activity,
-                    SourceCallBack.LONG_CLICK_CUSTOM_BUTTON,
-                    ReadBook.bookSource,
-                    book,
-                    chapter,
-                    BookType.text
-                )
-            }
-            true
-        }
-        //书源操作
-        tvSourceAction.onClick {
-            val hasLogin = ReadBook.bookSource?.hasLogin() == true
-            val canPay = hasLogin
-                    && ReadBook.curTextChapter?.isVip == true
-                    && ReadBook.curTextChapter?.isPay != true
-            popupActionMenu(context) {
-                item(context.getString(R.string.login), "login", hasLogin)
-                item(context.getString(R.string.chapter_pay), "chapterPay", canPay)
-                item(context.getString(R.string.disable_book_source), "disableSource")
-            }.show(tvSourceAction) { action ->
-                when (action) {
-                    "login" -> callBack.showLogin()
-                    "chapterPay" -> callBack.payAction()
-                    "disableSource" -> callBack.disableSource()
-                }
-            }
-        }
         //亮度跟随
         ivBrightnessAuto.setOnClickListener {
             context.putPrefBoolean("brightnessAuto", !brightnessAuto())
@@ -814,12 +707,9 @@ class ReadMenu @JvmOverloads constructor(
         ReadBook.curTextChapter?.let {
             binding.tvChapterName.text = it.title
             binding.tvChapterName.visible()
-            if (!ReadBook.isLocalBook) {
-                binding.tvChapterUrl.text = it.chapter.getAbsoluteURL()
-            } else {
-                binding.tvChapterUrl.text = null
-                binding.tvChapterUrl.gone()
-            }
+            // 全部书籍均为本地导入，章节没有可跳转的线上地址，这一行恒不显示。
+            binding.tvChapterUrl.text = null
+            binding.tvChapterUrl.gone()
             updateTitleAdditionLayout()
             upSeekBar()
             binding.tvPre.isEnabled = ReadBook.durChapterIndex != 0
@@ -911,17 +801,6 @@ class ReadMenu @JvmOverloads constructor(
         } else {
             tvChapterUrl.gone()
         }
-        ConstraintSet().apply {
-            clone(titleBarAddition)
-            val bottomTarget = if (tvChapterUrl.isGone) {
-                R.id.tv_chapter_name
-            } else {
-                R.id.tv_chapter_url
-            }
-            connect(R.id.tv_custom_btn, ConstraintSet.BOTTOM, bottomTarget, ConstraintSet.BOTTOM)
-            connect(R.id.tv_source_action, ConstraintSet.BOTTOM, bottomTarget, ConstraintSet.BOTTOM)
-            applyTo(titleBarAddition)
-        }
         tvChapterName.translationY = 0f
         if (chapterNameOnly && tvChapterName.isVisible) {
             titleBarAddition.doOnLayout {
@@ -984,16 +863,11 @@ class ReadMenu @JvmOverloads constructor(
         fun openChapterList()
         fun openSearchActivity(searchWord: String?)
         fun openBookInfoActivity()
-        fun showReadStyle()
         fun showMoreSetting()
         fun showBookMemo()
-        fun showReadAloudDialog()
         fun upSystemUiVisibility()
         fun onClickReadAloud()
         fun showHelp()
-        fun showLogin()
-        fun payAction()
-        fun disableSource()
         fun skipToChapter(index: Int)
         fun onMenuShow()
         fun onMenuHide()

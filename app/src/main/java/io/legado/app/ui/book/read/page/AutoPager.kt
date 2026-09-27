@@ -68,6 +68,10 @@ class AutoPager(private val readView: ReadView) : Runnable {
         }
         isPausing = false
         if (isEInkMode) {
+            // eInk 分支只 postDelayed, 不像非 eInk 那样靠 invalidate 驱动。
+            // 若不清掉旧回调, 连续两次 resume()(如滚动取消时 cancelAnim 与 ACTION_CANCEL
+            // 各调一次)会排入两个定时任务, 自动翻页变成约 2 倍速。
+            readView.removeCallbacks(this)
             readView.postDelayed(this, ReadBookConfig.autoReadSpeed * 1000L)
         } else {
             lastTimeMillis = SystemClock.uptimeMillis()

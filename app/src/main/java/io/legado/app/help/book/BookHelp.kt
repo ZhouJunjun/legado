@@ -3,23 +3,17 @@ package io.legado.app.help.book
 import android.os.ParcelFileDescriptor
 import androidx.core.util.AtomicFile
 import androidx.documentfile.provider.DocumentFile
-import com.script.rhino.runScriptWithContext
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
-import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.BookChapter
-import io.legado.app.data.entities.BookSource
 import io.legado.app.data.entities.getFolderName
 import io.legado.app.data.entities.isEpub
 import io.legado.app.help.config.AppConfig
-import io.legado.app.model.analyzeRule.AnalyzeUrl
 import io.legado.app.model.localBook.EpubFile
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.utils.ArchiveUtils
 import io.legado.app.utils.FileUtils
-import io.legado.app.utils.ImageUtils
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.NetworkUtils
 import io.legado.app.utils.StringUtils
@@ -32,7 +26,6 @@ import io.legado.app.utils.externalFiles
 import io.legado.app.utils.getFile
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.onEachParallel
-import io.legado.app.utils.postEvent
 import kotlinx.coroutines.Dispatchers.IO
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
@@ -231,51 +224,6 @@ object BookHelp {
             if (!imgNames.contains(imgFile.name)) {
                 imgFile.delete()
             }
-        }
-    }
-
-    fun saveContent(
-        bookSource: BookSource,
-        book: Book,
-        bookChapter: BookChapter,
-        content: String,
-        token: ContentSaveToken = contentSaveToken(book, bookChapter),
-        saveChapterMetadata: Boolean = false,
-    ): Boolean {
-        return try {
-            if (token.key.bookUrl != book.bookUrl ||
-                token.key.chapterIndex != bookChapter.index ||
-                token.folderName != book.getFolderName()
-            ) {
-                return false
-            }
-            val fileName = bookChapter.getFileName()
-            val saved = contentSaveFence.writeIfCurrent(
-                token.key,
-                token.version,
-                fileName,
-            ) {
-                if (content.isNotEmpty()) {
-                    writeText(book, bookChapter, token.folderName, fileName, content)
-                }
-                if (saveChapterMetadata) {
-                    appDb.bookChapterDao.updateContentMetadata(
-                        bookChapter.bookUrl,
-                        bookChapter.index,
-                        bookChapter.title,
-                        bookChapter.imgUrl,
-                    )
-                }
-            }
-            if (saved) {
-                //saveImages(bookSource, book, bookChapter, content)
-                postEvent(EventBus.SAVE_CONTENT, Pair(book, bookChapter))
-            }
-            saved
-        } catch (e: Exception) {
-            e.printStackTrace()
-            AppLog.put("保存正文失败 ${book.name} ${bookChapter.title}", e)
-            false
         }
     }
 
@@ -482,19 +430,17 @@ object BookHelp {
     }
 
     suspend fun saveImages(
-        bookSource: BookSource,
         book: Book,
         bookChapter: BookChapter,
         content: String,
         concurrency: Int = AppConfig.threadCount
     ) = coroutineScope {
         flowImages(bookChapter, content).onEachParallel(concurrency) { mSrc ->
-            saveImage(bookSource, book, mSrc, bookChapter)
+            saveImage(book, mSrc, bookChapter)
         }.collect()
     }
 
     suspend fun saveImage(
-        bookSource: BookSource?,
         book: Book,
         src: String,
         chapter: BookChapter? = null
@@ -512,23 +458,9 @@ object BookHelp {
             if (isImageExist(book, src)) {
                 return
             }
-            fetchImage(bookSource, book, src)?.let {
-                if (!checkImage(it)) {
-                    // 如果部分图片失效，每次进入正文都会花很长时间再次获取图片数据
-                    // 所以无论如何都要将数据写入到文件里
-                    // throw NoStackTraceException("数据异常")
-                    AppLog.put("${book.name} ${chapter?.title} 图片 $src 下载错误 数据异常")
-                }
-                synchronized(this) {
-                    if ((imageVersions[imagePath] ?: 0L) == version) {
-                        writeImage(book, src, it)
-                    }
-                }
-            }
         } catch (e: Exception) {
             currentCoroutineContext().ensureActive()
             val msg = "${book.name} ${chapter?.title} 图片 $src 下载失败\n${e.localizedMessage}"
-            AppLog.put(msg, e)
         } finally {
             downloadImages.remove(src)
             mutex.unlock()
@@ -547,12 +479,6 @@ object BookHelp {
     @Synchronized
     fun writeImage(book: Book, src: String, bytes: ByteArray) {
         getImage(book, src).createFileIfNotExist().writeBytes(bytes)
-    }
-
-    internal suspend fun fetchImage(bookSource: BookSource?, book: Book, src: String): ByteArray? {
-        val bytes = AnalyzeUrl(src, source = bookSource, coroutineContext = currentCoroutineContext())
-            .getByteArrayAwait()
-        return runScriptWithContext { ImageUtils.decode(src, bytes, isCover = false, bookSource, book) }
     }
 
     @Synchronized

@@ -8,7 +8,6 @@ import androidx.annotation.Keep
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.graphics.toColorInt
 import io.legado.app.R
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.EventBus
 import io.legado.app.constant.PreferKey
 import io.legado.app.constant.Theme
@@ -35,14 +34,10 @@ import io.legado.app.utils.stackBlur
 import splitties.init.appCtx
 import java.io.File
 import androidx.core.graphics.drawable.toDrawable
-import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.help.http.newCallResponse
-import io.legado.app.help.http.okHttpClient
 import io.legado.app.utils.MD5Utils
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.putPrefBoolean
 import io.legado.app.utils.toastOnUi
-import java.io.FileOutputStream
 
 @Keep
 object ThemeConfig {
@@ -240,40 +235,6 @@ object ThemeConfig {
             val isNightTheme = config.isNightTheme
             val transparentNavBar = config.transparentNavBar
             val backgroundPath = config.backgroundImgPath
-            if (backgroundPath != null && backgroundPath.startsWith("http")) {
-                val fileRoot = context.externalFiles
-                val preferenceKey = if (isNightTheme) {
-                    PreferKey.bgImageN
-                } else {
-                    PreferKey.bgImage
-                }
-                val name = getUrlToFile(backgroundPath)
-                val fileFold = File(fileRoot, preferenceKey)
-                if (!fileFold.exists()) {
-                    fileFold.mkdirs()
-                }
-                val fileImg = File(fileFold, name)
-                if (!fileImg.exists()) {
-                    appCtx.toastOnUi("下载背景图片中...")
-                    Coroutine.async {
-                        kotlin.runCatching {
-                            val res = okHttpClient.newCallResponse(0) {
-                                url(backgroundPath)
-                            }
-                            res.body.byteStream().use { inputStream ->
-                                FileOutputStream(fileImg).use { outputStream ->
-                                    inputStream.copyTo(outputStream)
-                                }
-                            }
-                        }.onSuccess {
-                            appCtx.toastOnUi("背景图下载成功\n请重新应用主题")
-                        }.onFailure {
-                            appCtx.toastOnUi(it.localizedMessage)
-                        }
-                    }
-                    return
-                }
-            }
             val backgroundBlur = config.backgroundImgBlur
             if (isNightTheme) {
                 context.putPrefString(PreferKey.dNThemeName, config.themeName)
@@ -297,7 +258,6 @@ object ThemeConfig {
             AppConfig.isNightTheme = isNightTheme
             applyDayNight(context)
         } catch (e: Exception) {
-            AppLog.put("设置主题出错\n$e", e, true)
         }
     }
 

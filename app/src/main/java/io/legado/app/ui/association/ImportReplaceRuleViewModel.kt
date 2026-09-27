@@ -4,19 +4,12 @@ import android.app.Application
 import androidx.core.net.toUri
 import androidx.lifecycle.MutableLiveData
 import io.legado.app.base.BaseViewModel
-import io.legado.app.constant.AppConst
-import io.legado.app.constant.AppLog
 import io.legado.app.constant.AppPattern
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.exception.NoStackTraceException
 import io.legado.app.help.ReplaceAnalyzer
 import io.legado.app.help.config.ReplacePreviewConfig
-import io.legado.app.help.http.decompressed
-import io.legado.app.help.http.newCallResponseBody
-import io.legado.app.help.http.okHttpClient
-import io.legado.app.help.http.text
-import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isJsonArray
 import io.legado.app.utils.isJsonObject
 import io.legado.app.utils.isUri
@@ -89,7 +82,6 @@ class ImportReplaceRuleViewModel(app: Application) : BaseViewModel(app) {
             importAwait(text.trim())
         }.onError {
             errorLiveData.postValue("ImportError:${it.localizedMessage}")
-            AppLog.put("ImportError:${it.localizedMessage}", it)
         }.onSuccess {
             comparisonSource()
         }
@@ -97,7 +89,6 @@ class ImportReplaceRuleViewModel(app: Application) : BaseViewModel(app) {
 
     private suspend fun importAwait(text: String) {
         when {
-            text.isAbsUrl() -> importUrl(text)
             text.isJsonArray() -> {
                 val rules = ReplaceAnalyzer.jsonToReplaceRules(text).getOrThrow()
                 allRules.addAll(rules)
@@ -113,19 +104,6 @@ class ImportReplaceRuleViewModel(app: Application) : BaseViewModel(app) {
             }
 
             else -> throw NoStackTraceException("格式不对")
-        }
-    }
-
-    private suspend fun importUrl(url: String) {
-        okHttpClient.newCallResponseBody {
-            if (url.endsWith("#requestWithoutUA")) {
-                url(url.substringBeforeLast("#requestWithoutUA"))
-                header(AppConst.UA_NAME, "null")
-            } else {
-                url(url)
-            }
-        }.decompressed().text("utf-8").let {
-            importAwait(it)
         }
     }
 

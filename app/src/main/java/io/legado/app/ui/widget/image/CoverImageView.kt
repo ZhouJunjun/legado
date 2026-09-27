@@ -33,7 +33,6 @@ import io.legado.app.R
 import io.legado.app.constant.AppPattern
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.glide.ImageLoader
-import io.legado.app.help.glide.OkHttpModelLoader
 import io.legado.app.model.BookCover
 import io.legado.app.model.CoverFontSizes
 import io.legado.app.utils.textHeight
@@ -42,7 +41,6 @@ import android.view.ViewOutlineProvider
 import androidx.collection.LruCache
 import androidx.core.graphics.createBitmap
 import io.legado.app.data.entities.Book
-import io.legado.app.data.entities.SearchBook
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -760,15 +758,6 @@ class CoverImageView @JvmOverloads constructor(
     }
 
     fun load(
-        searchBook: SearchBook,
-        loadOnlyWifi: Boolean = false,
-        fragment: Fragment? = null,
-        lifecycle: Lifecycle? = null
-    ) {
-        load(searchBook.coverUrl, searchBook.name, searchBook.author, loadOnlyWifi, searchBook.origin, fragment, lifecycle)
-    }
-
-    fun load(
         book: Book,
         loadOnlyWifi: Boolean = false,
         fragment: Fragment? = null,
@@ -829,10 +818,7 @@ class CoverImageView @JvmOverloads constructor(
             if (BookCover.drawBookName && currentName != null) {
                 drawNameAuthor(currentName, currentAuthor, asyncAwait = true)
             }
-            var options = RequestOptions().set(OkHttpModelLoader.loadOnlyWifiOption, loadOnlyWifi)
-            if (sourceOrigin != null) {
-                options = options.set(OkHttpModelLoader.sourceOriginOption, sourceOrigin)
-            }
+            var options = RequestOptions()
             var builder = if (fragment != null && lifecycle != null) {
                 ImageLoader.load(fragment, lifecycle, currentPath)
             } else {

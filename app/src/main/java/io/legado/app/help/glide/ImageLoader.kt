@@ -9,7 +9,6 @@ import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import com.bumptech.glide.Glide
 import com.bumptech.glide.RequestBuilder
-import com.bumptech.glide.request.RequestOptions
 import io.legado.app.utils.isAbsUrl
 import io.legado.app.utils.isContentScheme
 import io.legado.app.utils.isDataUrl
@@ -72,9 +71,7 @@ object ImageLoader {
                 requestManager.load(path)
             }
         }
-        return sourceOrigin?.let {
-            request.apply(RequestOptions().set(OkHttpModelLoader.sourceOriginOption, it))
-        } ?: request
+        return request
     }
 
     fun loadFile(context: Context, path: String?): RequestBuilder<File> {

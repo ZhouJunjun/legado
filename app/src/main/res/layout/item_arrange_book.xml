@@ -48,19 +48,6 @@
         tools:ignore="RtlHardcoded" />
 
     <TextView
-        android:id="@+id/tv_origin"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
-        android:padding="3dp"
-        android:textColor="@color/tv_text_summary"
-        android:textSize="12sp"
-        app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/checkbox"
-        app:layout_constraintTop_toBottomOf="@id/tv_author"
-        tools:text="书源" />
-
-    <TextView
         android:id="@+id/tv_group_s"
         android:layout_width="0dp"
         android:layout_height="wrap_content"
@@ -71,7 +58,7 @@
         android:textColor="@color/secondaryText"
         android:textSize="12sp"
         app:layout_constraintBottom_toBottomOf="parent"
-        app:layout_constraintLeft_toRightOf="@+id/tv_origin"
+        app:layout_constraintLeft_toRightOf="@+id/checkbox"
         app:layout_constraintRight_toLeftOf="@+id/tv_group"
         app:layout_constraintTop_toBottomOf="@id/tv_author" />
 

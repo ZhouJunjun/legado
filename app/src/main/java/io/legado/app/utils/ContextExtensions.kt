@@ -23,7 +23,6 @@ import android.content.res.ColorStateList
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.drawable.Drawable
-import android.net.ConnectivityManager
 import android.net.Uri
 import android.os.BatteryManager
 import android.os.Build
@@ -40,17 +39,8 @@ import io.legado.app.R
 import io.legado.app.constant.AppConst
 import io.legado.app.data.entities.Book
 import io.legado.app.help.IntentHelp
-import io.legado.app.help.book.isAudio
-import io.legado.app.help.book.isImage
-import io.legado.app.help.book.isLocal
-import io.legado.app.help.book.isVideo
-import io.legado.app.help.config.AppConfig
-import io.legado.app.ui.book.audio.AudioPlayActivity
-import io.legado.app.ui.video.VideoPlayerActivity
-import io.legado.app.ui.book.manga.ReadMangaActivity
 import io.legado.app.ui.book.read.ReadBookActivity
 import splitties.systemservices.clipboardManager
-import splitties.systemservices.connectivityManager
 import splitties.systemservices.uiModeManager
 import java.io.File
 import java.io.FileOutputStream
@@ -67,12 +57,7 @@ fun Context.startActivityForBook(
     book: Book,
     configIntent: Intent.() -> Unit = {},
 ) {
-    val cls = when {
-        book.isVideo -> VideoPlayerActivity::class.java
-        book.isAudio -> AudioPlayActivity::class.java
-        !book.isLocal && book.isImage && AppConfig.showMangaUi -> ReadMangaActivity::class.java
-        else -> ReadBookActivity::class.java
-    }
+    val cls = ReadBookActivity::class.java
     val intent = Intent(this, cls)
     intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
     intent.putExtra("bookUrl", book.bookUrl)
@@ -401,14 +386,6 @@ fun Context.openFileUri(uri: Uri, type: String? = null) {
         toastOnUi(e.stackTraceStr)
     }
 }
-
-@Suppress("DEPRECATION")
-val Context.isWifiConnect: Boolean
-    @SuppressLint("MissingPermission")
-    get() {
-        val info = connectivityManager.getNetworkInfo(ConnectivityManager.TYPE_WIFI)
-        return info?.isConnected == true
-    }
 
 val Context.isPad: Boolean
     get() {

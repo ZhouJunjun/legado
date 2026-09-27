@@ -401,26 +401,6 @@ data class Book(
         return folderName!!
     }
 
-    fun toSearchBook() = SearchBook(
-        name = name,
-        author = author,
-        kind = kind,
-        bookUrl = bookUrl,
-        origin = origin,
-        originName = originName,
-        type = type,
-        wordCount = wordCount,
-        latestChapterTitle = latestChapterTitle,
-        coverUrl = coverUrl,
-        intro = intro,
-        tocUrl = tocUrl,
-        originOrder = originOrder,
-        variable = variable
-    ).apply {
-        this.infoHtml = this@Book.infoHtml
-        this.tocHtml = this@Book.tocHtml
-    }
-
     fun toReplaceBook() = ReplaceBook(
         name = name,
         author = author,

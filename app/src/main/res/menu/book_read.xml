@@ -4,27 +4,6 @@
     tools:context=".ui.main.MainActivity"
     tools:ignore="AlwaysShowAction">
 
-    <group android:id="@+id/menu_group_on_line">
-        <item
-            android:id="@+id/menu_change_source"
-            android:icon="@drawable/ic_exchange"
-            android:title="@string/change_origin"
-            app:showAsAction="always" />
-
-        <item
-            android:id="@+id/menu_refresh"
-            android:icon="@drawable/ic_refresh_black_24dp"
-            android:title="@string/refresh"
-            app:showAsAction="always" />
-
-        <item
-            android:id="@+id/menu_download"
-            android:icon="@drawable/ic_download_line"
-            android:title="@string/offline_cache"
-            app:showAsAction="always" />
-
-    </group>
-
     <group android:id="@+id/menu_group_text">
         <item
             android:id="@+id/menu_toc_regex"
@@ -34,15 +13,11 @@
             app:showAsAction="always" />
     </group>
 
-    <group android:id="@+id/menu_group_local">
-
-        <item
-            android:id="@+id/menu_set_charset"
-            android:icon="@drawable/ic_translate"
-            android:title="@string/set_charset"
-            app:showAsAction="always" />
-
-    </group>
+    <item
+        android:id="@+id/menu_set_charset"
+        android:icon="@drawable/ic_translate"
+        android:title="@string/set_charset"
+        app:showAsAction="always" />
 
     <item
         android:id="@+id/menu_add_bookmark"
@@ -62,24 +37,6 @@
     <item
         android:id="@+id/menu_page_anim"
         android:title="@string/book_page_anim"
-        app:showAsAction="never" />
-
-    <item
-        android:id="@+id/menu_get_progress"
-        android:title="@string/get_book_progress"
-        android:visible="false"
-        app:showAsAction="never" />
-
-    <item
-        android:id="@+id/menu_cover_progress"
-        android:title="@string/cover_book_progress"
-        android:visible="false"
-        app:showAsAction="never" />
-
-    <item
-        android:id="@+id/menu_reverse_content"
-        android:checkable="true"
-        android:title="@string/reverse_content"
         app:showAsAction="never" />
 
     <item
@@ -113,14 +70,6 @@
         android:title="@string/re_segment"
         app:showAsAction="never" />
 
-    <item
-        android:id="@+id/menu_enable_review"
-        android:checkable="true"
-        android:checked="false"
-        android:title="@string/review"
-        android:visible="false"
-        app:showAsAction="never" />
-
     <group android:id="@+id/menu_group_epub">
 
         <item
@@ -152,11 +101,6 @@
     <item
         android:id="@+id/menu_effective_replaces"
         android:title="@string/effective_replaces"
-        app:showAsAction="never" />
-
-    <item
-        android:id="@+id/menu_log"
-        android:title="@string/log"
         app:showAsAction="never" />
 
     <item
