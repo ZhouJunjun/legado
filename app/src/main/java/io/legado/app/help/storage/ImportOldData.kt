@@ -7,7 +7,6 @@ import io.legado.app.constant.AppConst
 import io.legado.app.constant.BookType
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
-import io.legado.app.data.entities.rule.*
 import io.legado.app.help.ReplaceAnalyzer
 import io.legado.app.help.config.ReplacePreviewConfig
 import io.legado.app.utils.*

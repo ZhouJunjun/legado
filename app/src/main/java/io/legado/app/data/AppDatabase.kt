@@ -15,7 +15,6 @@ import io.legado.app.data.dao.BookHighlightDao
 import io.legado.app.data.dao.BookMemoDao
 import io.legado.app.data.dao.BookmarkDao
 import io.legado.app.data.dao.CacheDao
-import io.legado.app.data.dao.CookieDao
 import io.legado.app.data.dao.HighlightRuleDao
 import io.legado.app.data.dao.KeyboardAssistsDao
 import io.legado.app.data.dao.ReadRecordDao
@@ -28,7 +27,6 @@ import io.legado.app.data.entities.BookHighlight
 import io.legado.app.data.entities.BookMemo
 import io.legado.app.data.entities.Bookmark
 import io.legado.app.data.entities.Cache
-import io.legado.app.data.entities.Cookie
 import io.legado.app.data.entities.HighlightRule
 import io.legado.app.data.entities.KeyboardAssist
 import io.legado.app.data.entities.ReadRecord
@@ -49,10 +47,10 @@ val appDb by lazy {
 }
 
 @Database(
-    version = 115,
+    version = 116,
     exportSchema = true,
     entities = [Book::class, BookGroup::class, BookChapter::class,
-        ReplaceRule::class, Cookie::class,
+        ReplaceRule::class,
         Bookmark::class, TxtTocRule::class, ReadRecord::class, Cache::class,
         KeyboardAssist::class,
         BookHighlight::class, HighlightRule::class,
@@ -126,10 +124,6 @@ val appDb by lazy {
         AutoMigration(
             from = 112, to = 113,
             spec = DatabaseMigrations.Migration_112_113::class
-        ),
-        AutoMigration(
-            from = 113, to = 114,
-            spec = DatabaseMigrations.Migration_113_114::class
         )
     ]
 )
@@ -143,7 +137,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract val bookChapterDao: BookChapterDao
     abstract val replaceRuleDao: ReplaceRuleDao
     abstract val bookmarkDao: BookmarkDao
-    abstract val cookieDao: CookieDao
     abstract val txtTocRuleDao: TxtTocRuleDao
     abstract val readRecordDao: ReadRecordDao
     abstract val cacheDao: CacheDao

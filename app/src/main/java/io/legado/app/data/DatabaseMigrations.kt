@@ -24,7 +24,8 @@ object DatabaseMigrations {
             migration_35_36, migration_36_37, migration_37_38, migration_38_39,
             migration_39_40, migration_40_41, migration_41_42, migration_42_43,
             migration_100_101, migration_104_105, migration_105_106, migration_106_107,
-            migration_107_108, migration_108_109, migration_109_110, migration_114_115,
+            migration_107_108, migration_108_109, migration_109_110,
+            migration_113_114, migration_114_115, migration_115_116,
         )
     }
 
@@ -42,6 +43,16 @@ object DatabaseMigrations {
             db.execSQL("DROP TABLE IF EXISTS `dictRules`")
             db.execSQL("DROP TABLE IF EXISTS `servers`")
             db.execSQL("DROP TABLE IF EXISTS `auto_task_rules`")
+        }
+    }
+
+    /**
+     * cookies 表是给在线书源存 HTTP cookie 用的，书源体系移除后已无任何调用方，
+     * 随 Cookie 实体 / CookieDao 一并删除。
+     */
+    private val migration_115_116 = object : Migration(115, 116) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS `cookies`")
         }
     }
 
@@ -642,10 +653,10 @@ object DatabaseMigrations {
     /**
      * 自建 HTTP 朗读引擎(httpTTS)整体移除，相关数据表一并删除。
      */
-    @Suppress("ClassName")
-    @DeleteTable.Entries(
-        DeleteTable(tableName = "httpTTS")
-    )
-    class Migration_113_114 : AutoMigrationSpec
+    private val migration_113_114 = object : Migration(113, 114) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+            db.execSQL("DROP TABLE IF EXISTS `httpTTS`")
+        }
+    }
 
 }

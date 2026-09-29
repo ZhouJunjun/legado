@@ -50,6 +50,8 @@ import io.legado.app.ui.book.read.page.provider.ChapterProvider.srcReplaceChar
 import io.legado.app.ui.book.read.page.provider.ChapterProvider.srcReplacementChar
 import io.legado.app.utils.StringUtils
 import androidx.core.text.parseAsHtml
+import androidx.core.util.component1
+import androidx.core.util.component2
 import io.legado.app.help.TextViewTagHandler
 import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_CHAR
 import io.legado.app.help.TextViewTagHandler.Companion.HR_PLACE_STR

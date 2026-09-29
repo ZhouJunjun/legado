@@ -286,7 +286,10 @@ object ReadBookConfig {
             } catch (e: Exception) {
             }
         }
-        shareConfig = c ?: configList.getOrNull(5) ?: Config()
+        // 分享配置兜底: 原先硬编码取第 6 个(lib 索引 5)样式, 但默认样式数已改为 1 个
+        // (见 defaultData/readConfig.json), 老的下标会永远落空 -> 退回 Config() 全默认值
+        // (背景 #EEEEEE), 与用户实际在用的样式完全不符。改用最后一个可用样式兜底。
+        shareConfig = c ?: configList.lastOrNull() ?: Config()
         if (previous != null && previous != shareConfig) ResourceThemeGeneration.changed()
         normalizeUnderlineConfig()
     }

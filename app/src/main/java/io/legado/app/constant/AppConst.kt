@@ -126,3 +126,20 @@ object AppConst {
     const val authority = BuildConfig.APPLICATION_ID + ".fileProvider"
 
 }
+
+/**
+ * 渠道包标识。
+ *
+ * 原先定义在 `help/update/AppReleaseInfo.kt`（随「在线更新」功能一起被删除），
+ * 但 `AppConst.appInfo` 仍在用它区分渠道包签名，故搬到这里保留。
+ */
+enum class AppVariant {
+    OFFICIAL,
+    BETA_RELEASEA,
+    BETA_RELEASE,
+    UNKNOWN;
+
+    fun isBeta(): Boolean {
+        return this == BETA_RELEASE || this == BETA_RELEASEA
+    }
+}
