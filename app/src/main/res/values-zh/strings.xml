@@ -80,7 +80,6 @@
     <string name="exit_no_save">尚未保存，是否继续编辑</string>
     <string name="read_style">阅读样式设置</string>
     <string name="version">版本</string>
-    <string name="local">本地</string>
     <string name="search">搜索</string>
     <string name="config_search_empty">未找到匹配的设置</string>
     <string name="help_search_prev">上一个匹配项</string>
@@ -183,8 +182,6 @@
     <string name="read_aloud_listen_this_chapter">听此章</string>
     <string name="read_aloud_back_to_text">看原文</string>
     <string name="read_aloud_not_started">暂无听书进度</string>
-    <string name="read_aloud_controls_realtime">跟随朗读位置</string>
-    <string name="read_aloud_controls_realtime_summary">边看边听时，自动翻回正在朗读的页面</string>
     <string name="read_aloud_timer">正在朗读（还剩 %d 分钟）</string>
     <string name="read_aloud_timer_chapter">正在朗读（还剩 %d 章）</string>
     <string name="playing_timer">正在播放（还剩 %d 分钟）</string>
@@ -267,7 +264,6 @@
     <string name="img_cover">封面</string>
    <string name="book">书</string>
     <string name="volume_key_page">音量键翻页</string>
-    <string name="mouse_wheel_page">鼠标滚轮翻页</string>
     <string name="click_turn_page">点击翻页</string>
     <string name="page_anim">翻页动画</string>
     <string name="book_page_anim">翻页动画（本书）</string>
@@ -735,7 +731,6 @@
     <string name="skip_previous">上一个</string>
     <string name="skip_next">下一个</string>
     <string name="music">音乐</string>
-    <string name="audio">音频</string>
     <string name="is_enable">启用</string>
     <string name="enable_js">启用 JavaScript</string>
     <string name="load_with_base_url">加载 BaseUrl</string>
@@ -751,8 +746,6 @@
     <string name="timer_m">%d 分钟</string>
     <string name="brightness_auto">自动亮度 %s</string>
     <string name="read_aloud_by_page">按页朗读</string>
-    <string name="read_aloud_follow_manual_page">手动翻页时跟随朗读</string>
-    <string name="read_aloud_follow_manual_page_summary">朗读期间手动翻页后，从新页面重新开始朗读；关闭时继续朗读原位置</string>
     <string name="speak_engine">朗读引擎</string>
     <string name="bg_image">背景图片</string>
     <string name="bg_color">背景颜色</string>
@@ -1337,7 +1330,6 @@
     <string name="tag_explore_enabled">标志:发现已启用</string>
     <string name="tag_explore_disabled">标志:发现已禁用</string>
     <string name="show_read_title_addition">展示顶部工具栏附加区域</string>
-    <string name="show_read_title_chapter_name_only">附加区域仅显示章节名</string>
     <string name="read_bar_style_follow_page">工具栏样式跟随页面</string>
     <string name="rule_image_decode">图片解密（imageDecode）</string>
     <string name="like_source">赞</string>
@@ -1347,8 +1339,6 @@
     <string name="ignore_audio_focus_summary">允许与其他应用同时播放音频</string>
     <string name="refresh_sort">刷新分类</string>
     <string name="cover_decode_js">封面解密（coverDecodeJs）</string>
-    <string name="net_no_group">网络未分组</string>
-    <string name="local_no_group">本地未分组</string>
     <string name="parallel_export_book">多线程导出</string>
     <string name="progress_bar_behavior">进度条行为</string>
     <string name="source_edit_text_max_line">源编辑框最大行数</string>
@@ -1379,7 +1369,6 @@
     <string name="reader_info_template_hint">可输入文字并插入下方占位符</string>
     <string name="reader_info_placeholders">占位符</string>
     <string name="same_title_removed">移除重复标题</string>
-    <string name="update_book_fail">更新失败</string>
     <string name="notification_permission_rationale">阅读需要发送通知来显示朗读控制和下载进度</string>
     <string name="webdav_after_local_restore_confirm">webDav书源比本地新,是否恢复</string>
     <string name="c_whitelist">白名单(contentWhitelist)</string>
@@ -1495,8 +1484,6 @@
     <string name="official_version">正式版</string>
     <string name="beta_release_version">测试版</string>
     <string name="beta_releaseA_version">共存版</string>
-    <string name="stream_read_aloud_audio">流式播放音频</string>
-    <string name="stream_read_aloud_audio_summary">即边下边播，网络不好时播放会断断续续，仅TTS源有效</string>
     <string name="pause_read_aloud_while_phone_calls_title">来电期间暂停朗读</string>
     <string name="pause_read_aloud_while_phone_calls_summary">在通话期间暂停朗读，需要读取手机状态权限</string>
     <string name="read_aloud_read_phone_state_permission_rationale">阅读需要读取手机状态实现来电期间暂停朗读功能</string>

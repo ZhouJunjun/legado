@@ -82,7 +82,6 @@
     <string name="exit_no_save">It has not been saved. Do you want to continue editing?</string>
     <string name="read_style">Book styles</string>
     <string name="version">Version</string>
-    <string name="local">Local</string>
     <string name="search">Search</string>
     <string name="config_search_empty">No matching settings</string>
     <string name="help_search_prev">Previous match</string>
@@ -185,8 +184,6 @@
     <string name="read_aloud_listen_this_chapter">Listen to this chapter</string>
     <string name="read_aloud_back_to_text">Read text</string>
     <string name="read_aloud_not_started">No listening progress yet</string>
-    <string name="read_aloud_controls_realtime">Follow the spoken position</string>
-    <string name="read_aloud_controls_realtime_summary">Turn back to the spoken page automatically while reading along</string>
     <string name="read_aloud_start">首次朗读起始设置</string>
     <string name="read_aloud_start_page">页首开始朗读</string>
     <string name="read_aloud_start_sentence">句首开始朗读</string>
@@ -280,7 +277,6 @@
     <string name="img_cover">Cover</string>
     <string name="book">Book</string>
     <string name="volume_key_page">Volume keys to turn page</string>
-    <string name="mouse_wheel_page">Mouse wheel to turn page</string>
     <string name="click_turn_page">Tap screen to turn page</string>
     <string name="page_anim">Flip animation</string>
     <string name="book_page_anim">Flip animation (book)</string>
@@ -748,7 +744,6 @@
     <string name="skip_previous">Prior</string>
     <string name="skip_next">Next</string>
     <string name="music">Music</string>
-    <string name="audio">Audio</string>
     <string name="is_enable">Enable</string>
     <string name="enable_js">Enable js</string>
     <string name="load_with_base_url">Load BaseUrl</string>
@@ -764,8 +759,6 @@
     <string name="timer_m">%d min</string>
     <string name="brightness_auto">Auto-Brightness %s</string>
     <string name="read_aloud_by_page">Speak by pages</string>
-    <string name="read_aloud_follow_manual_page">Follow manual page turns</string>
-    <string name="read_aloud_follow_manual_page_summary">Restart speaking from the newly displayed page after a manual page turn; when disabled, speaking continues from its original position</string>
     <string name="speak_engine">Speak Engine</string>
     <string name="bg_image">Background images</string>
     <string name="bg_color">Background color</string>
@@ -1353,7 +1346,6 @@
     <string name="tag_explore_enabled">Flag: found enabled</string>
     <string name="tag_explore_disabled">Flag: found disabled</string>
     <string name="show_read_title_addition">show read title addition area</string>
-    <string name="show_read_title_chapter_name_only">show chapter name only in title addition area</string>
     <string name="read_bar_style_follow_page">read bar style follow page</string>
     <string name="rule_image_decode">Decode Image(imageDecode)</string>
     <string name="like_source">Like</string>
@@ -1363,8 +1355,6 @@
     <string name="ignore_audio_focus_summary">Allow audio to be played at the same time as other applications</string>
     <string name="refresh_sort">Refresh sort</string>
     <string name="cover_decode_js">Decode Cover Js(coverDecodeJs)</string>
-    <string name="net_no_group">Network ungrouped</string>
-    <string name="local_no_group">Local ungrouped</string>
     <string name="parallel_export_book">Multithreaded export</string>
     <string name="progress_bar_behavior">Progress bar behavior</string>
     <string name="source_edit_text_max_line">Maximum number of rows in the source edit box</string>
@@ -1395,7 +1385,6 @@
     <string name="reader_info_template_hint">Enter text and insert placeholders below</string>
     <string name="reader_info_placeholders">Placeholders</string>
     <string name="same_title_removed">Remove duplicate title</string>
-    <string name="update_book_fail">Update failed</string>
     <string name="notification_permission_rationale">Reading requires sending notifications to show reading control and download progress</string>
     <string name="webdav_after_local_restore_confirm">The webDav book source is newer than the local one, whether to restore it or not</string>
     <string name="c_whitelist">白名单(contentWhitelist)</string>
@@ -1513,8 +1502,6 @@
     <string name="beta_release_version">测试版</string>
     <string name="beta_releaseA_version">共存版</string>
     <string name="beta_releaseS_version" translatable="false">正式版</string>
-    <string name="stream_read_aloud_audio">流式播放音频</string>
-    <string name="stream_read_aloud_audio_summary">即边下边播，网络不好时播放会断断续续，仅TTS源有效</string>
     <string name="pause_read_aloud_while_phone_calls_title">来电期间暂停朗读</string>
     <string name="pause_read_aloud_while_phone_calls_summary">在通话期间暂停朗读，需要读取手机状态权限</string>
     <string name="read_aloud_read_phone_state_permission_rationale">阅读需要读取手机状态实现来电期间暂停朗读功能</string>
@@ -1601,7 +1588,6 @@
     <string name="view_code">查看代码</string>
     <string name="show_bookname">显示书名</string>
     <string name="float_permission_rationale">阅读需要悬浮窗权限来显示播放窗口</string>
-    <string name="video">视频</string>
     <string name="float_window">悬浮窗</string>
     <string name="default_float_window">默认悬浮窗播放</string>
     <string name="video_play">视频播放</string>

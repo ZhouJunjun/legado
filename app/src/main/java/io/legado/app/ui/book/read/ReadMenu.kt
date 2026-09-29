@@ -191,7 +191,6 @@ class ReadMenu @JvmOverloads constructor(
             titleBar.background = context.barBorderBackground(bgColor, atTop = false)
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(lightTextColor)
-            tvChapterUrl.setTextColor(lightTextColor)
         } else {
             // 非沉浸式: 顶部栏与底栏同色(原来是 primaryColor 彩色, 与底栏割裂)。
             // 文字色按实际底色反推, 自定义主题下也保证对比度。
@@ -210,7 +209,6 @@ class ReadMenu @JvmOverloads constructor(
             titleBar.background = context.barBorderBackground(bgColor, atTop = false)
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(textColor)
-            tvChapterUrl.setTextColor(textColor)
         }
         val brightnessBackground = GradientDrawable()
         brightnessBackground.cornerRadius = 5F.dpToPx()
@@ -707,16 +705,14 @@ class ReadMenu @JvmOverloads constructor(
         ReadBook.curTextChapter?.let {
             binding.tvChapterName.text = it.title
             binding.tvChapterName.visible()
-            // 全部书籍均为本地导入，章节没有可跳转的线上地址，这一行恒不显示。
-            binding.tvChapterUrl.text = null
-            binding.tvChapterUrl.gone()
+            // 全部书籍均为本地导入, 章节没有可跳转的线上地址 —— 原「章节资源地址」行
+            // (tvChapterUrl) 恒不显示, 已随 showReadTitleChapterNameOnly 一并移除(2026-09-29)。
             updateTitleAdditionLayout()
             upSeekBar()
             binding.tvPre.isEnabled = ReadBook.durChapterIndex != 0
             binding.tvNext.isEnabled = ReadBook.durChapterIndex != ReadBook.simulatedChapterSize - 1
         } ?: let {
             binding.tvChapterName.gone()
-            binding.tvChapterUrl.gone()
         }
     }
 
@@ -785,24 +781,21 @@ class ReadMenu @JvmOverloads constructor(
         return null
     }
 
+    /**
+     * 顶栏附加区(章节名行)布局。
+     *
+     * 原实现含一个 `showReadTitleChapterNameOnly` 分支(「附加区域仅显示章节名」):
+     * 开启时放大章节名并隐藏「章节资源地址」行。但离线化后所有书籍均为本地导入,
+     * [upBookView] 里 `tvChapterUrl` 恒为 gone(章节没有可跳转的线上地址),
+     * 该开关实际只剩「字号 +2sp」这一个副作用, 与开关名字描述的语义完全不符 ——
+     * 已随设置项一并移除(2026-09-29)。
+     */
     private fun updateTitleAdditionLayout() = binding.run {
-        val chapterNameOnly = AppConfig.showReadTitleChapterNameOnly
-        val scaledDensity = resources.displayMetrics.scaledDensity
-        val hasChapterUrl = !tvChapterUrl.text.isNullOrBlank()
         tvChapterName.gravity = Gravity.CENTER_VERTICAL
-        tvChapterUrl.gravity = Gravity.CENTER_VERTICAL
-        tvChapterName.setTextSize(
-            TypedValue.COMPLEX_UNIT_PX,
-            chapterNameTextSize + if (chapterNameOnly) 2f * scaledDensity else 0f
-        )
-        tvChapterUrl.alpha = if (chapterNameOnly && hasChapterUrl) 0f else 1f
-        if (hasChapterUrl) {
-            tvChapterUrl.visible()
-        } else {
-            tvChapterUrl.gone()
-        }
+        tvChapterName.setTextSize(TypedValue.COMPLEX_UNIT_PX, chapterNameTextSize)
         tvChapterName.translationY = 0f
-        if (chapterNameOnly && tvChapterName.isVisible) {
+        // 附加区只剩章节名一行, 垂直居中。
+        if (tvChapterName.isVisible) {
             titleBarAddition.doOnLayout {
                 tvChapterName.translationY =
                     (titleBarAddition.height - tvChapterName.height) / 2f - tvChapterName.top

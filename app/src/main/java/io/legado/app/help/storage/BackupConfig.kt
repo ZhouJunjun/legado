@@ -107,7 +107,6 @@ object BackupConfig {
         PreferKey.hideNavigationBar,
         PreferKey.autoReadSpeed,
         PreferKey.readerMenuConfig,
-        PreferKey.showReadTitleChapterNameOnly,
         PreferKey.clickActionTL,
         PreferKey.clickActionTC,
         PreferKey.clickActionTR,

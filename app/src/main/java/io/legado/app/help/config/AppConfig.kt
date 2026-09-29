@@ -711,10 +711,10 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefBoolean(PreferKey.readAloudByMediaButton, false)
 
     val readAloudStartAtSentence
-        get() = appCtx.getPrefString(PreferKey.readAloudStart, "sentence") != "page"
+        get() = appCtx.getPrefString(PreferKey.readAloudStart, "sentence") == "sentence"
 
-    val readAloudFollowManualPage
-        get() = appCtx.getPrefBoolean(PreferKey.readAloudFollowManualPage, false)
+    // 朗读时保持唤醒: 服务侧实时读取, 运行中改动能立即生效
+    val readAloudWakeLock get() = appCtx.getPrefBoolean(PreferKey.readAloudWakeLock, true)
 
     val replaceEnableDefault get() = appCtx.getPrefBoolean(PreferKey.replaceEnableDefault, true)
 
@@ -744,8 +744,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     val defaultHomePage get() = appCtx.getPrefString(PreferKey.defaultHomePage, "bookshelf")
 
     val updateToVariant get() = appCtx.getPrefString(PreferKey.updateToVariant, "default_version")
-
-    val streamReadAloudAudio get() = appCtx.getPrefBoolean(PreferKey.streamReadAloudAudio, false)
 
     var audioSkipOpenCredits: Int
         get() = appCtx.getPrefInt(PreferKey.audioSkipOpenCredits, 0)
@@ -779,12 +777,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
 
     val volumeKeyPageOnPlay
         get() = appCtx.getPrefBoolean(PreferKey.volumeKeyPageOnPlay, true)
-
-    val mouseWheelPage
-        get() = appCtx.getPrefBoolean(PreferKey.mouseWheelPage, true)
-
-    val mouseWheelScrollSpeed
-        get() = appCtx.getPrefInt(PreferKey.mouseWheelScrollSpeed, 100).coerceIn(10, 400)
 
     val paddingDisplayCutouts
         get() = appCtx.getPrefBoolean(PreferKey.paddingDisplayCutouts, false)
@@ -857,12 +849,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefBoolean(PreferKey.showReadTitleAddition, true)
         set(value) {
             appCtx.putPrefBoolean(PreferKey.showReadTitleAddition, value)
-        }
-
-    var showReadTitleChapterNameOnly: Boolean
-        get() = appCtx.getPrefBoolean(PreferKey.showReadTitleChapterNameOnly, false)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.showReadTitleChapterNameOnly, value)
         }
 
     var readBarStyleFollowPage: Boolean

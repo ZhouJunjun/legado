@@ -1,6 +1,5 @@
 package io.legado.app.ui.main.bookshelf.style2
 
-import io.legado.app.constant.BookType
 import io.legado.app.data.entities.BookGroup
 import io.legado.app.data.entities.BookshelfBook
 import io.legado.app.utils.cnCompare
@@ -49,17 +48,8 @@ internal fun sortBookshelfBooks(books: List<BookshelfBook>, sort: Int): List<Boo
 }
 
 private fun BookshelfBook.belongsToGroup(groupId: Long): Boolean {
-    val isAudio = type and BookType.audio > 0
-    val isLocal = type and BookType.local > 0
-    val isVideo = type and BookType.video > 0
     return when (groupId) {
         BookGroup.IdAll -> true
-        BookGroup.IdLocal -> isLocal
-        BookGroup.IdAudio -> isAudio
-        BookGroup.IdNetNone -> !isLocal && !isAudio && !isVideo && !hasUserGroup
-        BookGroup.IdLocalNone -> isLocal && !hasUserGroup
-        BookGroup.IdVideo -> isVideo
-        BookGroup.IdError -> type and BookType.updateError > 0
         else -> groupId > 0 && (group and groupId) > 0
     }
 }

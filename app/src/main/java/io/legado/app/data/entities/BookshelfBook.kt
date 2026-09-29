@@ -9,7 +9,6 @@ data class BookshelfBook(
     val customCoverUrl: String?,
     val type: Int,
     val group: Long,
-    val hasUserGroup: Boolean,
     val latestChapterTime: Long,
     val durChapterTime: Long,
     val order: Int,

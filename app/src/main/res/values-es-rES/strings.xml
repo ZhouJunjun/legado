@@ -80,7 +80,6 @@
     <string name="exit_no_save">Todavía se guardó. ¿Desea continuar editando?</string>
     <string name="read_style">Tipos de libros</string>
     <string name="version">Versión</string>
-    <string name="local">Local</string>
     <string name="search">Buscar</string>
     <string name="origin_format">Origen: %s</string>
     <string name="read_dur_progress">Origen: %s</string>
@@ -204,7 +203,6 @@
     <string name="img_cover">Portada</string>
     <string name="book">Libro</string>
     <string name="volume_key_page">Botones de volumen para pasar página</string>
-    <string name="mouse_wheel_page">Rueda del ratón para pasar página</string>
     <string name="click_turn_page">Toque la pantalla para pasar página</string>
     <string name="page_anim">Animación de hojeada</string>
     <string name="book_page_anim">Animación de hojeada (libro)</string>
@@ -563,7 +561,6 @@
     <string name="skip_previous">Anterior</string>
     <string name="skip_next">Siguiente</string>
     <string name="music">Música</string>
-    <string name="audio">Audio</string>
     <string name="is_enable">Activar</string>
     <string name="enable_js">Activar js</string>
     <string name="load_with_base_url">Cargar URL base</string>
@@ -1038,7 +1035,6 @@
     <string name="tag_explore_enabled">标志:发现已启用</string>
     <string name="tag_explore_disabled">标志:发现已禁用</string>
     <string name="show_read_title_addition">show read title addition área</string>
-    <string name="show_read_title_chapter_name_only">mostrar solo el nombre del capítulo en el área adicional del título</string>
     <string name="read_bar_style_follow_page">read bar style follow page</string>
     <string name="rule_image_decode">Decode Image(imageDecode)</string>
     <string name="like_source">赞</string>
@@ -1048,8 +1044,6 @@
     <string name="ignore_audio_focus_summary">允许与其他应用同时播放音频</string>
     <string name="refresh_sort">刷新分类</string>
     <string name="cover_decode_js">Decode Cover Js(coverDecodeJs)</string>
-    <string name="net_no_group">网络未分组</string>
-    <string name="local_no_group">本地未分组</string>
     <string name="parallel_export_book">多线程导出</string>
     <string name="progress_bar_behavior">进度条行为</string>
     <string name="source_edit_text_max_line">源编辑框最大行数</string>
@@ -1075,7 +1069,6 @@
     <string name="refresh_list">刷新列表</string>
     <string name="tip_divider_color">分隔线颜色</string>
     <string name="same_title_removed">移除重复标题</string>
-    <string name="update_book_fail">更新失败</string>
     <string name="notification_permission_rationale">阅读需要发送通知来显示朗读控制和下载进度</string>
     <string name="webdav_after_local_restore_confirm">webDav书源比本地新,是否恢复</string>
     <string name="c_whitelist">白名单(contentWhitelist)</string>
@@ -1175,8 +1168,6 @@
     <string name="official_version">正式版</string>
     <string name="beta_release_version">测试版</string>
     <string name="beta_releaseA_version">共存版</string>
-    <string name="stream_read_aloud_audio">流式播放音频</string>
-    <string name="stream_read_aloud_audio_summary">即边下边播，网络不好时播放会断断续续，仅TTS源有效</string>
     <string name="pause_read_aloud_while_phone_calls_title">来电期间暂停朗读</string>
     <string name="pause_read_aloud_while_phone_calls_summary">在通话期间暂停朗读，需要读取手机状态权限</string>
     <string name="read_aloud_read_phone_state_permission_rationale">阅读需要读取手机状态实现来电期间暂停朗读功能</string>

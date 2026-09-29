@@ -220,7 +220,13 @@ abstract class BaseReadAloudService : BaseService(),
         }
     }
 
-    private val useWakeLock = appCtx.getPrefBoolean(PreferKey.readAloudWakeLock, false)
+    /**
+     * 唤醒锁持有状态。
+     *
+     * 是否持锁由 `AppConfig.readAloudWakeLock`(实时读取) 且「正在播放」共同决定,
+     * 因此运行中切换开关能立即生效 —— 关掉立刻释放, 不会出现「界面显示已关但仍在持锁耗电」。
+     */
+    private var wakeLockHeld = false
     private val wakeLock by lazy {
         powerManager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "legado:ReadAloudService")
             .apply {
@@ -340,8 +346,48 @@ abstract class BaseReadAloudService : BaseService(),
                 PreferKey.pauseReadAloudWhilePhoneCalls -> {
                     initPhoneStateListener()
                 }
+                // 唤醒锁实时生效: 运行中切换开关立刻 acquire/release
+                PreferKey.readAloudWakeLock -> {
+                    syncWakeLockState()
+                }
             }
         }
+    }
+
+    /**
+     * 把唤醒锁状态对齐到「偏好开关 ∩ 当前是否在播放」。
+     *
+     * 之所以不能只是把配置改成实时读取: `play()` 只在起播时走过一次,
+     * 运行中打开开关不会有任何调用点去 acquire, 会形成「界面显示已开但实际没持锁」的假状态;
+     * 关闭方向同理会造成「显示已关但仍持锁耗电」。故所有状态变化都收敛到本方法。
+     */
+    @SuppressLint("WakelockTimeout")
+    private fun syncWakeLockState() {
+        val want = AppConfig.readAloudWakeLock && isPlay()
+        if (want == wakeLockHeld) return
+        if (want) {
+            wakeLock.acquire()
+            wifiLock?.acquire()
+        } else {
+            releaseWakeLockInternal()
+        }
+        wakeLockHeld = want
+    }
+
+    /**
+     * 无条件释放。注意 `wakeLock` 是 `by lazy`: 从未 acquire 过就直接 release
+     * 会先触发初始化再释放, 因此必须用 `isHeld` 守卫。
+     */
+    private fun releaseWakeLockInternal() {
+        if (wakeLock.isHeld) {
+            wakeLock.release()
+        }
+        wifiLock?.takeIf { it.isHeld }?.release()
+    }
+
+    private fun releaseWakeLockIfHeld() {
+        releaseWakeLockInternal()
+        wakeLockHeld = false
     }
 
     /**
@@ -379,10 +425,7 @@ abstract class BaseReadAloudService : BaseService(),
         readAloudChapterStart = -1
         updateReadAloudChapterSnapshot(null, 0)
         aloudBookSnapshot = null
-        if (useWakeLock) {
-            wakeLock.release()
-            wifiLock?.release()
-        }
+        releaseWakeLockIfHeld()
         isRun = false
         pause = true
         timeMinute = 0
@@ -570,12 +613,9 @@ abstract class BaseReadAloudService : BaseService(),
 
     @SuppressLint("WakelockTimeout")
     open fun play() {
-        if (useWakeLock) {
-            wakeLock.acquire()
-            wifiLock?.acquire()
-        }
         isRun = true
         pause = false
+        syncWakeLockState()
         needResumeOnAudioFocusGain = false
         needResumeOnCallStateIdle = false
         upReadAloudNotification()
@@ -587,11 +627,8 @@ abstract class BaseReadAloudService : BaseService(),
 
     @CallSuper
     open fun pauseReadAloud(abandonFocus: Boolean = true) {
-        if (useWakeLock) {
-            wakeLock.release()
-            wifiLock?.release()
-        }
         pause = true
+        syncWakeLockState()
         if (abandonFocus) {
             abandonFocus()
         }
@@ -609,6 +646,7 @@ abstract class BaseReadAloudService : BaseService(),
 
     private fun resumeReadAloudInternal() {
         pause = false
+        syncWakeLockState()
         needResumeOnAudioFocusGain = false
         needResumeOnCallStateIdle = false
         upReadAloudNotification()

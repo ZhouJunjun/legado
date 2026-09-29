@@ -60,21 +60,6 @@
                 tools:visibility="visible"
                 tools:text="章节名" />
 
-            <TextView
-                android:id="@+id/tv_chapter_url"
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:paddingLeft="10dp"
-                android:paddingRight="10dp"
-                android:gravity="center_vertical"
-                android:singleLine="true"
-                android:visibility="gone"
-                app:layout_constraintLeft_toLeftOf="parent"
-                app:layout_constraintRight_toRightOf="parent"
-                app:layout_constraintTop_toBottomOf="@+id/tv_chapter_name"
-                tools:visibility="visible"
-                tools:text="http" />
-
         </androidx.constraintlayout.widget.ConstraintLayout>
 
     </io.legado.app.ui.widget.TitleBar>

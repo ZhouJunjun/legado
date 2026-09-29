@@ -79,6 +79,18 @@ cn.hutool.core.util.**{*;}
 -keep class org.bouncycastle.jce.provider.** { *; }
 -keep class org.bouncycastle.jcajce.provider.** { *; }
 -keep class org.bouncycastle.pqc.jcajce.provider.** { *; }
+# BC 的 PKIX LDAP 证书路径（CrlCache / X509LDAPCertStoreSpi）引用 Java SE 专有的
+# javax.naming.*，Android 平台不存在。上面 -keep org.bouncycastle.jce.provider.** 使这两个类
+# 成为 R8 入口点，因而必须显式豁免。它们只服务 LDAP 在线证书吊销检查，本项目不走该路径。
+# 缺失类清单见 app/build/outputs/mapping/appRelease/missing_rules.txt（AGP 自动生成）。
+-dontwarn javax.naming.NamingEnumeration
+-dontwarn javax.naming.NamingException
+-dontwarn javax.naming.directory.Attribute
+-dontwarn javax.naming.directory.Attributes
+-dontwarn javax.naming.directory.DirContext
+-dontwarn javax.naming.directory.InitialDirContext
+-dontwarn javax.naming.directory.SearchControls
+-dontwarn javax.naming.directory.SearchResult
 # 缓存
 -keep class **.help.CacheManager{*;}
 

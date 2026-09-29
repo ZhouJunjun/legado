@@ -79,7 +79,6 @@
     <string name="exit_no_save">Chưa được lưu. Bạn có muốn tiếp tục chỉnh sửa?</string>
     <string name="read_style">Kiểu đọc</string>
     <string name="version">Phiên bản</string>
-    <string name="local">Cục bộ</string>
     <string name="search">Tìm kiếm</string>
     <string name="origin_format">Nguồn: %s</string>
     <string name="read_dur_progress">Đã đọc: %s</string>
@@ -203,7 +202,6 @@
     <string name="img_cover">Bìa</string>
     <string name="book">Sách</string>
     <string name="volume_key_page">Phím âm lượng lật trang</string>
-    <string name="mouse_wheel_page">Con lăn chuột lật trang</string>
     <string name="click_turn_page">Chạm màn hình lật trang</string>
     <string name="page_anim">Hiệu ứng lật trang</string>
     <string name="book_page_anim">Hiệu ứng lật trang (sách này)</string>
@@ -561,7 +559,6 @@
     <string name="skip_previous">Trước</string>
     <string name="skip_next">Sau</string>
     <string name="music">Âm nhạc</string>
-    <string name="audio">Âm thanh</string>
     <string name="is_enable">Kích hoạt</string>
     <string name="enable_js">Kích hoạt js</string>
     <string name="load_with_base_url">Tải URL cơ sở</string>
@@ -1034,7 +1031,6 @@
     <string name="tag_explore_enabled">Cờ: đã bật khám phá</string>
     <string name="tag_explore_disabled">Cờ: đã tắt khám phá</string>
     <string name="show_read_title_addition">Hiển thị vùng bổ sung tiêu đề đã đọc</string>
-    <string name="show_read_title_chapter_name_only">Chỉ hiển thị tên chương trong vùng bổ sung tiêu đề</string>
     <string name="read_bar_style_follow_page">Kiểu thanh đọc theo trang</string>
     <string name="rule_image_decode">Giải mã hình ảnh (imageDecode)</string>
     <string name="like_source">Thích</string>
@@ -1044,8 +1040,6 @@
     <string name="ignore_audio_focus_summary">Cho phép phát âm thanh cùng lúc với các ứng dụng khác</string>
     <string name="refresh_sort">Làm mới sắp xếp</string>
     <string name="cover_decode_js">Giải mã JS bìa (coverDecodeJs)</string>
-    <string name="net_no_group">Mạng chưa được nhóm</string>
-    <string name="local_no_group">Cục bộ chưa được nhóm</string>
     <string name="parallel_export_book">Xuất đa luồng</string>
     <string name="progress_bar_behavior">Hành vi thanh tiến trình</string>
     <string name="source_edit_text_max_line">Số dòng tối đa trong hộp chỉnh sửa nguồn</string>
@@ -1071,7 +1065,6 @@
     <string name="refresh_list">Làm mới danh sách</string>
     <string name="tip_divider_color">Màu dải phân cách</string>
     <string name="same_title_removed">Xóa tiêu đề trùng lặp</string>
-    <string name="update_book_fail">Cập nhật thất bại</string>
     <string name="notification_permission_rationale">Đọc cần gửi thông báo để hiển thị điều khiển đọc và tiến trình tải xuống</string>
     <string name="webdav_after_local_restore_confirm">Nguồn sách webDav mới hơn nguồn cục bộ, có khôi phục không</string>
     <string name="c_whitelist">Danh sách trắng(contentWhitelist)</string>
@@ -1168,8 +1161,6 @@
     <string name="official_version">Phiên bản chính thức</string>
     <string name="beta_release_version">Phiên bản beta</string>
     <string name="beta_releaseA_version">Phiên bản song song</string>
-    <string name="stream_read_aloud_audio">Phát âm thanh trực tuyến</string>
-    <string name="stream_read_aloud_audio_summary">Tức là vừa tải vừa phát, khi mạng kém thì phát sẽ bị gián đoạn, chỉ có nguồn TTS mới có hiệu lực</string>
     <string name="pause_read_aloud_while_phone_calls_title">Tạm dừng đọc trong khi gọi điện</string>
     <string name="pause_read_aloud_while_phone_calls_summary">Tạm dừng đọc trong khi gọi điện, cần quyền đọc trạng thái điện thoại</string>
     <string name="read_aloud_read_phone_state_permission_rationale">Đọc cần đọc trạng thái điện thoại để thực hiện chức năng tạm dừng đọc trong khi gọi</string>

@@ -3,11 +3,9 @@ package io.legado.app.ui.book.read
 import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.res.Configuration
-import android.os.Build
 import android.os.Bundle
 import android.os.Looper
 import android.view.Gravity
-import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
@@ -83,7 +81,6 @@ import io.legado.app.ui.book.read.config.TipConfigDialog.Companion.TIP_COLOR
 import io.legado.app.ui.book.read.config.TipConfigDialog.Companion.TIP_DIVIDER_COLOR
 import io.legado.app.ui.book.read.page.ContentTextView
 import io.legado.app.ui.book.read.page.ReadView
-import io.legado.app.ui.book.read.page.delegate.ScrollPageDelegate
 import io.legado.app.ui.book.read.page.entities.PageDirection
 import io.legado.app.ui.book.read.page.entities.TextPage
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
@@ -731,31 +728,6 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     /**
-     * 鼠标滚轮和手表旋钮事件
-     */
-    override fun onGenericMotionEvent(event: MotionEvent): Boolean {
-        if (event.action == MotionEvent.ACTION_SCROLL) {
-            val axisValue = when {
-                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O &&
-                    event.isFromSource(InputDevice.SOURCE_ROTARY_ENCODER) ->
-                    event.getAxisValue(MotionEvent.AXIS_SCROLL)
-
-                event.source and InputDevice.SOURCE_CLASS_POINTER != 0 ->
-                    event.getAxisValue(MotionEvent.AXIS_VSCROLL)
-
-                else -> return super.onGenericMotionEvent(event)
-            }
-            if (!axisValue.isFinite() || axisValue == 0f) {
-                return super.onGenericMotionEvent(event)
-            }
-            val direction = if (axisValue < 0f) PageDirection.NEXT else PageDirection.PREV
-            mouseWheelPage(direction, axisValue)
-            return true
-        }
-        return super.onGenericMotionEvent(event)
-    }
-
-    /**
      * 按键事件
      */
     override fun onKeyDown(keyCode: Int, event: KeyEvent): Boolean {
@@ -1135,22 +1107,6 @@ class ReadBookActivity : BaseReadBookActivity(),
     }
 
     /**
-     * 鼠标滚轮翻页
-     */
-    private fun mouseWheelPage(direction: PageDirection, distance: Float) {
-        if (menuLayoutIsVisible || !AppConfig.mouseWheelPage) {
-            return
-        }
-        if (binding.readView.isScroll) {
-            // 滚动视图时滚动,否则翻页
-            val scrollDistance = (distance * (AppConfig.mouseWheelScrollSpeed / 2f)).toInt()
-            (binding.readView.pageDelegate as? ScrollPageDelegate)?.curPage?.scroll(scrollDistance)
-        } else {
-            keyPageDebounce(direction, mouseWheel = true, longPress = false)
-        }
-    }
-
-    /**
      * 音量键翻页
      */
     private fun volumeKeyPage(direction: PageDirection, longPress: Boolean): Boolean {
@@ -1174,21 +1130,20 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     private fun keyPageDebounce(
         direction: PageDirection,
-        mouseWheel: Boolean = false,
         longPress: Boolean
     ) {
         if (longPress) {
             return
         }
         nextPageDebounce.apply {
-            wait = if (mouseWheel) 200L else 600L
-            leading = !mouseWheel
-            trailing = mouseWheel
+            wait = 600L
+            leading = true
+            trailing = false
         }
         prevPageDebounce.apply {
-            wait = if (mouseWheel) 200L else 600L
-            leading = !mouseWheel
-            trailing = mouseWheel
+            wait = 600L
+            leading = true
+            trailing = false
         }
         when (direction) {
             PageDirection.NEXT -> nextPageDebounce.invoke()
@@ -1336,10 +1291,17 @@ class ReadBookActivity : BaseReadBookActivity(),
         handler.post(restoreAloudFollowRunnable)
     }
 
+    /**
+     * 可见页恰为朗读页时, 恢复朗读跟随态并补画朗读高亮。
+     *
+     * 这里的定位是「手动导航后的自愈」: 用户翻页/滚动会先脱离跟随, 若最终停在朗读所在页
+     * (最典型的是往前翻又翻回来), 就应当回到跟随态, 否则高亮不会再回来。
+     *
+     * 原先该函数还被「跟随朗读位置」开关门控, 该开关已移除:
+     * 它的作用被误认为只管翻页, 关掉后高亮一并消失, 因此改为恒定生效。
+     */
     private fun restoreAloudFollowOnVisiblePage() {
-        if (!BaseReadAloudService.isRun || ReadAloud.followReadAloudPosition ||
-            !getPrefBoolean(PreferKey.readAloudControlsRealtime, true)
-        ) return
+        if (!BaseReadAloudService.isRun || ReadAloud.followReadAloudPosition) return
         // 朗读的不是当前这本书时绝不能恢复跟随: 章节索引可能巧合相同,
         // 会把另一本书的可见页误判成朗读页并让朗读去驱动它。
         if (!isAloudBookCurrent()) return

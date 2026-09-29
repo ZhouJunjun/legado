@@ -170,12 +170,14 @@ object Restore {
             }
         }
         fileToListT<BookGroup>(path, "bookGroup.json")?.let { groups ->
-            groups.forEach { group ->
+            // 只保留【全部】和自建分组, 忽略旧备份中的默认分类分组(负 id)
+            val validGroups = groups.filter { it.groupId >= 0 || it.groupId == BookGroup.IdAll }
+            validGroups.forEach { group ->
                 group.cover = group.cover?.let { coverPath ->
                     remapRestoredCoverPath(coverPath, backupRoot, appCtx.externalFiles)
                 }
             }
-            appDb.bookGroupDao.insert(*groups.toTypedArray())
+            appDb.bookGroupDao.insert(*validGroups.toTypedArray())
         }
         fileToListT<ReplaceRule>(path, "replaceRule.json")?.let {
             val insertedIds = appDb.replaceRuleDao.insert(*it.toTypedArray())
@@ -297,11 +299,6 @@ object Restore {
                         },
                     )
                 }
-            }
-            if (!BackupConfig.ignoreReadConfig &&
-                PreferKey.showReadTitleChapterNameOnly !in map
-            ) {
-                edit.putBoolean(PreferKey.showReadTitleChapterNameOnly, false)
             }
             if (BackupConfig.keyIsNotIgnore(PreferKey.coverTitleAdaptive) &&
                 PreferKey.coverTitleAdaptive !in map

@@ -21,7 +21,7 @@
             android:title="@string/pause_read_aloud_while_phone_calls_title" />
 
         <io.legado.app.lib.prefs.SwitchPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:title="@string/read_aloud_wake_lock"
             android:summary="@string/read_aloud_wake_lock_summary"
             android:key="readAloudWakeLock"
@@ -41,33 +41,12 @@
             android:key="readAloudByPage"
             app:iconSpaceReserved="false" />
 
-        <io.legado.app.lib.prefs.SwitchPreference
-            android:defaultValue="false"
-            android:key="readAloudFollowManualPage"
-            android:summary="@string/read_aloud_follow_manual_page_summary"
-            android:title="@string/read_aloud_follow_manual_page"
-            app:iconSpaceReserved="false" />
-
-        <io.legado.app.lib.prefs.SwitchPreference
-            android:defaultValue="false"
-            android:title="@string/stream_read_aloud_audio"
-            android:summary="@string/stream_read_aloud_audio_summary"
-            android:key="streamReadAloudAudio"
-            app:iconSpaceReserved="false" />
-
         <io.legado.app.lib.prefs.NameListPreference
             android:key="readAloudStart"
             android:title="@string/read_aloud_start"
             android:defaultValue="sentence"
             android:entries="@array/read_aloud_start_entries"
             android:entryValues="@array/read_aloud_start_values"
-            app:iconSpaceReserved="false" />
-
-        <io.legado.app.lib.prefs.SwitchPreference
-            android:defaultValue="true"
-            android:key="readAloudControlsRealtime"
-            android:summary="@string/read_aloud_controls_realtime_summary"
-            android:title="@string/read_aloud_controls_realtime"
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference
