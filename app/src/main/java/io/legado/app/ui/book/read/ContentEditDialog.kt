@@ -32,6 +32,7 @@ import io.legado.app.help.book.ContentProcessor
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.model.ReadBook
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyTint
@@ -183,7 +184,7 @@ class ContentEditDialog : BaseDialogFragment(R.layout.dialog_content_edit) {
         val contentView = binding.contentView
         plainText = requireContext().getPrefBoolean(PREF_PLAIN_TEXT, false)
         restoredScrollY = savedInstanceState?.getInt(STATE_SCROLL_Y)
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         binding.toolBar.title = viewModel.titleLiveData.value
             ?: arguments?.getString(ARG_TITLE)
         viewModel.titleLiveData.observe(owner) {

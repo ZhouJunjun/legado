@@ -16,7 +16,7 @@ import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogCodeViewBinding
 import io.legado.app.help.IntentData
 import io.legado.app.help.findTextRanges
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.ui.code.CodeEditActivity
 import io.legado.app.ui.code.CodeTextTransfer
 import io.legado.app.ui.widget.code.EditSafety
@@ -134,7 +134,7 @@ class CodeDialog() : BaseDialogFragment(R.layout.dialog_code_view) {
         editorTextPath = savedInstanceState?.getString("editorTextPath")
         editorPending = savedInstanceState?.getBoolean("editorPending") == true
         editorReadOnly = savedInstanceState?.getBoolean("editorReadOnly") == true
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         val disableEdit = arguments?.getBoolean("disableEdit") == true
         if (disableEdit) {
             binding.toolBar.title = "code view"

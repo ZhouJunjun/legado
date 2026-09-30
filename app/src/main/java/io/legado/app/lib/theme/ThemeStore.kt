@@ -155,6 +155,11 @@ private constructor(private val mContext: Context) {
         return this
     }
 
+    fun dialogBackground(@ColorInt color: Int): ThemeStore {
+        mEditor.putInt(ThemeStorePrefKeys.KEY_DIALOG_BACKGROUND, color)
+        return this
+    }
+
     fun transparentNavBar(transparent: Boolean): ThemeStore {
         mEditor.putBoolean(ThemeStorePrefKeys.KEY_TRANSPARENT_NAV_BAR, transparent)
         return this
@@ -345,6 +350,47 @@ private constructor(private val mContext: Context) {
             val fallback = ContextCompat.getColor(context, R.color.bar_background)
             val color = prefs(context).getInt(ThemeStorePrefKeys.KEY_BOTTOM_BACKGROUND, fallback)
             return normalizeBottomBackground(color, fallback)
+        }
+
+        /**
+         * 弹框(弹出菜单 / AlertDialog / 半屏面板 / tip)的背景色。
+         *
+         * 独立于 [bottomBackground] —— 用户要求「顶栏底栏背景色」的修改不再波及弹框与 tip。
+         * 未设置时回落到 [bottomBackground], 这样老用户升级后观感与原来完全一致
+         * (原来这些位置就是取栏位底色的)。
+         */
+        @CheckResult
+        @ColorInt
+        fun dialogBackground(context: Context = appCtx): Int {
+            val fallback = bottomBackground(context)
+            return prefs(context).getInt(ThemeStorePrefKeys.KEY_DIALOG_BACKGROUND, fallback)
+        }
+
+        /**
+         * 用户手动指定的**弹框**前景色(弹框文字/图标)。
+         *
+         * 返回 `null` 表示「未指定(自动)」—— 由调用方按弹框底色反推。
+         * 用 [PreferKey.dialogForegroundAuto](-1) 作哨兵的理由同 [barForegroundColorOrNull]。
+         */
+        @CheckResult
+        @ColorInt
+        internal fun dialogForegroundColorOrNull(context: Context = appCtx): Int? {
+            val key = if (AppConfig.isNightTheme) {
+                PreferKey.cNDForeground
+            } else {
+                PreferKey.cDForeground
+            }
+            val color = context.getPrefInt(key, PreferKey.dialogForegroundAuto)
+            return if (color == PreferKey.dialogForegroundAuto) null else color
+        }
+
+        /**
+         * 弹框前景色 —— 用户指定优先, 否则返回 [automatic](按弹框底色反推的结果)。
+         */
+        @CheckResult
+        @ColorInt
+        fun dialogForegroundColor(context: Context = appCtx, @ColorInt automatic: Int): Int {
+            return dialogForegroundColorOrNull(context) ?: automatic
         }
 
         /**

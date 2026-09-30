@@ -10,7 +10,7 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.databinding.DialogRecyclerViewBinding
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.ui.book.import.local.ImportBookAdapter
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.setLayout
@@ -29,7 +29,7 @@ class ImportLocalBookDialog : BaseDialogFragment(R.layout.dialog_recycler_view),
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         binding.toolBar.setTitle(R.string.local_book)
         binding.toolBar.menu.add(0, R.id.menu_local_book_save_path, 0, R.string.local_book_save_path)
             .setShowAsAction(MenuItem.SHOW_AS_ACTION_NEVER)

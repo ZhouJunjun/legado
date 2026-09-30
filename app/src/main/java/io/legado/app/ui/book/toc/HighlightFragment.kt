@@ -17,7 +17,7 @@ import io.legado.app.help.book.isImage
 import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.isVideo
 import io.legado.app.help.config.AppConfig
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.ui.book.read.HighlightNoteDialog
 import io.legado.app.ui.widget.recycler.UpLinearLayoutManager
 import io.legado.app.ui.widget.recycler.VerticalDivider
@@ -88,7 +88,7 @@ class HighlightFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_bookmar
         val adapter = HighlightAdapter(requireContext(), this)
         this.layoutManager = layoutManager
         this.adapter = adapter
-        binding.recyclerView.setEdgeEffectColor(primaryColor)
+        binding.recyclerView.setEdgeEffectColor(bottomBackground)
         binding.recyclerView.layoutManager = layoutManager
         binding.recyclerView.addItemDecoration(VerticalDivider(requireContext()))
         binding.recyclerView.adapter = adapter

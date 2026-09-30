@@ -15,8 +15,8 @@ import io.legado.app.constant.EventBus
 import io.legado.app.databinding.DialogReadPaddingBinding
 import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.dialogBackground
+import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
@@ -104,8 +104,8 @@ class PaddingConfigDialog : BaseDialogFragment(R.layout.dialog_read_padding) {
     }
 
     private fun initView() = binding.run {
-        bgColor = requireContext().bottomBackground
-        textColor = requireContext().getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
+        bgColor = requireContext().dialogBackground
+        textColor = requireContext().dialogForegroundColor
         val radius = 8.dpToPx().toFloat()
         rootView.background = GradientDrawable().apply {
             cornerRadius = radius

@@ -12,7 +12,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.prefs.SwitchPreference
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.BookCover
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.FileUtils
@@ -67,7 +67,7 @@ class WelcomeConfigFragment : PreferenceFragment(),
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
         activity?.setTitle(R.string.welcome_style)
-        listView.setEdgeEffectColor(primaryColor)
+        listView.setEdgeEffectColor(bottomBackground)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {

@@ -15,7 +15,6 @@ import android.widget.ImageView
 import androidx.annotation.ColorInt
 import androidx.annotation.StyleRes
 import androidx.appcompat.widget.ActionMenuView
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.appcompat.widget.SearchView
 import androidx.appcompat.widget.Toolbar
 import androidx.core.graphics.alpha
@@ -36,6 +35,7 @@ import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.transparentNavBar
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.activity
+import io.legado.app.utils.alignTitleInk
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.getCompatColor
 import io.legado.app.utils.setOnApplyWindowInsetsListenerCompat
@@ -318,64 +318,19 @@ class TitleBar @JvmOverloads constructor(
     }
 
     /**
-     * 顶栏标题的**垂直对齐校正**: 让标题墨迹中心与同行的导航图标(返回箭头)中心齐平。
+     * 顶栏标题的**垂直对齐校正**: 让标题墨迹中心与同行图标(返回箭头)中心齐平。
      *
-     * 🐞 现象(用户 2026-09-24 反馈, 2026-09-30 要求推广到**所有**页面):
-     * 「顶栏的文字和 icon 不是水平对齐」, 实测书名墨迹中心比返回箭头低约 7dp。
+     * 实现已抽到 [alignTitleInk](所有用原生 `Toolbar` 的弹框共用同一套逻辑,
+     * 避免两处实现漂移)。这里只做转发。
      *
-     * 根因不在布局, 而在**「视图框居中」与「墨迹居中」不是一回事**:
-     * TextView 的框含 `includeFontPadding` 字体留白, 中文字体的字框又是
-     * ascent≫descent 的不对称结构。Toolbar 把「框」居中, 墨迹就整体下沉
-     *     Δ = (fm.ascent + fm.descent)/2 - (fm.top + fm.bottom)/2
-     * 这个量跟字体走(不同设备/字体各不相同), 所以**不能写死一个 dp 偏移**。
-     *
-     * 这里不依赖 Toolbar 内部的居中公式(那是 AppCompat 私有实现, 版本间会变),
-     * 而是直接量两个**已经画好的**锚点做自校正:
-     *   · 基准 = 导航图标(返回箭头)的中心 —— 这正是用户肉眼拿来比较的对象;
-     *   · 目标 = 标题首行的墨迹中心, 由 layout 的基线与字体度量解析求出。
-     * 两者之差就是 translationY。全是 UI 线程上的常量级读写, 不触发重新布局。
-     *
-     * 对齐逻辑原先只写在 `ReadMenu` 里(所以只有阅读页生效)。现上移到 `TitleBar`,
-     * 所有使用该控件的页面一并获得校正。
+     * 🔴 原实现以 `toolbar.getChildAt(0)` 当锚点, 但 AppCompat 的导航按钮是在
+     * `setDisplayHomeAsUpEnabled(true)` 时才创建的, 而 XML `app:title` 在构造期
+     * 就已加入标题 —— 于是「XML 静态设标题」的页面(绝大多数 Activity / 首页 / 我的)
+     * `child0` 拿到的是**标题自己**, 算出 Δ≈0, 校正静默失效。这既是用户 2026-09-30
+     * 反馈「有些页面顶栏文字和图标没对齐」的根因, 详见 [alignTitleInk] 的注释。
      */
     fun alignTitleText() {
-        toolbar.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(
-                v: View, l: Int, t: Int, r: Int, b: Int,
-                ol: Int, ot: Int, or: Int, ob: Int
-            ) {
-                if (applyTitleOffset()) v.removeOnLayoutChangeListener(this)
-            }
-        })
-        applyTitleOffset()
-    }
-
-    /** @return true 表示这次成功写入了偏移(锚点与标题都已量好)。 */
-    private fun applyTitleOffset(): Boolean {
-        // 基准锚点 = Toolbar 的第 0 个子项, 即返回箭头(导航按钮)。
-        val anchor = toolbar.getChildAt(0) ?: return false
-        if (anchor.width == 0 || anchor.height == 0) return false
-        val tv = findToolbarTitle(toolbar) ?: return false
-        val layout = tv.layout ?: return false
-        if (layout.lineCount == 0 || tv.height == 0) return false
-        // 墨迹中心(视图坐标) = 上内边距 + 首行基线 + (ascent+descent)/2
-        // 用 layout 的基线而不是「框高/2」, 这样即使 TextView 带上下 padding 或
-        // 多行也不会算错 —— 无需假设「视图框 == 行框」。
-        val fm = tv.paint.fontMetrics
-        val baseline = tv.totalPaddingTop + layout.getLineBaseline(0).toFloat()
-        val inkCenter = tv.top + baseline + (fm.ascent + fm.descent) / 2f
-        val anchorCenter = anchor.top + anchor.height / 2f
-        tv.translationY = anchorCenter - inkCenter
-        return true
-    }
-
-    /** 在 Toolbar 里找到实际的标题 TextView(Toolbar 自己 new 出来的 AppCompatTextView)。 */
-    private fun findToolbarTitle(toolbar: ViewGroup): AppCompatTextView? {
-        for (i in 0 until toolbar.childCount) {
-            val child = toolbar.getChildAt(i)
-            if (child is AppCompatTextView) return child
-        }
-        return null
+        toolbar.alignTitleInk()
     }
 
     fun setTitle(titleId: Int) {

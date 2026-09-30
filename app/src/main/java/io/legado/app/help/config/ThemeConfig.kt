@@ -44,6 +44,15 @@ object ThemeConfig {
     const val configFileName = "themeConfig.json"
     val configFilePath = FileUtils.getPath(appCtx.filesDir, configFileName)
 
+    /**
+     * 「未设置」哨兵。
+     *
+     * 不能用 `0` —— `Color.BLACK` 恰好就是 0, 用户完全可能主动把弹框底色选成纯黑,
+     * 用 0 当哨兵会把「用户选了黑」误判成「没设置」而被回落值覆盖。
+     * 用 `Int.MIN_VALUE`, 颜色永远是 `0xAARRGGBB`, 不可能取到它。
+     */
+    private const val UNSET_COLOR = Int.MIN_VALUE
+
     val configList: ArrayList<Config> by lazy {
         val cList = getConfigs() ?: DefaultData.themeConfigs
         ArrayList(cList)
@@ -374,6 +383,7 @@ object ThemeConfig {
                     .accentColor(Color.BLACK)
                     .backgroundColor(Color.WHITE)
                     .bottomBackground(Color.WHITE)
+                    .dialogBackground(Color.WHITE)
                     .transparentNavBar(false)
                     .apply()
             }
@@ -405,14 +415,21 @@ object ThemeConfig {
                 if (bBackground != getPrefInt(PreferKey.cNBBackground, bBackground)) {
                     putPrefInt(PreferKey.cNBBackground, bBackground)
                 }
+                // 弹框底色独立于栏位底色; **未设置时不写入**, 交给 ThemeStore.dialogBackground
+                // 回落栏位底色 —— 这样升级后观感与原来一致。
+                // ⚠️ 不能用 0 当"未设置"的哨兵: Color.BLACK 就是 0, 用户可能真的选黑。
+                val dBackground = getPrefInt(PreferKey.cNDBackground, UNSET_COLOR)
                 val transparentNavBar =
                     getPrefBoolean(PreferKey.tNavBarN, false)
-                ThemeStore.editTheme(this)
+                val editor = ThemeStore.editTheme(this)
                     .primaryColor(ColorUtils.withAlpha(primary, 1f))
                     .accentColor(ColorUtils.withAlpha(accent, 1f))
                     .backgroundColor(ColorUtils.withAlpha(background, 1f))
                     .bottomBackground(ColorUtils.withAlpha(bBackground, 1f))
-                    .transparentNavBar(transparentNavBar)
+                if (dBackground != UNSET_COLOR) {
+                    editor.dialogBackground(ColorUtils.withAlpha(dBackground, 1f))
+                }
+                editor.transparentNavBar(transparentNavBar)
                     .apply()
             }
 
@@ -440,14 +457,19 @@ object ThemeConfig {
                 if (bBackground != getPrefInt(PreferKey.cBBackground, bBackground)) {
                     putPrefInt(PreferKey.cBBackground, bBackground)
                 }
+                // 同夜间分支: 弹框底色未设置时不写入, 由 ThemeStore 回落栏位底色。
+                val dBackground = getPrefInt(PreferKey.cDBackground, UNSET_COLOR)
                 val transparentNavBar =
                     getPrefBoolean(PreferKey.tNavBar, false)
-                ThemeStore.editTheme(this)
+                val editor = ThemeStore.editTheme(this)
                     .primaryColor(ColorUtils.withAlpha(primary, 1f))
                     .accentColor(ColorUtils.withAlpha(accent, 1f))
                     .backgroundColor(ColorUtils.withAlpha(background, 1f))
                     .bottomBackground(ColorUtils.withAlpha(bBackground, 1f))
-                    .transparentNavBar(transparentNavBar)
+                if (dBackground != UNSET_COLOR) {
+                    editor.dialogBackground(ColorUtils.withAlpha(dBackground, 1f))
+                }
+                editor.transparentNavBar(transparentNavBar)
                     .apply()
             }
         }

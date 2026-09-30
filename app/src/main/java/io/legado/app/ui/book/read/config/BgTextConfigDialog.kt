@@ -32,8 +32,8 @@ import io.legado.app.help.config.ReadBookConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.borderedDialogBackground
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.dialogBackground
+import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.ReadBookActivity
@@ -131,9 +131,10 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
     }
 
     private fun initView() = binding.run {
-        val bg = requireContext().bottomBackground
+        // isLight 仍要保留: 次要文字色按「弹框底色的明暗」推导, 否则下拉项/副标题会串色。
+        val bg = requireContext().dialogBackground
         val isLight = ColorUtils.isColorLight(bg)
-        primaryTextColor = requireContext().getPrimaryTextColor(isLight)
+        primaryTextColor = requireContext().dialogForegroundColor
         secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
         // 顶部 1dp 实心灰线(无圆角), 与正文区分开
         rootView.background = requireContext().borderedDialogBackground

@@ -245,6 +245,17 @@ object PreferKey {
     const val tNavBarN = "transparentNavBarNight"
 
     /**
+     * 弹框(弹出菜单 / AlertDialog / 半屏面板 / tip)的背景与前景色。
+     *
+     * 历史上这些位置统一取栏位底色 `bottomBackground`, 于是「顶栏底栏背景色」一改,
+     * 弹框、tip 的颜色也被带着走 —— 用户明确要求两者独立, 所以单开这两个键。
+     */
+    const val cDBackground = "colorDialogBackground"
+    const val cDForeground = "colorDialogForeground"
+    const val cNDBackground = "colorDialogBackgroundNight"
+    const val cNDForeground = "colorDialogForegroundNight"
+
+    /**
      * 栏位前景色(标题/菜单文字/菜单图标)的「自动」哨兵值。
      *
      * 存的是**颜色本身**, 所以「自动」不能用 0 或某个颜色当哨兵(用户可能主动选同值),
@@ -252,6 +263,9 @@ object PreferKey {
      * 见 [io.legado.app.help.config.ThemeConfig.applyTheme]。
      */
     const val barForegroundAuto = -1
+
+    /** 弹框前景色(弹框文字/图标)的「自动」哨兵值, 语义与 [barForegroundAuto] 相同。 */
+    const val dialogForegroundAuto = -1
     const val wallpaperColorFollow = "wallpaperColorFollow"
     const val wallpaperColorAutoUpdate = "wallpaperColorAutoUpdate"
     const val disablePredictiveBack = "disablePredictiveBack"

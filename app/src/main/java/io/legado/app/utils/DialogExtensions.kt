@@ -2,6 +2,7 @@ package io.legado.app.utils
 
 import android.app.Dialog
 import android.view.WindowManager
+import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
@@ -11,9 +12,17 @@ import androidx.fragment.app.DialogFragment
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.accentColor
+import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.lib.theme.filletBackground
 import splitties.systemservices.windowManager
 
+/**
+ * 给系统 [AlertDialog] 套上本 App 的配色。
+ *
+ * 窗口背景走 `filletBackground`(「弹框背景色」); 按钮保持 `accentColor`(强调色, 属交互控件);
+ * 标题与正文文字走 [Context.dialogForegroundColor] —— 用户 2026-09-30 新增的
+ * 「弹框文字与图标颜色」(legado.md L80/L83)。
+ */
 fun AlertDialog.applyTint(): AlertDialog {
     window?.setBackgroundDrawable(context.filletBackground)
     val colorStateList = Selector.colorBuild()
@@ -29,7 +38,21 @@ fun AlertDialog.applyTint(): AlertDialog {
     if (getButton(AlertDialog.BUTTON_NEUTRAL) != null) {
         getButton(AlertDialog.BUTTON_NEUTRAL).setTextColor(colorStateList)
     }
-    window?.decorView?.post {
+    val foreground = context.dialogForegroundColor
+    // post { } 的 lambda 接收者是 View, 不是 Dialog —— 所以先取出 decorView 再引用。
+    // (直接写 decorView 会解析到 View 上不存在的属性, 报 Unresolved reference。)
+    val decor = window?.decorView
+    decor?.post {
+        // ⚠️ 两个 id 来自**不同的 R**, 不能都写 android.R.id:
+        //   · message    → 框架公开资源, android.R.id.message 存在;
+        //   · alertTitle → 框架里是隐藏 API(com.android.internal.R), android.R.id **没有**它,
+        //                  写 android.R.id.alertTitle 会 Unresolved reference。
+        //                  它由 AppCompat 定义, 见其 abc_alert_dialog_title_material.xml
+        //                  的 android:id="@+id/alertTitle" ⇒ 用 androidx.appcompat.R.id.alertTitle。
+        //       (2026-09-30 编译实测: android.jar 的 R$id 里查无 alertTitle, appcompat 的 R.txt 里有。)
+        decor.findViewById<TextView>(androidx.appcompat.R.id.alertTitle)
+            ?.setTextColor(foreground)
+        decor.findViewById<TextView>(android.R.id.message)?.setTextColor(foreground)
         listView?.forEach {
             it.applyTint(context.accentColor)
         }

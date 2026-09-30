@@ -14,7 +14,7 @@ import io.legado.app.databinding.DialogHighlightRuleEditBinding
 import io.legado.app.help.HighlightColors
 import io.legado.app.help.HighlightStyle
 import io.legado.app.help.HighlightStyles
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.HighlightFillPreviewDrawable
 import io.legado.app.ui.book.read.HighlightStyleDialog
@@ -46,7 +46,7 @@ class HighlightRuleEditDialog : BaseDialogFragment(R.layout.dialog_highlight_rul
 
     @Suppress("DEPRECATION")
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         binding.btnOk.isEnabled = false
         binding.btnStyle.setOnClickListener {
             HighlightStyleDialog().also {

@@ -10,7 +10,6 @@
         android:id="@+id/tool_bar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:background="@color/background_menu"
         android:elevation="5dp"
         android:theme="?attr/actionBarStyle"
         app:displayHomeAsUp="false"
@@ -21,8 +20,7 @@
 
     <androidx.constraintlayout.widget.ConstraintLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:background="@color/background_menu">
+        android:layout_height="wrap_content">
 
         <io.legado.app.ui.widget.image.CoverImageView
             android:id="@+id/iv_cover"

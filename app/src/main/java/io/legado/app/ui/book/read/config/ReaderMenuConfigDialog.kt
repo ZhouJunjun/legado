@@ -17,7 +17,7 @@ import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemReaderMenuConfigBinding
 import io.legado.app.help.ReaderMenuConfig
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.ui.book.read.ReaderMenuItem
 import io.legado.app.ui.book.read.loadReaderMenuConfig
 import io.legado.app.ui.book.read.saveReaderMenuConfig
@@ -40,7 +40,7 @@ class ReaderMenuConfigDialog : BaseDialogFragment(R.layout.dialog_recycler_view)
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         binding.toolBar.setTitle(R.string.reader_menu_config)
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter

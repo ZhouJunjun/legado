@@ -24,7 +24,7 @@ import io.legado.app.databinding.Item1lineTextAndDelBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.ui.widget.number.NumberPickerDialog
 import io.legado.app.ui.widget.recycler.ItemTouchCallback
 import io.legado.app.ui.widget.recycler.VerticalDivider
@@ -62,7 +62,7 @@ class KeyboardAssistsConfig : BaseDialogFragment(R.layout.dialog_recycler_view),
 
     private fun initView() {
         binding.toolBar.run {
-            setBackgroundColor(primaryColor)
+            setBackgroundColor(dialogBackground)
             setTitle(R.string.assists_key_config)
             subtitle = AppConfig.showBoardLine.toLineStr(context)
             setOnClickListener {

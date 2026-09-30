@@ -77,6 +77,30 @@ val Context.backgroundColor: Int
 val Context.bottomBackground: Int
     get() = ThemeStore.bottomBackground(this)
 
+/**
+ * 弹框(弹出菜单 / AlertDialog / 半屏面板 / tip)的**背景色**。
+ *
+ * 与 [bottomBackground] 分开: 用户 2026-09-30 明确要求「顶栏底栏背景色」的修改
+ * 不要波及弹框与 tip, 所以单开设置项。未设置时 [ThemeStore.dialogBackground] 会回落
+ * 到栏位底色, 保持升级前后的观感一致。
+ */
+val Context.dialogBackground: Int
+    get() = ThemeStore.dialogBackground(this)
+
+/**
+ * 弹框(提示框 / 列表选择框 / 输入框)的**前景色** —— 弹框内文字与图标统一的取色入口。
+ *
+ * 取值优先级:
+ * 1. 用户在「主题设置 → 白天/夜间 → 弹框文字与图标颜色」里手动指定的颜色;
+ * 2. 未指定(默认「自动」)时取 [barBorderColor] —— 亮色主题 #898989、暗色主题 #5A5A5A。
+ *
+ * ⚠️ 默认值由用户在 2026-09-30 明确指定(legado.md L83: "亮主题…弹窗文字与图标颜色 #898989,
+ * 暗主题你看着办"), 所以这里**不能**按弹框底色反推黑/白 —— 反推出来的是对比色, 与用户要的浅灰不符。
+ */
+@get:ColorInt
+val Context.dialogForegroundColor: Int
+    get() = ThemeStore.dialogForegroundColor(this, barBorderColor)
+
 val Context.primaryTextColor: Int
     get() = getPrimaryTextColor(isDarkTheme)
 
@@ -162,8 +186,24 @@ val Fragment.backgroundColor: Int
 val Fragment.bottomBackground: Int
     get() = ThemeStore.bottomBackground(requireContext())
 
+/**
+ * 弹框背景色(「弹框背景色」设置项)。
+ *
+ * 🔴 必须与 [Fragment.bottomBackground] 成对存在: 弹框类里普遍写作
+ * `binding.run { toolBar.setBackgroundColor(dialogBackground) }`, 靠 Fragment
+ * 隐式接收者解析 —— 只提供 `Context.` 版会导致
+ * 「None of the following candidates is applicable because of a receiver type mismatch」
+ * (2026-09-30 编译实测踩到)。
+ */
+val Fragment.dialogBackground: Int
+    get() = ThemeStore.dialogBackground(requireContext())
+
 val Fragment.primaryTextColor: Int
     get() = requireContext().getPrimaryTextColor(isDarkTheme)
+
+/** 弹框文字与图标颜色。同样需要 Fragment 版, 理由见 [Fragment.dialogBackground]。 */
+val Fragment.dialogForegroundColor: Int
+    get() = ThemeStore.dialogForegroundColor(requireContext(), requireContext().barBorderColor)
 
 val Fragment.secondaryTextColor: Int
     get() = requireContext().getSecondaryTextColor(isDarkTheme)
@@ -251,11 +291,17 @@ val Context.buttonSurfacePressedColor: Int
 private const val BUTTON_SURFACE_ALPHA = 0.16f
 private const val BUTTON_SURFACE_PRESSED_ALPHA = 0.3f
 
+/**
+ * 提示框(AlertDialog / 列表选择 / 输入框)窗口背景: 弹框底色 + 3dp 圆角。
+ *
+ * 底色走 [Context.dialogBackground](用户 2026-09-30 单开的「弹框背景色」),
+ * 原来取的是页面背景色 `backgroundColor`, 改栏位色时这些框会被带着一起变 —— 正是用户要拆开的地方。
+ */
 val Context.filletBackground: GradientDrawable
     get() {
         val background = GradientDrawable()
         background.cornerRadius = 3f.dpToPx()
-        background.setColor(backgroundColor)
+        background.setColor(dialogBackground)
         return background
     }
 
@@ -263,7 +309,7 @@ val Context.filletBackground: GradientDrawable
  * 弹出窗口背景(长按菜单 / 溢出菜单 / 下拉候选框): 纯底色 + 一圈 1dp 实线, **无圆角**。
  *
  * 规格与 `bg_popup_menu.xml`、`borderedDialogBackground` 保持一致:
- * 底色取 `bottomBackground`(与顶栏/底栏/半屏面板同源), 边框用 `bar_border`
+ * 底色取 [Context.dialogBackground](「弹框背景色」设置项), 边框用 `bar_border`
  * (亮 #898989 / 暗 #5A5A5A)。用户明确不要圆角。
  *
  * 注意: 这里必须用 `setStroke` 画**一圈**线 —— 弹出面板是浮在内容之上的独立矩形,
@@ -272,7 +318,7 @@ val Context.filletBackground: GradientDrawable
 val Context.popupBackground: GradientDrawable
     get() {
         val background = GradientDrawable()
-        background.setColor(bottomBackground)
+        background.setColor(dialogBackground)
         background.setStroke(1.dpToPx(), barBorderColor)
         return background
     }
@@ -284,6 +330,8 @@ val Context.popupBackground: GradientDrawable
  * 并且"上一轮加的圆角去掉, 不喜欢圆角"。
  * 所以这里不再用 `cornerRadii`, 也不再是"描边一圈"——
  * 只有贴屏顶那一条边有线, 底部两角保持直角, 与阅读页设置面板的分割线风格一致。
+ *
+ * 底色同 [Context.dialogBackground]: 用户 2026-09-30 要求「弹框背景色」也对半屏面板生效。
  */
 val Context.borderedDialogBackground: Drawable
-    get() = barBorderBackground(bottomBackground, atTop = true)
+    get() = barBorderBackground(dialogBackground, atTop = true)

@@ -17,7 +17,7 @@ import io.legado.app.data.entities.HighlightRuleFile
 import io.legado.app.databinding.ActivityHighlightRuleBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.association.ImportHighlightRuleDialog
 import io.legado.app.ui.file.HandleFileContract
@@ -77,7 +77,7 @@ class HighlightRuleActivity :
     }
 
     private fun initRecyclerView() {
-        binding.recyclerView.setEdgeEffectColor(primaryColor)
+        binding.recyclerView.setEdgeEffectColor(bottomBackground)
         binding.recyclerView.layoutManager = LinearLayoutManager(this)
         binding.recyclerView.adapter = adapter
         binding.recyclerView.addItemDecoration(VerticalDivider(this))

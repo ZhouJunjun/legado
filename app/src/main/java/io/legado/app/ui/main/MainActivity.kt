@@ -31,7 +31,7 @@ import io.legado.app.help.config.AppConfig
 import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.help.storage.Backup
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.association.ImportReplaceRuleDialog
 import io.legado.app.ui.main.bookshelf.AloudMiniBar
@@ -173,7 +173,7 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
             }
             windowInsets
         }
-        viewPagerMain.setEdgeEffectColor(primaryColor)
+        viewPagerMain.setEdgeEffectColor(bottomBackground)
         viewPagerMain.offscreenPageLimit = 3
         viewPagerMain.adapter = adapter
         viewPagerMain.addOnPageChangeListener(PageChangeCallback())

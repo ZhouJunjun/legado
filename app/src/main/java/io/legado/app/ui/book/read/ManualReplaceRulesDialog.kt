@@ -13,7 +13,7 @@ import io.legado.app.data.appDb
 import io.legado.app.data.entities.ReplaceRule
 import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemCheckBoxBinding
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.widget.recycler.DragSelectTouchHelper
 import io.legado.app.utils.setLayout
@@ -52,7 +52,7 @@ class ManualReplaceRulesDialog() : BaseDialogFragment(R.layout.dialog_recycler_v
             dismissAllowingStateLoss()
             return
         }
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         binding.toolBar.setTitle(R.string.manual_replace_rule)
         binding.recyclerView.layoutManager = LinearLayoutManager(requireContext())
         binding.recyclerView.adapter = adapter

@@ -23,12 +23,18 @@ object WallpaperTheme {
     //未设置的颜色占位值,与颜色偏好的默认读取值一致
     private const val UNSET_COLOR = Int.MIN_VALUE
 
+    /**
+     * 跟随壁纸配色会写入的颜色键。
+     *
+     * ⚠️ 这里**不含**主色调(`cPrimary`/`cNPrimary`): 用户 2026-09-30 已把【主色调】设置项
+     * 从主题设置页移除(legado.md L80), 主色调不再是一个用户可调的"面向上色" ——
+     * 它现在只作为 `isDarkTheme` 等语义判据的锚点存在, 不应再被壁纸配色覆写。
+     * [colorsForSeed] 的返回数组必须与这里的长度/顺序严格对应。
+     */
     internal val colorPreferenceKeys = arrayOf(
-        PreferKey.cPrimary,
         PreferKey.cAccent,
         PreferKey.cBackground,
         PreferKey.cBBackground,
-        PreferKey.cNPrimary,
         PreferKey.cNAccent,
         PreferKey.cNBackground,
         PreferKey.cNBBackground,
@@ -102,19 +108,23 @@ object WallpaperTheme {
         }
     }
 
+    /**
+     * 按壁纸种子推导跟随色。
+     *
+     * 返回数组必须与 [colorPreferenceKeys] **一一对应**(长度 6):
+     * 强调色、页面背景、栏位底色(白天) + 强调色、页面背景、栏位底色(夜间)。
+     * 主色调已从跟随范围移除, 见 [colorPreferenceKeys] 的说明。
+     */
     @Suppress("RestrictedApi")
     internal fun colorsForSeed(seed: Int): IntArray {
         val dynamicColors = MaterialDynamicColors()
-        val source = Hct.fromInt(seed)
         val day = SchemeContent(Hct.fromInt(seed), false, 0.0)
         val night = SchemeContent(Hct.fromInt(seed), true, 0.0)
         return intArrayOf(
-            dynamicColors.primary().getArgb(day),
             dynamicColors.secondary().getArgb(day),
             dynamicColors.background().getArgb(day),
             dynamicColors.surfaceVariant().getArgb(day),
-            Hct.from(source.hue, source.chroma, 30.0).toInt(),
-            dynamicColors.primary().getArgb(night),
+            dynamicColors.secondary().getArgb(night),
             dynamicColors.background().getArgb(night),
             dynamicColors.surfaceVariant().getArgb(night),
         )
@@ -144,25 +154,41 @@ object WallpaperTheme {
         }
     }
 
-    /** 读取颜色偏好生成备份,未设置的颜色以[UNSET_COLOR]占位 */
+    /**
+     * 读取颜色偏好生成备份,未设置的颜色以 [UNSET_COLOR] 占位。
+     *
+     * 首元素存**数组长度**, 用于 [restoreBackedUpColors] 校验格式版本 ——
+     * 主色调移除前后 [colorPreferenceKeys] 长度不同(8 → 6), 按索引读旧备份会整体错位。
+     */
     private fun backedUpColors(preferences: SharedPreferences): JSONArray {
         val colors = JSONArray()
+        colors.put(colorPreferenceKeys.size)
         colorPreferenceKeys.forEach { key ->
             colors.put(preferences.getInt(key, UNSET_COLOR))
         }
         return colors
     }
 
-    /** 恢复备份的颜色并清除备份,[UNSET_COLOR]表示键未备份过,移除以回落默认值 */
+    /**
+     * 恢复备份的颜色并清除备份, [UNSET_COLOR] 表示键未备份过, 移除以回落默认值。
+     *
+     * 备份末尾会写一个长度哨兵(见 [backedUpColors]); 长度与当前 [colorPreferenceKeys] 不一致说明
+     * 是「主色调还在」时留下的旧备份, 按索引恢复会串色, 此时直接丢弃备份、保留用户当前颜色。
+     */
     private fun restoreBackedUpColors(context: Context) {
         val preferences = context.defaultSharedPreferences
         val backup = preferences.getString(PreferKey.wallpaperColorBackup, null) ?: return
         val colors = runCatching { JSONArray(backup) }.getOrNull() ?: return
+        if (colors.length() != colorPreferenceKeys.size + 1) {
+            discardBackedUpColors(context)
+            return
+        }
         applyingColors = true
         try {
             preferences.edit {
                 colorPreferenceKeys.indices.forEach { index ->
-                    when (val color = colors.optInt(index, UNSET_COLOR)) {
+                    // +1 跳过首位的长度哨兵
+                    when (val color = colors.optInt(index + 1, UNSET_COLOR)) {
                         UNSET_COLOR -> remove(colorPreferenceKeys[index])
                         else -> putInt(colorPreferenceKeys[index], color)
                     }

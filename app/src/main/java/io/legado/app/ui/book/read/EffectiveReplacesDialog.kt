@@ -19,7 +19,7 @@ import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.Item1lineTextAndCloseBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.replace.edit.ReplaceEditActivity
 import io.legado.app.utils.setLayout
@@ -61,7 +61,7 @@ class EffectiveReplacesDialog() : BaseDialogFragment(R.layout.dialog_recycler_vi
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         isEdit = savedInstanceState?.getBoolean("isEdit") == true
         binding.run {
-            toolBar.setBackgroundColor(primaryColor)
+            toolBar.setBackgroundColor(dialogBackground)
             toolBar.setTitle(R.string.effective_replaces)
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter

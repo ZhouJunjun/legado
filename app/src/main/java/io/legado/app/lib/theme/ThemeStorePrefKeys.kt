@@ -24,6 +24,7 @@ object ThemeStorePrefKeys {
 
     const val KEY_BACKGROUND_COLOR = "backgroundColor"
     const val KEY_BOTTOM_BACKGROUND = "bottomBackground"
+    const val KEY_DIALOG_BACKGROUND = "dialogBackground"
 
     const val KEY_APPLY_PRIMARYDARK_STATUSBAR = "apply_primarydark_statusbar"
     const val KEY_APPLY_PRIMARY_NAVBAR = "apply_primary_navbar"

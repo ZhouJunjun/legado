@@ -7,7 +7,7 @@ import io.legado.app.R
 import io.legado.app.base.BaseDialogFragment
 import io.legado.app.data.entities.BookHighlight
 import io.legado.app.databinding.DialogHighlightNoteBinding
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.model.ReadBook
 import io.legado.app.utils.setLayout
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -28,7 +28,7 @@ class HighlightNoteDialog() : BaseDialogFragment(R.layout.dialog_highlight_note,
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         @Suppress("DEPRECATION")
         val highlight = arguments?.getParcelable<BookHighlight>(ARG_HIGHLIGHT) ?: run {
             dismiss()

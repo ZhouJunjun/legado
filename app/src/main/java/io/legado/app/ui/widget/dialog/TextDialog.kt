@@ -28,6 +28,7 @@ import io.legado.app.help.IntentData
 import io.legado.app.help.findTextRanges
 import io.legado.app.help.parseHelpSections
 import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.ui.code.CodeEditActivity
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyOpenTint
@@ -98,7 +99,7 @@ class TextDialog() : BaseDialogFragment(R.layout.dialog_text_view) {
     }
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        binding.toolBar.setBackgroundColor(primaryColor)
+        binding.toolBar.setBackgroundColor(dialogBackground)
         binding.toolBar.inflateMenu(R.menu.dialog_text)
         binding.toolBar.menu.applyTint(requireContext())
         binding.toolBar.installMd3OverflowMenu(

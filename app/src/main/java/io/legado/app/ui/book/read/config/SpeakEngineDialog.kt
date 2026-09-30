@@ -14,7 +14,8 @@ import io.legado.app.databinding.DialogRecyclerViewBinding
 import io.legado.app.databinding.ItemHttpTtsBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.SelectItem
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.model.ReadAloud
 import io.legado.app.utils.GSON
 import io.legado.app.utils.fromJsonObject
@@ -46,11 +47,11 @@ class SpeakEngineDialog : BaseDialogFragment(R.layout.dialog_recycler_view) {
 
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
         binding.run {
-            toolBar.setBackgroundColor(primaryColor)
+            toolBar.setBackgroundColor(dialogBackground)
             toolBar.setTitle(R.string.speak_engine)
             // 只做选择, 不需要工具栏菜单(原增删改/导入导出已移除)
             toolBar.menu.clear()
-            recyclerView.setEdgeEffectColor(primaryColor)
+            recyclerView.setEdgeEffectColor(bottomBackground)
             recyclerView.layoutManager = LinearLayoutManager(requireContext())
             recyclerView.adapter = adapter
             tvCancel.visible()

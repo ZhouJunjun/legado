@@ -8,8 +8,8 @@ import android.widget.Toast
 import androidx.fragment.app.Fragment
 import io.legado.app.BuildConfig
 import io.legado.app.databinding.ViewToastBinding
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.dialogBackground
+import io.legado.app.lib.theme.dialogForegroundColor
 import splitties.systemservices.layoutInflater
 
 private var toast: Toast? = null
@@ -27,11 +27,11 @@ fun Context.toastOnUi(message: CharSequence?, duration: Int = Toast.LENGTH_SHORT
         kotlin.runCatching {
             toast?.cancel()
             toast = Toast(this)
-            val isLight = ColorUtils.isColorLight(bottomBackground)
             ViewToastBinding.inflate(layoutInflater).run {
                 toast?.view = root
-                cvToast.setCardBackgroundColor(bottomBackground)
-                tvText.setTextColor(getPrimaryTextColor(isLight))
+                cvToast.setCardBackgroundColor(dialogBackground)
+                // 用户可在「弹框文字与图标颜色」里指定; 未指定时按弹框底色自动反推。
+                tvText.setTextColor(dialogForegroundColor)
                 tvText.text = message
             }
             toast?.duration = duration

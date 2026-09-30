@@ -15,7 +15,7 @@ import io.legado.app.data.entities.TxtTocRule
 import io.legado.app.databinding.ActivityTxtTocRuleBinding
 import io.legado.app.databinding.DialogEditTextBinding
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.primaryColor
+import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.ui.association.ImportTxtTocRuleDialog
 import io.legado.app.ui.file.HandleFileContract
@@ -90,7 +90,7 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
     }
 
     private fun initView() = binding.run {
-        recyclerView.setEdgeEffectColor(primaryColor)
+        recyclerView.setEdgeEffectColor(bottomBackground)
         recyclerView.addItemDecoration(VerticalDivider(this@TxtTocRuleActivity))
         recyclerView.adapter = adapter
         // When this page is opened, it is in selection mode
@@ -105,7 +105,7 @@ class TxtTocRuleActivity : VMBaseActivity<ActivityTxtTocRuleBinding, TxtTocRuleV
     }
 
     private fun initSearchView() {
-        binding.searchBar.setBackgroundColor(primaryColor)
+        binding.searchBar.setBackgroundColor(bottomBackground)
         searchView.applyTint(barForegroundColor)
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean = false
