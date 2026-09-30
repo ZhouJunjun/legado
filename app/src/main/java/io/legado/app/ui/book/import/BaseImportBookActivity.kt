@@ -12,7 +12,7 @@ import io.legado.app.databinding.ActivityImportBookBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.dialogs.selector
-import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.model.localBook.LocalBook
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.utils.ArchiveUtils
@@ -150,7 +150,7 @@ abstract class BaseImportBookActivity<VM : ViewModel> :
     }
 
     private fun initSearchView() {
-        searchView.applyTint(primaryTextColor)
+        searchView.applyTint(barForegroundColor)
         searchView.isSubmitButtonEnabled = true
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean {

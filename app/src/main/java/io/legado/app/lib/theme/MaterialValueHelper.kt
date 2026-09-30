@@ -80,12 +80,6 @@ val Context.bottomBackground: Int
 val Context.primaryTextColor: Int
     get() = getPrimaryTextColor(isDarkTheme)
 
-@ColorInt
-fun Context.getToolbarTextColor(transparentBar: Boolean): Int {
-    val barColor = toolbarBackgroundColor(transparentBar, primaryColor, backgroundColor)
-    return getPrimaryTextColor(ColorUtils.isColorLight(barColor))
-}
-
 /**
  * 顶部栏**实际底色**: 透明顶栏露出的是页面背景色, 否则是与底栏同源的 [bottomBackground]。
  *
@@ -99,7 +93,7 @@ fun Context.topBarBackgroundColor(): Int {
 }
 
 /**
- * 顶部栏底色是浅色吗 —— 状态栏图标/顶栏前景应否用深色。
+ * 栏位底色是浅色吗 —— 状态栏图标/顶栏前景应否用深色。
  *
  * 状态栏区域在视觉上属于顶栏(顶栏会 `fitStatusBar` 撑到状态栏底下), 所以状态栏图标的
  * 明暗必须跟着顶栏底色走, 而不是跟着 `primaryColor` 走(用户 2026-09-21 反馈:
@@ -108,12 +102,38 @@ fun Context.topBarBackgroundColor(): Int {
 val Context.isTopBarLight: Boolean
     get() = ColorUtils.isColorLight(topBarBackgroundColor())
 
-@ColorInt
-internal fun toolbarBackgroundColor(
-    transparentBar: Boolean,
-    @ColorInt primaryColor: Int,
-    @ColorInt backgroundColor: Int
-): Int = if (transparentBar) backgroundColor else primaryColor
+/**
+ * 栏位(顶栏/底栏)的**前景色** —— 标题、菜单文字、菜单图标统一的取色入口。
+ *
+ * 取值优先级:
+ * 1. 用户在「主题设置 → 白天/夜间 → 栏位文字与图标颜色」里手动指定的颜色;
+ * 2. 未指定(默认「自动」)时, 按**栏位真实底色**自动反推 —— 浅底给深色文字、深底给浅色文字。
+ *
+ * ⚠️ 第 2 条的判据必须是 [isTopBarLight](栏位真实底色), **不能**是 `primaryColor` 的明暗:
+ * 顶栏底色在 2026-09 已从 `primaryColor`(彩色) 改成 [bottomBackground], 两者不再同源。
+ * 默认棕色 primary 偏暗 → 按它推导会得出"深底"的相反结论 → 给白色图标, 而栏位其实是
+ * 浅灰 → 文字图标全部看不见(这正是历史上多处"栏底改亮了字还是白的"的根因)。
+ */
+@get:ColorInt
+val Context.barForegroundColor: Int
+    get() = ThemeStore.barForegroundColor(this, getPrimaryTextColor(isTopBarLight))
+
+/**
+ * 栏位的**次要前景色** —— 未选中标签页文字、章节名等弱化文字。
+ *
+ * 用户手动指定了栏位前景色时, 由它降透明度推导, 保证两者同色系;
+ * 否则按栏位底色明暗取灰阶级色, 与 [io.legado.app.ui.widget.TitleBar] 原有行为一致。
+ */
+@get:ColorInt
+val Context.barSecondaryForegroundColor: Int
+    get() {
+        val custom = ThemeStore.barForegroundColorOrNull(this)
+        if (custom != null) return ColorUtils.withAlpha(custom, 0.65f)
+        return ContextCompat.getColor(
+            this,
+            if (isTopBarLight) R.color.md_light_secondary else R.color.md_dark_secondary
+        )
+    }
 
 val Context.transparentNavBar: Boolean
     get() = ThemeStore.transparentNavBar(this)

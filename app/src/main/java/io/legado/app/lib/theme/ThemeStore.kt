@@ -9,7 +9,10 @@ import androidx.annotation.ColorInt
 import androidx.annotation.ColorRes
 import androidx.core.content.ContextCompat
 import io.legado.app.R
+import io.legado.app.constant.PreferKey
+import io.legado.app.help.config.AppConfig
 import io.legado.app.utils.ColorUtils
+import io.legado.app.utils.getPrefInt
 import splitties.init.appCtx
 import androidx.core.graphics.toColorInt
 import androidx.core.content.edit
@@ -342,6 +345,38 @@ private constructor(private val mContext: Context) {
             val fallback = ContextCompat.getColor(context, R.color.bar_background)
             val color = prefs(context).getInt(ThemeStorePrefKeys.KEY_BOTTOM_BACKGROUND, fallback)
             return normalizeBottomBackground(color, fallback)
+        }
+
+        /**
+         * 用户手动指定的栏位前景色(标题/菜单文字/菜单图标的颜色)。
+         *
+         * 返回 `null` 表示「未指定(自动)」—— 由调用方按栏位真实底色反推。
+         *
+         * 用 [PreferKey.barForegroundAuto](-1) 作哨兵而不是 0: 用户完全可能主动选黑色,
+         * 若用 0 当哨兵, 用户选了黑就会被误判成"没设置"。
+         *
+         * 白天/夜间各存一份(与 `cBBackground` / `cNBBackground` 同风格), 按**当前主题**读取,
+         * 所以不需要 `applyTheme` 中转 —— 渲染期读到的必然是当前主题那一份。
+         */
+        @CheckResult
+        @ColorInt
+        internal fun barForegroundColorOrNull(context: Context = appCtx): Int? {
+            val key = if (AppConfig.isNightTheme) {
+                PreferKey.cNBForeground
+            } else {
+                PreferKey.cBForeground
+            }
+            val color = context.getPrefInt(key, PreferKey.barForegroundAuto)
+            return if (color == PreferKey.barForegroundAuto) null else color
+        }
+
+        /**
+         * 栏位前景色 —— 用户指定优先, 否则返回 [automatic](按栏位真实底色反推的结果)。
+         */
+        @CheckResult
+        @ColorInt
+        fun barForegroundColor(context: Context = appCtx, @ColorInt automatic: Int): Int {
+            return barForegroundColorOrNull(context) ?: automatic
         }
 
         @CheckResult

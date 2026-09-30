@@ -23,7 +23,7 @@ import io.legado.app.databinding.ItemTocRegexBinding
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.primaryColor
-import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.model.localBook.TextFile
 import io.legado.app.ui.association.ImportTxtTocRuleDialog
 import io.legado.app.ui.file.HandleFileContract
@@ -114,7 +114,7 @@ class TxtTocRuleDialog() : BaseDialogFragment(R.layout.dialog_toc_regex),
 
     private fun initSearchView() {
         binding.searchBar.setBackgroundColor(primaryColor)
-        searchView.applyTint(primaryTextColor)
+        searchView.applyTint(requireContext().barForegroundColor)
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {
             override fun onQueryTextSubmit(query: String?): Boolean = false
 

@@ -32,7 +32,7 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.help.book.ReadRecordCoverCache
 import io.legado.app.help.glide.ImageLoader
 import io.legado.app.lib.dialogs.alert
-import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.utils.applyNavigationBarPadding
@@ -180,7 +180,7 @@ class ReadRecordActivity : BaseActivity<ActivityReadRecordBinding>() {
     }
 
     private fun initSearchView() {
-        searchView.applyTint(primaryTextColor)
+        searchView.applyTint(barForegroundColor)
         searchView.isSubmitButtonEnabled = true
         searchView.queryHint = getString(R.string.search)
         searchView.setOnQueryTextListener(object : SearchView.OnQueryTextListener {

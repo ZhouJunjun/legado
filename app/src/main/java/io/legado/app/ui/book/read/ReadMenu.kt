@@ -18,7 +18,6 @@ import android.view.WindowManager.LayoutParams.BRIGHTNESS_OVERRIDE_NONE
 import android.view.animation.Animation
 import android.widget.FrameLayout
 import android.widget.SeekBar
-import androidx.appcompat.widget.AppCompatTextView
 import androidx.core.view.doOnLayout
 import androidx.core.view.isVisible
 import io.legado.app.R
@@ -31,9 +30,9 @@ import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.barBorderBackground
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.buttonDisabledColor
-import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.ReadBook
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
@@ -122,7 +121,8 @@ class ReadMenu @JvmOverloads constructor(
     private var textColor: Int = if (immersiveMenu) {
         ReadBookConfig.durConfig.curTextColor()
     } else {
-        context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
+        // 非沉浸: 与 TitleBar 同源, 取统一入口(用户自定义优先, 否则按栏位底色反推)。
+        context.barForegroundColor
     }
 
     private var bottomBackgroundList: ColorStateList = Selector.colorBuild()
@@ -184,6 +184,11 @@ class ReadMenu @JvmOverloads constructor(
             fabNightTheme.setImageResource(R.drawable.ic_brightness)
         }
         initAnimation()
+        // 沉浸模式下顶栏要跟随**正文配色**(而非栏位底色), 由这里自行着色 ——
+        // 所以要关掉 TitleBar 的自动着色, 否则两边互相覆盖。
+        // 非沉浸模式则相反: 交给 TitleBar 用统一的 [barForegroundColor] 着色
+        // (2026-09-30 起 opaque 顶栏也纳入自动着色, 不再需要这里手工兜底)。
+        titleBar.automaticForeground = !immersiveMenu
         if (immersiveMenu) {
             val lightTextColor = ColorUtils.withAlpha(ColorUtils.lightenColor(textColor), 0.75f)
             titleBar.setTextColor(textColor)
@@ -192,21 +197,19 @@ class ReadMenu @JvmOverloads constructor(
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(lightTextColor)
         } else {
-            // 非沉浸式: 顶部栏与底栏同色(原来是 primaryColor 彩色, 与底栏割裂)。
-            // 文字色按实际底色反推, 自定义主题下也保证对比度。
+            // 非沉浸式: 顶部栏与底栏同色。
             //
-            // 这里**不能**只在 reset 时执行。该 TitleBar 在布局里带 `app:opaque="true"`,
-            // 于是 TitleBar.automaticForeground 为 false, `applyForegroundColor()` 直接
-            // return —— 头部标题文字与右侧三点按钮(overflow 图标)的着色**只能靠这里**。
-            // 首次显示时 reset=false, 原先若放在 `else if (reset)` 分支里就会整段跳过:
-            // Toolbar 的 `android:theme="?attr/actionBarStyle"` 会按 **primaryColor 明暗**
-            // 选 AppBarOverlay.Light/Dark(见 BaseActivity.initTheme), 与顶栏实际底色
-            // (bottomBackground)不同源 —— 默认棕色 primary 偏暗 → 选到 Dark overlay
-            // → 亮色主题下标题文字与三点按钮发白(用户 2026-09-22 反馈)。
+            // 这里**不能**只在 reset 时执行。该 TitleBar 在布局里带 `app:opaque="true"`:
+            // 2026-09-30 之前 `applyForegroundColor()` 会对它直接 return, 标题与三点按钮
+            // 的着色只能靠这里; 现在 TitleBar 已接管自动着色, 但**背景色与分隔线仍需在此设置**
+            // (顶栏底色/下边线不属于前景色范畴)。首次显示时 reset=false,
+            // 原先若放在 `else if (reset)` 分支里就会整段跳过。
             val bgColor = context.bottomBackground
-            val textColor = context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
-            titleBar.setTextColor(textColor)
             titleBar.background = context.barBorderBackground(bgColor, atTop = false)
+            // 前景色按**统一入口**取(用户自定义优先, 否则按栏位底色反推),
+            // 与 TitleBar.applyForegroundColor 同源, 避免两处算出不同颜色。
+            val textColor = context.barForegroundColor
+            titleBar.setTextColor(textColor)
             titleBar.setColorFilter(textColor)
             tvChapterName.setTextColor(textColor)
         }
@@ -295,7 +298,7 @@ class ReadMenu @JvmOverloads constructor(
         textColor = if (immersiveMenu) {
             ReadBookConfig.durConfig.curTextColor()
         } else {
-            context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
+            context.barForegroundColor
         }
         bottomBackgroundList = Selector.colorBuild()
             .setDefaultColor(bgColor)
@@ -701,7 +704,8 @@ class ReadMenu @JvmOverloads constructor(
 
     fun upBookView() {
         binding.titleBar.title = ReadBook.book?.name
-        alignTitleBarText()
+        // 标题的垂直对齐校正已上移到 TitleBar.alignTitleText()(2026-09-30),
+        // 这里不必再调 —— 原 alignTitleBarText() 只服务阅读页, 现已对所有页面生效。
         ReadBook.curTextChapter?.let {
             binding.tvChapterName.text = it.title
             binding.tvChapterName.visible()
@@ -714,71 +718,6 @@ class ReadMenu @JvmOverloads constructor(
         } ?: let {
             binding.tvChapterName.gone()
         }
-    }
-
-    /**
-     * 顶栏书名的垂直对齐校正。
-     *
-     * 🐞 现象(用户 2026-09-24 反馈): 「菜单顶栏的小说名和同行的按钮明显不是水平对齐」。
-     * 实测(1080px 宽截图, density≈2.75): 返回箭头/文A/⋮ 的墨迹中心都在 y≈161.5,
-     * 而书名墨迹中心在 y≈181 —— 低了 19.5px ≈ **7dp**。
-     *
-     * 根因不在布局, 而在**「视图框居中」与「墨迹居中」不是一回事**:
-     * TextView 的框含 `includeFontPadding` 字体留白, 而中文字体的字框是
-     * ascent≫descent 的不对称结构。Toolbar 把「框」居中, 墨迹就整体下沉
-     *     Δ = (fm.ascent + fm.descent)/2 - (fm.top + fm.bottom)/2
-     * 这个量跟字体走(不同设备/字体各不相同), 所以**不能写死一个 dp 偏移**。
-     *
-     * 这里不依赖 Toolbar 内部的居中公式(那是 AppCompat 私有实现, 版本间会变),
-     * 而是直接量两个**已经画好的**锚点做自校正(见 applyTitleOffset):
-     *   · 基准 = 导航图标(返回箭头)的中心 —— 这正是用户肉眼拿来比较的对象;
-     *   · 目标 = 书名首行的墨迹中心, 由 layout 的基线与字体度量解析求出。
-     * 两者之差就是 translationY。全是 UI 线程上的常量级读写, 不触发重新布局。
-     *
-     * 导航图标与标题是同一个 Toolbar 的兄弟, 一次 layout pass 内一起量好;
-     * 若首次读到的尺寸还是 0(尚未布局), 就挂一次性 layout 监听等下次布局再量。
-     */
-    private fun alignTitleBarText() {
-        val toolbar = binding.titleBar.toolbar
-        toolbar.addOnLayoutChangeListener(object : View.OnLayoutChangeListener {
-            override fun onLayoutChange(
-                v: View, l: Int, t: Int, r: Int, b: Int,
-                ol: Int, ot: Int, or: Int, ob: Int
-            ) {
-                if (applyTitleOffset()) v.removeOnLayoutChangeListener(this)
-            }
-        })
-        applyTitleOffset()
-    }
-
-    /** @return true 表示这次成功写入了偏移(锚点与标题都已量好)。 */
-    private fun applyTitleOffset(): Boolean {
-        val toolbar = binding.titleBar.toolbar
-        // 基准锚点 = Toolbar 的第 0 个子项, 即返回箭头(导航按钮)。
-        // 用户肉眼比较的正是「书名 vs 同行按钮」, 拿图标中心当基准最直接。
-        val anchor = toolbar.getChildAt(0) ?: return false
-        if (anchor.width == 0 || anchor.height == 0) return false
-        val tv = findToolbarTitle(toolbar) ?: return false
-        val layout = tv.layout ?: return false
-        if (layout.lineCount == 0 || tv.height == 0) return false
-        // 墨迹中心(视图坐标) = 上内边距 + 首行基线 + (ascent+descent)/2
-        // 用 layout 的基线而不是「框高/2」, 这样即使 TextView 带上下 padding 或
-        // 多行也不会算错 —— 无需假设「视图框 == 行框」。
-        val fm = tv.paint.fontMetrics
-        val baseline = tv.totalPaddingTop + layout.getLineBaseline(0).toFloat()
-        val inkCenter = tv.top + baseline + (fm.ascent + fm.descent) / 2f
-        val anchorCenter = anchor.top + anchor.height / 2f
-        tv.translationY = anchorCenter - inkCenter
-        return true
-    }
-
-    /** 在 Toolbar 里找到实际的标题 TextView(Toolbar 自己 new 出来的 AppCompatTextView)。 */
-    private fun findToolbarTitle(toolbar: ViewGroup): AppCompatTextView? {
-        for (i in 0 until toolbar.childCount) {
-            val child = toolbar.getChildAt(i)
-            if (child is AppCompatTextView) return child
-        }
-        return null
     }
 
     /**

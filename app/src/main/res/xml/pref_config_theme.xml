@@ -131,6 +131,17 @@
             app:cpv_dialogType="preset"
             app:iconSpaceReserved="false" />
 
+        <!--
+          栏位(顶栏/底栏)的文字与图标颜色。点击弹「自动/深色/浅色/自定义」四选一。
+          默认「自动」= 按栏位底色反推(浅底给深字、深底给浅字), 即本仓库原有行为。
+          key 见 PreferKey.cBForeground / cNBForeground, 哨兵值 PreferKey.barForegroundAuto。
+        -->
+        <io.legado.app.lib.prefs.Preference
+            android:key="colorBarForeground"
+            android:summary="@string/bar_foreground_auto"
+            android:title="@string/bar_foreground_color"
+            app:iconSpaceReserved="false" />
+
         <io.legado.app.lib.prefs.Preference
             android:key="backgroundImage"
             android:title="@string/background_image" />
@@ -190,6 +201,12 @@
             android:summary="@string/night_navbar_color"
             android:title="@string/navbar_color"
             app:cpv_dialogType="preset"
+            app:iconSpaceReserved="false" />
+
+        <io.legado.app.lib.prefs.Preference
+            android:key="colorBarForegroundNight"
+            android:summary="@string/bar_foreground_auto"
+            android:title="@string/bar_foreground_color"
             app:iconSpaceReserved="false" />
 
         <io.legado.app.lib.prefs.Preference

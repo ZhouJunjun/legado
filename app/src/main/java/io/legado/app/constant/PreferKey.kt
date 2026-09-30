@@ -230,6 +230,7 @@ object PreferKey {
     const val cAccent = "colorAccent"
     const val cBackground = "colorBackground"
     const val cBBackground = "colorBottomBackground"
+    const val cBForeground = "colorBarForeground"
     const val bgImage = "backgroundImage"
     const val bgImageBlurring = "backgroundImageBlurring"
     const val tNavBar = "transparentNavBar"
@@ -238,9 +239,19 @@ object PreferKey {
     const val cNAccent = "colorAccentNight"
     const val cNBackground = "colorBackgroundNight"
     const val cNBBackground = "colorBottomBackgroundNight"
+    const val cNBForeground = "colorBarForegroundNight"
     const val bgImageN = "backgroundImageNight"
     const val bgImageNBlurring = "backgroundImageNightBlurring"
     const val tNavBarN = "transparentNavBarNight"
+
+    /**
+     * 栏位前景色(标题/菜单文字/菜单图标)的「自动」哨兵值。
+     *
+     * 存的是**颜色本身**, 所以「自动」不能用 0 或某个颜色当哨兵(用户可能主动选同值),
+     * 用一个不可能被 ColorPicker 产出的负数表示"未指定"。
+     * 见 [io.legado.app.help.config.ThemeConfig.applyTheme]。
+     */
+    const val barForegroundAuto = -1
     const val wallpaperColorFollow = "wallpaperColorFollow"
     const val wallpaperColorAutoUpdate = "wallpaperColorAutoUpdate"
     const val disablePredictiveBack = "disablePredictiveBack"

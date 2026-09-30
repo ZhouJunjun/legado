@@ -2,6 +2,7 @@ package io.legado.app.ui.config
 
 import android.annotation.SuppressLint
 import android.content.SharedPreferences
+import android.graphics.Color
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -10,8 +11,11 @@ import android.view.MenuInflater
 import android.view.MenuItem
 import android.view.View
 import android.widget.SeekBar
+import androidx.annotation.ColorInt
 import androidx.core.view.MenuProvider
 import androidx.preference.Preference
+import com.jaredrummler.android.colorpicker.ColorPickerDialog
+import com.jaredrummler.android.colorpicker.ColorPickerDialogListener
 import io.legado.app.R
 import io.legado.app.base.AppContextWrapper
 import io.legado.app.constant.AppConst
@@ -58,10 +62,14 @@ import kotlin.math.roundToInt
 @Suppress("SameParameterValue")
 class ThemeConfigFragment : PreferenceFragment(),
     SharedPreferences.OnSharedPreferenceChangeListener,
-    MenuProvider {
+    MenuProvider,
+    ColorPickerDialogListener {
 
     private val requestCodeBgLight = 121
     private val requestCodeBgDark = 122
+
+    /** 正在等待自定义颜色的栏位前景色键(白天/夜间各一个)。 */
+    private var pendingBarForegroundKey: String? = null
     private val selectImage = registerForActivityResult(HandleFileContract()) {
         it.uri?.let { uri ->
             when (it.requestCode) {
@@ -142,6 +150,10 @@ class ThemeConfigFragment : PreferenceFragment(),
         activity?.setTitle(R.string.theme_setting)
         listView.setEdgeEffectColor(primaryColor)
         activity?.addMenuProvider(this, viewLifecycleOwner)
+        // 进程被杀后重建: 取色器 dialog 会由 FragmentManager 自动恢复,
+        // 但监听器不随状态保存, 需按 tag 找回重新挂上(与 ColorPreference 的既有约定一致)。
+        (childFragmentManager.findFragmentByTag(BAR_FOREGROUND_TAG) as? ColorPickerDialog)
+            ?.setColorPickerDialogListener(this)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -208,6 +220,9 @@ class ThemeConfigFragment : PreferenceFragment(),
             PreferKey.bgImageN -> {
                 upPreferenceSummary(key, getPrefString(key))
             }
+
+            PreferKey.cBForeground -> upBarForegroundSummary(PreferKey.cBForeground)
+            PreferKey.cNBForeground -> upBarForegroundSummary(PreferKey.cNBForeground)
         }
 
     }
@@ -249,6 +264,8 @@ class ThemeConfigFragment : PreferenceFragment(),
 
             PreferKey.bgImage -> selectBgAction(false)
             PreferKey.bgImageN -> selectBgAction(true)
+            PreferKey.cBForeground -> selectBarForegroundAction(PreferKey.cBForeground)
+            PreferKey.cNBForeground -> selectBarForegroundAction(PreferKey.cNBForeground)
             "themeList" -> ThemeListDialog().show(childFragmentManager, "themeList")
             PreferKey.bottomBarSkin -> startActivity<BottomBarSkinActivity>()
             "saveDayTheme",
@@ -263,6 +280,84 @@ class ThemeConfigFragment : PreferenceFragment(),
             }
         }
         return super.onPreferenceTreeClick(preference)
+    }
+
+    /**
+     * 栏位文字与图标颜色的四选一: 自动 / 深色 / 浅色 / 自定义。
+     *
+     * 「自动」写回哨兵值 [PreferKey.barForegroundAuto], 让
+     * [io.legado.app.lib.theme.barForegroundColor] 走"按栏位底色反推"的默认分支;
+     * 另外三项写具体颜色。选「自定义」时再弹系统取色器, 结果在 [onColorSelected] 落地。
+     */
+    private fun selectBarForegroundAction(preferKey: String) {
+        val isNight = preferKey == PreferKey.cNBForeground
+        val actions = arrayListOf(
+            getString(R.string.bar_foreground_auto),
+            getString(R.string.bar_foreground_dark),
+            getString(R.string.bar_foreground_light),
+            getString(R.string.bar_foreground_custom)
+        )
+        context?.selector(items = actions) { _, i ->
+            when (i) {
+                0 -> {
+                    putPrefInt(preferKey, PreferKey.barForegroundAuto)
+                    upBarForegroundSummary(preferKey)
+                    upTheme(isNight)
+                }
+
+                1 -> {
+                    putPrefInt(preferKey, Color.BLACK)
+                    upBarForegroundSummary(preferKey)
+                    upTheme(isNight)
+                }
+
+                2 -> {
+                    putPrefInt(preferKey, Color.WHITE)
+                    upBarForegroundSummary(preferKey)
+                    upTheme(isNight)
+                }
+
+                3 -> {
+                    pendingBarForegroundKey = preferKey
+                    val current = getPrefInt(preferKey, Color.BLACK)
+                        .takeIf { it != PreferKey.barForegroundAuto } ?: Color.BLACK
+                    ColorPickerDialog.newBuilder()
+                        .setColor(current)
+                        .setShowAlphaSlider(false)
+                        .setDialogType(ColorPickerDialog.TYPE_PRESETS)
+                        .create()
+                        .also { dialog ->
+                            dialog.setColorPickerDialogListener(this)
+                            // Fragment 里不能用 Builder.show(FragmentActivity), 走项目统一入口。
+                            // tag 必须与 onViewCreated 里找回实例用的 BAR_FOREGROUND_TAG 一致。
+                            dialog.show(childFragmentManager, BAR_FOREGROUND_TAG)
+                        }
+                }
+            }
+        }
+    }
+
+    override fun onColorSelected(dialogId: Int, @ColorInt color: Int) {
+        val key = pendingBarForegroundKey ?: return
+        pendingBarForegroundKey = null
+        putPrefInt(key, color)
+        upBarForegroundSummary(key)
+        upTheme(key == PreferKey.cNBForeground)
+    }
+
+    override fun onDialogDismissed(dialogId: Int) {
+        pendingBarForegroundKey = null
+    }
+
+    /** 刷新设置项副标题: 自动 / 深色 / 浅色 / 具体色值。 */
+    private fun upBarForegroundSummary(preferKey: String) {
+        val preference = findPreference<Preference>(preferKey) ?: return
+        preference.summary = when (val color = getPrefInt(preferKey, PreferKey.barForegroundAuto)) {
+            PreferKey.barForegroundAuto -> getString(R.string.bar_foreground_auto)
+            Color.BLACK -> getString(R.string.bar_foreground_dark)
+            Color.WHITE -> getString(R.string.bar_foreground_light)
+            else -> String.format("#%06X", 0xFFFFFF and color)
+        }
     }
 
     @SuppressLint("InflateParams")
@@ -412,6 +507,10 @@ class ThemeConfigFragment : PreferenceFragment(),
                 appCtx.toastOnUi(it.localizedMessage)
             }
         }
+    }
+
+    companion object {
+        private const val BAR_FOREGROUND_TAG = "bar-foreground-color-picker"
     }
 
 }

@@ -19,7 +19,7 @@ import io.legado.app.help.book.isPdf
 import io.legado.app.help.book.isLocalTxt
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.toc.rule.TxtTocRuleDialog
 import io.legado.app.ui.file.HandleFileContract
@@ -81,7 +81,7 @@ class TocActivity : VMBaseActivity<ActivityChapterListBinding, TocViewModel>(),
         this.menu = menu
         val search = menu.findItem(R.id.menu_search)
         searchView = (search.actionView as SearchView).apply {
-            applyTint(primaryTextColor)
+            applyTint(barForegroundColor)
             maxWidth = resources.displayMetrics.widthPixels
             onActionViewCollapsed()
             setOnCloseListener {

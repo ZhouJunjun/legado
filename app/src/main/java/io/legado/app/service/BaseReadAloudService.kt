@@ -8,15 +8,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 import android.media.AudioManager
 import android.net.wifi.WifiManager
-import android.os.Bundle
 import android.os.PowerManager
-import android.support.v4.media.MediaMetadataCompat
-import android.support.v4.media.session.MediaSessionCompat
-import android.support.v4.media.session.PlaybackStateCompat
 import android.telephony.PhoneStateListener
 import android.telephony.TelephonyManager
 import androidx.annotation.CallSuper
@@ -42,17 +36,14 @@ import io.legado.app.help.book.readSimulating
 import io.legado.app.help.book.simulatedTotalChapterNum
 import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
-import io.legado.app.help.glide.ImageLoader
 import io.legado.app.lib.permission.Permissions
 import io.legado.app.lib.permission.PermissionsCompat
 import io.legado.app.model.ReadAloud
 import io.legado.app.model.ReadBook
-import io.legado.app.receiver.MediaButtonReceiver
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.page.entities.TextChapter
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
 import io.legado.app.utils.activityPendingIntent
-import io.legado.app.utils.broadcastPendingIntent
 import io.legado.app.utils.getPrefBoolean
 import io.legado.app.utils.observeSharedPreferences
 import io.legado.app.utils.postEvent
@@ -67,7 +58,6 @@ import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import splitties.init.appCtx
 import splitties.systemservices.audioManager
 import splitties.systemservices.notificationManager
 import splitties.systemservices.powerManager
@@ -243,9 +233,6 @@ abstract class BaseReadAloudService : BaseService(),
     private val mFocusRequest: AudioFocusRequestCompat by lazy {
         MediaHelp.buildAudioFocusRequestCompat(this)
     }
-    private val mediaSessionCompat by lazy {
-        MediaSessionCompat(this, "readAloud")
-    }
     private val phoneStateListener by lazy {
         ReadAloudPhoneStateListener()
     }
@@ -276,8 +263,6 @@ abstract class BaseReadAloudService : BaseService(),
     private var readAloudJob: Coroutine<*>? = null
     private val readAloudGeneration = AtomicLong()
     private var upNotificationJob: Coroutine<*>? = null
-    private var cover: Bitmap =
-        BitmapFactory.decodeResource(appCtx.resources, R.drawable.icon_read_book)
     var pageChanged = false
     private var toLast = false
     var paragraphStartPos = 0
@@ -313,29 +298,11 @@ abstract class BaseReadAloudService : BaseService(),
         chapterToStop = 0
         restoreReadAloudFollow()
         observeLiveBus()
-        initMediaSession()
         initBroadcastReceiver()
         initPhoneStateListener()
-        upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING)
         setTimer(AppConfig.ttsTimer)
         if (AppConfig.ttsTimer > 0) {
             toastOnUi("朗读定时 ${AppConfig.ttsTimer} 分钟")
-        }
-        execute {
-            val book = ReadBook.book
-            ImageLoader
-                .loadBitmap(
-                    this@BaseReadAloudService,
-                    book?.getDisplayCover(),
-                    book?.getCoverSourceOrigin(),
-                )
-                .submit()
-                .get()
-        }.onSuccess {
-            if (it.width > 16 && it.height > 16) {
-                cover = it
-                upReadAloudNotification()
-            }
         }
     }
 
@@ -437,8 +404,6 @@ abstract class BaseReadAloudService : BaseService(),
         unregisterReceiver(broadcastReceiver)
         postEvent(EventBus.ALOUD_STATE, Status.STOP)
         notificationManager.cancel(NotificationId.ReadAloudService)
-        upMediaSessionPlaybackState(PlaybackStateCompat.STATE_STOPPED)
-        mediaSessionCompat.release()
         unregisterPhoneStateListener(phoneStateListener)
         upNotificationJob?.invokeOnCompletion {
             notificationManager.cancel(NotificationId.ReadAloudService)
@@ -619,7 +584,6 @@ abstract class BaseReadAloudService : BaseService(),
         needResumeOnAudioFocusGain = false
         needResumeOnCallStateIdle = false
         upReadAloudNotification()
-        upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING)
         postEvent(EventBus.ALOUD_STATE, Status.PLAY)
     }
 
@@ -633,7 +597,6 @@ abstract class BaseReadAloudService : BaseService(),
             abandonFocus()
         }
         upReadAloudNotification()
-        upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PAUSED)
         postEvent(EventBus.ALOUD_STATE, Status.PAUSE)
         doDs()
     }
@@ -650,7 +613,6 @@ abstract class BaseReadAloudService : BaseService(),
         needResumeOnAudioFocusGain = false
         needResumeOnCallStateIdle = false
         upReadAloudNotification()
-        upMediaSessionPlaybackState(PlaybackStateCompat.STATE_PLAYING)
         postEvent(EventBus.ALOUD_STATE, Status.PLAY)
     }
 
@@ -801,97 +763,6 @@ abstract class BaseReadAloudService : BaseService(),
     }
 
     /**
-     * 更新媒体状态
-     *
-     * 位置传 0: 朗读的进度单位是段落序号, 不是时间, 传给系统只会被解释成「播放到 0 秒」,
-     * 并在通知/媒体控件上画出一条没有意义的进度条(用户反馈的「中间那条横条」)。
-     * 配合 [MediaHelp.READ_ALOUD_MEDIA_SESSION_ACTIONS] 去掉 SEEK_TO, 系统不再渲染 seek 控件。
-     * 这里只保留播放状态(播放/暂停)供系统显示正确的按钮。
-     */
-    private fun upMediaSessionPlaybackState(state: Int) {
-        mediaSessionCompat.setPlaybackState(
-            PlaybackStateCompat.Builder()
-                .setActions(MediaHelp.READ_ALOUD_MEDIA_SESSION_ACTIONS)
-                .setState(state, 0L, 0f)
-                // 为系统媒体控件添加定时按钮
-                .addCustomAction(
-                    "ACTION_ADD_TIMER",
-                    getString(R.string.set_timer),
-                    R.drawable.ic_time_add_24dp
-                )
-                // 关闭朗读: 加在定时之后(用户 2026-09-24 要求「加到最后面」)。
-                // 复用一个自定义 action 而非 onStop(): 各厂商的系统媒体控件对
-                // 标准 stop 按钮的呈现并不一致(很多只显示播放/暂停/上一下一首),
-                // 自定义项才会稳定出现在展开后的按钮列表里。
-                .addCustomAction(
-                    "ACTION_CLOSE_ALOUD",
-                    getString(R.string.close_read_aloud),
-                    R.drawable.ic_baseline_close
-                )
-                .build()
-        )
-    }
-
-    /**
-     * 初始化MediaSession, 注册多媒体按钮
-     */
-    @SuppressLint("UnspecifiedImmutableFlag")
-    private fun initMediaSession() {
-        mediaSessionCompat.setFlags(
-            MediaSessionCompat.FLAG_HANDLES_MEDIA_BUTTONS or
-                    MediaSessionCompat.FLAG_HANDLES_TRANSPORT_CONTROLS
-        )
-        mediaSessionCompat.setCallback(object : MediaSessionCompat.Callback() {
-            override fun onPlay() {
-                resumeReadAloud()
-            }
-
-            override fun onPause() {
-                pauseReadAloud()
-            }
-
-            override fun onSkipToNext() {
-                if (getPrefBoolean("mediaButtonPerNext", false)) {
-                    nextChapter()
-                } else {
-                    nextP()
-                }
-            }
-
-            override fun onSkipToPrevious() {
-                if (getPrefBoolean("mediaButtonPerNext", false)) {
-                    prevChapter()
-                } else {
-                    prevP()
-                }
-            }
-
-            override fun onStop() {
-                stopSelf()
-            }
-
-            override fun onCustomAction(action: String, extras: Bundle?) {
-                when (action) {
-                    "ACTION_ADD_TIMER" -> addTimer()
-                    // 系统媒体控件上的「关闭朗读」。走 stopSelf() 与通知栏的停止按钮
-                    // (IntentAction.stop) 同一条路, 保证两条入口的收尾行为完全一致。
-                    "ACTION_CLOSE_ALOUD" -> stopSelf()
-                }
-            }
-
-            override fun onMediaButtonEvent(mediaButtonEvent: Intent): Boolean {
-                return MediaButtonReceiver.handleIntent(
-                    this@BaseReadAloudService, mediaButtonEvent
-                )
-            }
-        })
-        mediaSessionCompat.setMediaButtonReceiver(
-            broadcastPendingIntent<MediaButtonReceiver>(Intent.ACTION_MEDIA_BUTTON)
-        )
-        mediaSessionCompat.isActive = true
-    }
-
-    /**
      * 朗读标题: 有状态(暂停/定时/按章停止)时 "<状态>: 书名", 无状态时只用书名。
      * 下拉通知与系统媒体控件共用同一函数, 保证两处显示一致, 且不会出现前导分隔符/空格。
      */
@@ -904,21 +775,6 @@ abstract class BaseReadAloudService : BaseService(),
             else -> ""
         }
         return if (prefix.isEmpty()) bookName else "$prefix: $bookName"
-    }
-
-    private fun upMediaMetadata() {
-        val nTitle = buildReadAloudTitle()
-        val metadata = MediaMetadataCompat.Builder()
-            .putBitmap(MediaMetadataCompat.METADATA_KEY_ART, cover)
-            .putText(MediaMetadataCompat.METADATA_KEY_TITLE,
-                textChapter?.title ?: ReadBook.curTextChapter?.title.orEmpty())
-            .putText(MediaMetadataCompat.METADATA_KEY_ARTIST, nTitle)
-            .putText(MediaMetadataCompat.METADATA_KEY_ALBUM,
-                aloudBook?.author ?: ReadBook.book?.author.orEmpty()
-            )
-//            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, nowSpeak.toLong())
-            .build()
-        mediaSessionCompat.setMetadata(metadata)
     }
 
     /**
@@ -964,7 +820,6 @@ abstract class BaseReadAloudService : BaseService(),
     private fun upReadAloudNotification() {
         upNotificationJob = execute {
             try {
-                upMediaMetadata()
                 val notification = createNotification()
                 notificationManager.notify(NotificationId.ReadAloudService, notification.build())
             } catch (e: Exception) {
@@ -981,8 +836,8 @@ abstract class BaseReadAloudService : BaseService(),
             .Builder(this, AppConst.channelIdReadAloud)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
-            .setCategory(NotificationCompat.CATEGORY_TRANSPORT)
-            .setSmallIcon(R.drawable.ic_volume_up)
+            .setCategory(NotificationCompat.CATEGORY_PROGRESS)
+            .setSmallIcon(R.drawable.ic_read_aloud)
             .setSubText(getString(R.string.read_aloud))
             .setOngoing(true)
             .setOnlyAlertOnce(true)
@@ -1001,10 +856,11 @@ abstract class BaseReadAloudService : BaseService(),
             .setSound(null)
             .setLights(0, 0, 0)
             // 显式声明「不显示进度条」: max=0 且 indeterminate=false 时系统的 hasProgress() 为 false,
-            // 不会渲染进度条。配合 upMediaSessionPlaybackState 里不做 seek 定位, 双保险。
+            // 不会渲染进度条。
             .setProgress(0, 0, false)
-        builder.setLargeIcon(cover)
-        // 按钮定义：上一章、播放、停止、下一章、定时
+        // 按钮定义（与图2 一致）：上一章、播放/暂停、停止、下一章、定时
+        // 索引 0..4 依次对应上述五项; 折叠态(图3)由 MediaStyle.setShowActionsInCompactView(1,2,4)
+        // 取「暂停/停止/定时」, 索引 0 与 3 刻意跳过, 使上/下一章不占折叠槽位。
         builder.addAction(
             R.drawable.ic_skip_previous,
             getString(R.string.previous_chapter),
@@ -1024,24 +880,25 @@ abstract class BaseReadAloudService : BaseService(),
             )
         }
         builder.addAction(
-            R.drawable.ic_skip_next,
-            getString(R.string.next_chapter),
-            aloudServicePendingIntent(IntentAction.next)
-        )
-        builder.addAction(
             R.drawable.ic_stop_black_24dp,
             getString(R.string.stop),
             aloudServicePendingIntent(IntentAction.stop)
+        )
+        builder.addAction(
+            R.drawable.ic_skip_next,
+            getString(R.string.next_chapter),
+            aloudServicePendingIntent(IntentAction.next)
         )
         builder.addAction(
             R.drawable.ic_time_add_24dp,
             getString(R.string.set_timer),
             aloudServicePendingIntent(IntentAction.addTimer)
         )
+        // 只保留 MediaStyle 的折叠态索引能力, 不绑定 MediaSession
+        // (不写 EXTRA_MEDIA_SESSION ⇒ 通知不应被系统识别为媒体卡片)
         builder.setStyle(
             androidx.media.app.NotificationCompat.MediaStyle()
-                .setShowActionsInCompactView(0, 1, 2)
-                .setMediaSession(mediaSessionCompat.sessionToken)
+                .setShowActionsInCompactView(1, 2, 4)
         )
         return builder
     }
@@ -1052,7 +909,6 @@ abstract class BaseReadAloudService : BaseService(),
     override fun startForegroundNotification() {
         execute {
             try {
-                upMediaMetadata()
                 val notification = createNotification()
                 startForeground(NotificationId.ReadAloudService, notification.build())
             } catch (e: Exception) {

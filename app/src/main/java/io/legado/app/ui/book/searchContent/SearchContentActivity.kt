@@ -22,7 +22,7 @@ import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.getPrimaryTextColor
-import io.legado.app.lib.theme.primaryTextColor
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.ui.widget.recycler.UpLinearLayoutManager
 import io.legado.app.ui.widget.recycler.VerticalDivider
 import io.legado.app.utils.ColorUtils
@@ -111,7 +111,7 @@ class SearchContentActivity :
     }
 
     private fun initSearchView(requestFocus: Boolean) {
-        searchView.applyTint(primaryTextColor)
+        searchView.applyTint(barForegroundColor)
         searchView.isSubmitButtonEnabled = true
         searchView.queryHint = getString(R.string.search)
         if (requestFocus) searchView.isIconified = false
