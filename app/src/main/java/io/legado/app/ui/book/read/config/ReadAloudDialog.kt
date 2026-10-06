@@ -135,6 +135,10 @@ class ReadAloudDialog : BaseDialogFragment(R.layout.dialog_read_aloud),
             ivEngine.setColorFilter(textColor)
             tvEngineName.setTextColor(textColor)
             ivEngineArrow.setColorFilter(textColor)
+            // 第 3 行右侧的【朗读设置】齿轮: 漏在着色清单之外, 会退回布局里写死的
+            // @color/primaryText(#de000000 近黑), 与同排其它图标/文字的「弹框文字与
+            // 图标颜色」色差可见(用户 2026-10-06 截图实测: 齿轮 #1C201F, 其余 #444444)。
+            ivAloudSettings.setColorFilter(textColor)
             ivAloudBook.setColorFilter(textColor)
             tvAloudBookName.setTextColor(textColor)
             tvAloudBookChapter.setTextColor(textColor)

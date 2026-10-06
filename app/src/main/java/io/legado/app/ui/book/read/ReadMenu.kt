@@ -81,8 +81,16 @@ class ReadMenu @JvmOverloads constructor(
     val hasPanel: Boolean get() = curPanel != PANEL_NONE
 
     /**
+     * 面板底边与底栏按钮行之间保留的留白(见 [panelOffset])。
+     *
+     * 用户 2026-10-06: 面板底边原本紧贴按钮行上沿, 按钮像"顶"着面板, 上下太挤;
+     * 这里让出 8dp, 面板随之再上抬同值, 按钮上方就有一段呼吸空间。
+     */
+    private val PANEL_BOTTOM_GAP = 8.dpToPx()
+
+    /**
      * 面板要向上抬的偏移量 —— 面板底边落在**按钮行(ll_bottom_buttons)的上沿**,
-     * 正好压住被隐藏的进度行空档。
+     * 并再向上让出 [PANEL_BOTTOM_GAP], 使面板底边与按钮行之间留出一段留白。
      *
      * 推导(全部用屏幕坐标, 不依赖窗口内边距的归属):
      *   · 面板是独立窗口, 其窗口底边默认落在**导航栏之上**(这正是原来朗读面板贴底时
@@ -91,11 +99,16 @@ class ReadMenu @JvmOverloads constructor(
      *   · 面板出现时进度行只置 INVISIBLE(仍占位), 若面板底边停在 ll_bottom_bg.top,
      *     进度行的空档会露成一条空带(用户 2026-09-24 截图圈出)。
      *     ⇒ yAdj = ll_bottom_bg.bottom - ll_bottom_buttons.top = **按钮行高度**。
+     *   · 2026-10-06 再补 [PANEL_BOTTOM_GAP]: 面板底边从"正好压住按钮行上沿"改为
+     *     "在按钮行上沿之上再留 8dp"。这段间隙落在进度行(invisible, 仍占位)的空档里,
+     *     露出的是底栏(ll_bottom_bg)自身的背景色 ⇒ 观感是底栏顶部多了一点留白,
+     *     而不是面板与底栏之间裂开一道缝。
      *
+     * 🔴 只影响**面板显示时**的抬升量, 不改底栏任何布局 —— 面板不显示时菜单外观分毫不动。
      * 进度行/FAB 行在面板出现时只置 INVISIBLE(仍占位), 高度稳定, 偏移量不随开关跳变。
      */
     fun panelOffset(): Int =
-        binding.llBottomButtons.height
+        binding.llBottomButtons.height + PANEL_BOTTOM_GAP
 
     private val menuTopIn: Animation by lazy {
         loadAnimation(context, R.anim.anim_readbook_top_in)
