@@ -26,7 +26,7 @@ import io.legado.app.databinding.ItemPathPickerBinding
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.getPrimaryDisabledTextColor
-import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.ui.file.HandleFileContract.Companion.FILE
 import io.legado.app.ui.file.utils.FilePickerIcon
@@ -207,7 +207,9 @@ class FilePickerDialog : BaseDialogFragment(R.layout.dialog_file_chooser),
     }
 
     inner class FileAdapter : RecyclerAdapter<File, ItemFilePickerBinding>(requireContext()) {
-        private val primaryTextColor = context.getPrimaryTextColor(!AppConfig.isNightTheme)
+        // 这是弹框, 列表项文字走「弹框文字与图标颜色」(原来按 primaryText 资源取,
+        // 与用户自定义的弹框前景色脱节)。
+        private val primaryTextColor = context.dialogForegroundColor
         private val disabledTextColor = context.getPrimaryDisabledTextColor(!AppConfig.isNightTheme)
         private val upIcon = ConvertUtils.toDrawable(FilePickerIcon.getUpDir())!!
         private val folderIcon = ConvertUtils.toDrawable(FilePickerIcon.getFolder())!!

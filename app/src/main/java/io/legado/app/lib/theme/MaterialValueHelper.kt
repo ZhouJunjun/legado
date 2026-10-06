@@ -152,12 +152,39 @@ val Context.barForegroundColor: Int
 val Context.barSecondaryForegroundColor: Int
     get() {
         val custom = ThemeStore.barForegroundColorOrNull(this)
-        if (custom != null) return ColorUtils.withAlpha(custom, 0.65f)
+        if (custom != null) return ColorUtils.withAlpha(custom, SECONDARY_FOREGROUND_ALPHA)
         return ContextCompat.getColor(
             this,
             if (isTopBarLight) R.color.md_light_secondary else R.color.md_dark_secondary
         )
     }
+
+/**
+ * 弹框(弹出菜单 / AlertDialog / 半屏面板 / tip)的**次要前景色** —— 弹框内的副标题/摘要等弱化文字。
+ *
+ * 🔴 规则由用户 2026-09-30 指定: 弱化文字按**对应的前景色降 alpha** 派生(65%),
+ * 与 [barSecondaryForegroundColor] 完全同规则 —— 这样改「弹框文字与图标颜色」时,
+ * 副标题会跟着同色系变浅, 而不是走另一套灰阶(与主文字串色)。
+ *
+ * 取值优先级:
+ * 1. 用户手动指定的弹框前景色 → 取其 65% alpha(浅一档的同色);
+ * 2. 未指定(自动)时取弹框前景色的默认兜底 [barBorderColor] 的 65% alpha。
+ */
+@get:ColorInt
+val Context.dialogSecondaryForegroundColor: Int
+    get() {
+        val custom = ThemeStore.dialogForegroundColorOrNull(this)
+        if (custom != null) return ColorUtils.withAlpha(custom, SECONDARY_FOREGROUND_ALPHA)
+        return ColorUtils.withAlpha(barBorderColor, SECONDARY_FOREGROUND_ALPHA)
+    }
+
+/**
+ * 弱化文字(次要前景色)相对其主前景色的透明度系数。
+ *
+ * [Context.barSecondaryForegroundColor] 与 [Context.dialogSecondaryForegroundColor] 共用,
+ * 改这一个值两条线一起变 —— 避免"栏位次要色改了、弹框次要色没跟上"的漂移。
+ */
+private const val SECONDARY_FOREGROUND_ALPHA = 0.65f
 
 val Context.transparentNavBar: Boolean
     get() = ThemeStore.transparentNavBar(this)

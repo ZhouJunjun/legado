@@ -54,7 +54,10 @@ open class StrokeTextView(context: Context, attrs: AttributeSet?) :
             }
             panelButtonStyle -> {
                 // 设置面板方形按钮: 淡灰底 + 无边框, 选中态用 accent 底。
-                val isLight = ColorUtils.isColorLight(context.bottomBackground)
+                // 文字色走「弹框文字与图标颜色」—— 这些按钮只出现在阅读页的弹框面板里
+                // (dialog_read_book_style / dialog_read_bg_text / dialog_read_padding),
+                // 面板底色是「弹框背景色」, 前景必须跟它同源(用户 2026-09-30)。
+                // 之前按栏位底色反推, 栏位底是深色时按钮文字整片发白。
                 background = Selector.shapeBuild()
                     .setCornerRadius(radius)
                     .setDefaultBgColor(context.buttonSurfaceColor)
@@ -64,7 +67,7 @@ open class StrokeTextView(context: Context, attrs: AttributeSet?) :
                     .create()
                 setTextColor(
                     Selector.colorBuild()
-                        .setDefaultColor(context.getPrimaryTextColor(isLight))
+                        .setDefaultColor(context.dialogForegroundColor)
                         .setSelectedColor(
                             if (ColorUtils.isColorLight(context.accentColor)) {
                                 android.graphics.Color.BLACK
@@ -77,18 +80,19 @@ open class StrokeTextView(context: Context, attrs: AttributeSet?) :
                 )
             }
             isBottomBackground -> {
-                val isLight = ColorUtils.isColorLight(context.bottomBackground)
+                // 同上: 带描边的面板文字按钮(如边距面板的 ± 数值按钮)也在弹框面板里。
+                val textColor = context.dialogForegroundColor
                 background = Selector.shapeBuild()
                     .setCornerRadius(radius)
                     .setStrokeWidth(1.dpToPx())
                     .setDisabledStrokeColor(context.getCompatColor(R.color.md_grey_500))
-                    .setDefaultStrokeColor(context.getPrimaryTextColor(isLight))
+                    .setDefaultStrokeColor(textColor)
                     .setSelectedStrokeColor(context.accentColor)
                     .setPressedBgColor(context.getCompatColor(R.color.transparent30))
                     .create()
                 setTextColor(
                     Selector.colorBuild()
-                        .setDefaultColor(context.getPrimaryTextColor(isLight))
+                        .setDefaultColor(textColor)
                         .setSelectedColor(context.accentColor)
                         .setDisabledColor(context.getCompatColor(R.color.md_grey_500))
                         .create()

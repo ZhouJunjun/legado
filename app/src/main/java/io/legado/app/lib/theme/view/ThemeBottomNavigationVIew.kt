@@ -19,12 +19,11 @@ import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.barBorderBackground
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.elevation
-import io.legado.app.lib.theme.getSecondaryTextColor
 import io.legado.app.lib.theme.transparentNavBar
 import io.legado.app.ui.widget.text.BadgeView
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
 
 class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
@@ -48,8 +47,10 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
             background = context.barBorderBackground(bgColor, atTop = true)
             elevation = context.elevation
         }
-        val textIsDark = ColorUtils.isColorLight(bgColor)
-        val textColor = context.getSecondaryTextColor(textIsDark)
+        // 未选中项 = 「顶栏底栏文字与图标颜色」(用户 2026-09-30 bug9: 底栏非选中图标应用该颜色)。
+        // 原来取 getSecondaryTextColor(按栏位底色反推的灰), 既没接上用户自定义色,
+        // 栏位底是深色时还会反推出白色 —— 与旁边的选中态(accent)完全脱节。
+        val textColor = context.barForegroundColor
         val colorStateList = Selector.colorBuild()
             .setDefaultColor(textColor)
             .setSelectedColor(ThemeStore.accentColor(context))

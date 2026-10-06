@@ -13,10 +13,8 @@ import androidx.core.view.isVisible
 import androidx.preference.PreferenceViewHolder
 import io.legado.app.R
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
-import io.legado.app.lib.theme.getSecondaryTextColor
-import io.legado.app.utils.ColorUtils
+import io.legado.app.lib.theme.dialogForegroundColor
+import io.legado.app.lib.theme.dialogSecondaryForegroundColor
 import splitties.views.onLongClick
 import kotlin.math.roundToInt
 
@@ -59,11 +57,14 @@ open class Preference(context: Context, attrs: AttributeSet) :
                 tvSummary.isGone = summary.isNullOrEmpty()
             }
             if (isBottomBackground && !viewHolder.itemView.isInEditMode) {
-                val isLight = ColorUtils.isColorLight(context.bottomBackground)
-                val pTextColor = context.getPrimaryTextColor(isLight)
-                tvTitle?.setTextColor(pTextColor)
-                val sTextColor = context.getSecondaryTextColor(isLight)
-                tvSummary?.setTextColor(sTextColor)
+                // 🔴 这些 Preference 全部落在**弹框 / 半屏面板**里(见 pref_config_read.xml /
+                // pref_config_aloud.xml 的 `app:isBottomBackground`), 所以前景色走
+                // 「弹框文字与图标颜色」, 不能按栏位底色反推 —— 用户 2026-09-30 的规格:
+                // 改「顶栏底栏背景色」不再波及弹框, 弹框有自己的文字/图标颜色。
+                // 之前按 bottomBackground 反推, 栏位底是深色时整片设置面板都是白字。
+                tvTitle?.setTextColor(context.dialogForegroundColor)
+                // 副标题/摘要 = 弱化文字, 按 65% alpha 派生浅一档(用户 2026-09-30 指定规则)。
+                tvSummary?.setTextColor(context.dialogSecondaryForegroundColor)
             }
             val iconView = viewHolder.findViewById(R.id.preference_icon)
             if (iconView is ImageView) {

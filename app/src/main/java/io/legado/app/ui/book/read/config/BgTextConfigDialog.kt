@@ -34,13 +34,12 @@ import io.legado.app.lib.dialogs.selector
 import io.legado.app.lib.theme.borderedDialogBackground
 import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.lib.theme.dialogForegroundColor
-import io.legado.app.lib.theme.getSecondaryTextColor
+import io.legado.app.lib.theme.dialogSecondaryForegroundColor
 import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.ui.book.read.page.provider.ChapterProvider
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.FileUtils
 import io.legado.app.utils.GSON
@@ -131,11 +130,10 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
     }
 
     private fun initView() = binding.run {
-        // isLight 仍要保留: 次要文字色按「弹框底色的明暗」推导, 否则下拉项/副标题会串色。
-        val bg = requireContext().dialogBackground
-        val isLight = ColorUtils.isColorLight(bg)
         primaryTextColor = requireContext().dialogForegroundColor
-        secondaryTextColor = requireContext().getSecondaryTextColor(isLight)
+        // 副标题/下拉项属弱化文字: 按弹框前景色降 65% alpha 派生浅一档(用户 2026-09-30 指定规则),
+        // 比"按弹框底色明暗取灰阶"更稳 —— 灰阶在浅紫底上会串色。
+        secondaryTextColor = requireContext().dialogSecondaryForegroundColor
         // 顶部 1dp 实心灰线(无圆角), 与正文区分开
         rootView.background = requireContext().borderedDialogBackground
         tvNameTitle.setTextColor(primaryTextColor)
@@ -177,7 +175,7 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
                 ): View {
                     val view = super.getDropDownView(position, convertView, parent)
                     if (view is android.widget.TextView) {
-                        view.setBackgroundColor(bg) // 设置下拉列表项的背景色
+                        view.setBackgroundColor(requireContext().dialogBackground) // 设置下拉列表项的背景色
                         view.setTextColor(primaryTextColor) // 设置下拉列表项的文本颜色
                     }
                     return view

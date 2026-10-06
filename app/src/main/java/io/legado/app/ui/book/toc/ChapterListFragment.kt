@@ -22,8 +22,8 @@ import io.legado.app.help.book.isLocal
 import io.legado.app.help.book.isPdf
 import io.legado.app.help.book.isVideo
 import io.legado.app.help.book.simulatedTotalChapterNum
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.localBook.PdfFile
 import io.legado.app.model.localBook.EpubFile
 import io.legado.app.model.localBook.EpubTocNode
@@ -31,7 +31,6 @@ import io.legado.app.model.localBook.PdfOutline
 import io.legado.app.model.localBook.PdfOutlineNode
 import io.legado.app.ui.widget.recycler.UpLinearLayoutManager
 import io.legado.app.ui.widget.recycler.VerticalDivider
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarPadding
 import io.legado.app.utils.observeEvent
 import io.legado.app.utils.viewbindingdelegate.viewBinding
@@ -74,7 +73,10 @@ class ChapterListFragment : VMBaseFragment<TocViewModel>(R.layout.fragment_chapt
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) = binding.run {
         viewModel.chapterListCallBack = this@ChapterListFragment
         val background = bottomBackground
-        val foreground = requireContext().getPrimaryTextColor(ColorUtils.isColorLight(background))
+        // 目录页底栏(章节信息 + 上下三角)是**栏位**: 前景色走
+        // 「顶栏底栏文字与图标颜色」(用户 2026-09-30 要求"再检查同类所有顶栏、底栏的图标颜色")。
+        // 原来按栏位底色反推, 栏位底是深蓝时整条底栏文字与三角都是白的。
+        val foreground = requireContext().barForegroundColor
         llChapterBaseInfo.setBackgroundColor(background)
         tvCurrentChapterInfo.setTextColor(foreground)
         ivChapterTop.setColorFilter(foreground, PorterDuff.Mode.SRC_IN)

@@ -23,6 +23,7 @@ import io.legado.app.base.adapter.RecyclerAdapter
 import io.legado.app.databinding.ItemPopupActionBinding
 import io.legado.app.databinding.PopupActionBinding
 import io.legado.app.lib.dialogs.SelectItem
+import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.lib.theme.secondaryDisabledTextColor
 import io.legado.app.utils.applyMd3PopupStyle
 import io.legado.app.utils.dpToPx
@@ -253,7 +254,11 @@ class PopupAction(private val context: Context) :
                 val textColor = when {
                     !enabled -> context.secondaryDisabledTextColor
                     item.value in dangerValues -> context.getCompatColor(R.color.error)
-                    else -> context.getCompatColor(R.color.primaryText)
+                    // 这个弹层是「设置弹框」(首页/阅读菜单/目录页三处顶栏共用), 底色已是
+                    // 「弹框背景色」, 文字与图标必须一起走「弹框文字与图标颜色」。
+                    // 原来取 R.color.primaryText(#de000000), 在浅紫弹框底上是很深的近黑色
+                    // (用户 2026-09-30 反馈: 文字/图标颜色不对)。
+                    else -> context.dialogForegroundColor
                 }
                 textView.setTextColor(textColor)
                 bindLeadingIcon(ivIcon, item, textColor)

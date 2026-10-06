@@ -15,9 +15,8 @@ import androidx.appcompat.widget.SearchView
 import androidx.core.view.forEach
 import io.legado.app.R
 import io.legado.app.constant.Theme
-import io.legado.app.lib.theme.backgroundColor
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.barForegroundColor
+import io.legado.app.lib.theme.dialogForegroundColor
 import java.lang.reflect.Method
 
 @SuppressLint("RestrictedApi")
@@ -30,7 +29,10 @@ fun Menu.applyTint(
     if (menu is MenuBuilder) {
         menu.setOptionalIconsVisible(true)
     }
-    val defaultTextColor = context.getCompatColor(R.color.primaryText)
+    // 收进溢出菜单的项最终显示在**弹框**里(底色 = 弹框背景色), 所以用弹框前景色;
+    // 直接显示在栏位上的项用栏位前景色。两者以前都取 R.color.primaryText,
+    // 栏位前景色接上「顶栏底栏文字与图标颜色」后会串色。
+    val defaultTextColor = context.dialogForegroundColor
     val tintColor = MenuExtensions.getMenuColor(
         context,
         theme,
@@ -52,7 +54,8 @@ fun Menu.applyTint(
 fun Menu.applyOpenTint(context: Context, showIcon: Boolean = true) {
     //展开菜单显示图标
     if (this.javaClass.simpleName.equals("MenuBuilder", ignoreCase = true)) {
-        val defaultTextColor = context.getCompatColor(R.color.primaryText)
+        // 展开后这些项显示在弹框里 → 用「弹框文字与图标颜色」。
+        val defaultTextColor = context.dialogForegroundColor
         kotlin.runCatching {
             var method: Method =
                 this.javaClass.getDeclaredMethod("setOptionalIconsVisible", java.lang.Boolean.TYPE)
@@ -71,7 +74,7 @@ fun Menu.applyOpenTint(context: Context, showIcon: Boolean = true) {
             }
         }
     } else if (this.javaClass.simpleName.equals("SubMenuBuilder", ignoreCase = true)) {
-        val defaultTextColor = context.getCompatColor(R.color.primaryText)
+        val defaultTextColor = context.dialogForegroundColor
         (this as? SubMenuBuilder)?.forEach { item: MenuItem ->
             item.icon?.setTintMutate(defaultTextColor)
         }
@@ -109,16 +112,25 @@ inline fun Menu.transaction(block: (Menu) -> Unit) {
 object MenuExtensions {
 
     /**
-     * 菜单/图标的前景色。
+     * 菜单/图标的前景色 = **栏位前景色**。
      *
-     * 原来非透明分支返回 `context.primaryTextColor` —— 那是**按 primaryColor 推导**的
-     * (`isDarkTheme = isColorLight(primaryColor)`)。该推导成立的前提是"栏底色 == primaryColor",
-     * 但顶栏底色早已改成 `bottomBackground`(浅色), 前提不成立:
-     * 默认主题 primaryColor 是棕色系(偏暗) → 它返回 **白色 #FFFFFFFF**,
-     * 于是栏底改亮了、图标和文字却还是白的(用户反馈的现象)。
+     * 历史坑(两层):
+     * 1. 最早返回 `context.primaryTextColor` —— 按 `primaryColor` 推导
+     *    (`isDarkTheme = isColorLight(primaryColor)`)。该推导成立的前提是"栏底色 == primaryColor",
+     *    但顶栏底色早已改成 `bottomBackground`(浅色), 前提不成立: 默认主题 primaryColor 是
+     *    棕色系(偏暗) → 返回**白色** → 栏底改亮了图标还是白的。
+     * 2. 之后改成按**栏位真实底色**反推(`getPrimaryTextColor(isColorLight(barColor))`),
+     *    解决了"白图标", 但**没接上用户自定义的「顶栏底栏文字与图标颜色」** ——
+     *    栏位底是深蓝时反推出白图标, 而用户指定的是黄色 → 同一顶栏里
+     *    "⋮ 是黄的、? 是白的"(用户 2026-09-30 反馈, bug10)。
      *
-     * 现在改成按**栏位真实底色**判定深浅, 与 [io.legado.app.ui.widget.TitleBar.applyForegroundColor]
-     * 的判据统一, 两个入口不会再互相覆盖出白字。
+     * 现在统一走 [Context.barForegroundColor](用户指定优先, 未指定才按栏位底色反推),
+     * 这是**全库菜单图标的总入口**(BaseActivity / BaseFragment 各自调 [applyTint]),
+     * 改这里所有顶栏、底栏的菜单图标一起对齐。
+     *
+     * @param transparentBar 透明顶栏(露出页面背景色)时为 true。现在**已不影响取色** ——
+     *        [Context.barForegroundColor] 内部按 [Context.topBarBackgroundColor] 自动处理透明栏;
+     *        保留参数只为兼容既有调用点。
      */
     fun getMenuColor(
         context: Context,
@@ -129,12 +141,8 @@ object MenuExtensions {
         return when (theme) {
             Theme.Dark -> context.getCompatColor(R.color.md_white_1000)
             Theme.Light -> context.getCompatColor(R.color.md_black_1000)
-            else -> {
-                // 栏位实际底色: 透明栏露出的是页面背景, 否则是底栏色。
-                val barColor =
-                    if (transparentBar) context.backgroundColor else context.bottomBackground
-                context.getPrimaryTextColor(ColorUtils.isColorLight(barColor))
-            }
+            // 栏位前景色: 用户指定优先, 否则按栏位真实底色(透明栏则是页面背景色)反推。
+            else -> context.barForegroundColor
         }
     }
 

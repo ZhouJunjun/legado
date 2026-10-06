@@ -43,8 +43,8 @@ import io.legado.app.help.config.LocalConfig
 import io.legado.app.lib.dialogs.alert
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.model.BookCover
 import io.legado.app.ui.book.group.GroupSelectDialog
 import io.legado.app.ui.book.info.edit.BookInfoEditActivity
@@ -55,7 +55,6 @@ import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.dialog.PhotoDialog
 import io.legado.app.ui.widget.dialog.WaitDialog
 import io.legado.app.ui.widget.text.ScrollTextView
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.ConvertUtils
 import io.legado.app.utils.FileDoc
 import io.legado.app.utils.GSON
@@ -187,7 +186,9 @@ class BookInfoActivity :
         binding.ivCoverC.setCardBackgroundColor(backgroundColor)
         binding.flAction.setBackgroundColor(bottomBackground)
         binding.vwBg.applyNavigationBarPadding()
-        binding.tvShelf.setTextColor(getPrimaryTextColor(ColorUtils.isColorLight(bottomBackground)))
+        // 底部操作栏是**栏位**("加入书架"按钮就在这条栏上): 前景色走
+        // 「顶栏底栏文字与图标颜色」(用户 2026-09-30: 再检查同类所有顶栏、底栏的图标颜色)。
+        binding.tvShelf.setTextColor(barForegroundColor)
         binding.tvToc.text = getString(R.string.toc_s, getString(R.string.loading))
         viewModel.bookData.observe(this) { showBook(it) }
         viewModel.chapterListData.observe(this) {

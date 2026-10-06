@@ -13,10 +13,9 @@ import io.legado.app.service.BaseReadAloudService
 import io.legado.app.utils.startActivity
 import io.legado.app.ui.book.read.ReadBookActivity
 import io.legado.app.lib.theme.barBorderBackground
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
-import io.legado.app.lib.theme.getSecondaryTextColor
-import io.legado.app.utils.ColorUtils
+import io.legado.app.lib.theme.dialogBackground
+import io.legado.app.lib.theme.dialogForegroundColor
+import io.legado.app.lib.theme.dialogSecondaryForegroundColor
 import kotlin.math.roundToInt
 
 /**
@@ -67,19 +66,23 @@ class AloudMiniBar(
      * 与朗读设置面板(ReadAloudDialog)的取色方式保持一致, 且能跟随换肤。
      */
     private fun applyThemeColors() = binding.run {
-        val bg = context.bottomBackground
-        val isLight = ColorUtils.isColorLight(bg)
-        val primaryText = context.getPrimaryTextColor(isLight)
-        val secondaryText = context.getSecondaryTextColor(isLight)
+        // 迷你条 = 「正在播放信息 tip」, 归**弹框 / tip 体系**(用户 2026-09-30 确认):
+        // 底色 = 「弹框背景色」, 文字与图标 = 「弹框文字与图标颜色」。
+        // 它**不再**跟「顶栏底栏背景色」联动 —— 原来按栏位底色取色, 栏位底是深蓝时
+        // 反推出整条白字白图标, 与浅紫的弹框底色完全不搭(用户 2026-09-30 bug1)。
+        val bg = context.dialogBackground
+        val textColor = context.dialogForegroundColor
+        // 副标题(朗读章节名)属弱化文字: 按 65% alpha 派生浅一档, 与主文字同色系。
+        val subtitleColor = context.dialogSecondaryForegroundColor
         // 上边线 1dp 实心灰: 迷你条夹在书架列表与底栏之间, 需要一条线把自己与列表分开。
         root.background = context.barBorderBackground(bg, atTop = true)
-        tvAloudMiniTitle.setTextColor(primaryText)
-        tvAloudMiniSubtitle.setTextColor(secondaryText)
-        tvAloudMiniPercent.setTextColor(primaryText)
+        tvAloudMiniTitle.setTextColor(textColor)
+        tvAloudMiniSubtitle.setTextColor(subtitleColor)
+        tvAloudMiniPercent.setTextColor(textColor)
         // 图标统一染色: 覆盖 drawable 内的硬编码色(白色暂停/播放、黑色关闭)。
-        ivAloudMiniIcon.setColorFilter(primaryText)
-        ivAloudMiniPlay.setColorFilter(primaryText)
-        ivAloudMiniClose.setColorFilter(primaryText)
+        ivAloudMiniIcon.setColorFilter(textColor)
+        ivAloudMiniPlay.setColorFilter(textColor)
+        ivAloudMiniClose.setColorFilter(textColor)
     }
 
     /**
@@ -105,9 +108,7 @@ class AloudMiniBar(
             if (BaseReadAloudService.pause) R.drawable.ic_play_24dp else R.drawable.ic_pause_24dp
         )
         // setImageResource 之后必须重新染色: 新 drawable 自带硬编码色(纯白), 会覆盖掉 init 时设的 tint。
-        binding.ivAloudMiniPlay.setColorFilter(
-            context.getPrimaryTextColor(ColorUtils.isColorLight(context.bottomBackground))
-        )
+        binding.ivAloudMiniPlay.setColorFilter(context.dialogForegroundColor)
         binding.ivAloudMiniPlay.contentDescription =
             context.getString(if (BaseReadAloudService.pause) R.string.resume else R.string.pause)
     }

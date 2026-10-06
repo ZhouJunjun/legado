@@ -24,6 +24,7 @@ import io.legado.app.model.ReadBook
 import io.legado.app.ui.book.toc.rule.TxtTocRuleDialog
 import io.legado.app.ui.file.HandleFileContract
 import io.legado.app.ui.widget.dialog.WaitDialog
+import io.legado.app.utils.alignTabInk
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.gone
 import io.legado.app.utils.showDialogFragment
@@ -68,6 +69,10 @@ class TocActivity : VMBaseActivity<ActivityChapterListBinding, TocViewModel>(),
             override fun onTabReselected(tab: TabLayout.Tab) = Unit
         })
         tabLayout.tabGravity = TabLayout.GRAVITY_CENTER
+        // 目录页顶栏**没有标题、只有三个 tab**, 通用的标题墨迹校正对它整页 no-op。
+        // 这里在页签创建之后显式对齐一次: 让页签文字的**墨迹中心**与返回箭头/搜索/⋮ 的中心齐平
+        // (用户 2026-09-30, bug8)。监听器会重试到页签量好为止, 所以放在 setup 之后即可。
+        binding.titleBar.toolbar.alignTabInk()
         viewModel.bookData.observe(this) {
             menu?.setGroupVisible(R.id.menu_group_text, it.isLocalTxt)
         }

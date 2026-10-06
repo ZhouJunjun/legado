@@ -21,11 +21,9 @@ import io.legado.app.help.IntentData
 import io.legado.app.help.book.BookHelp
 import io.legado.app.help.book.isLocal
 import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.ui.widget.recycler.UpLinearLayoutManager
 import io.legado.app.ui.widget.recycler.VerticalDivider
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.applyNavigationBarMargin
 import io.legado.app.utils.applyTint
 import io.legado.app.utils.invisible
@@ -58,7 +56,8 @@ class SearchContentActivity :
 
     override fun onActivityCreated(savedInstanceState: Bundle?) {
         val bbg = bottomBackground
-        val btc = getPrimaryTextColor(ColorUtils.isColorLight(bbg))
+        // 搜索结果页底栏属**栏位**: 文字与三角走「顶栏底栏文字与图标颜色」。
+        val btc = barForegroundColor
         binding.llSearchBaseInfo.setBackgroundColor(bbg)
         binding.llSearchBaseInfo.applyNavigationBarMargin()
         binding.tvCurrentSearchInfo.setTextColor(btc)

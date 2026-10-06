@@ -6,9 +6,7 @@ import android.widget.TextView
 import androidx.preference.ListPreference
 import androidx.preference.PreferenceViewHolder
 import io.legado.app.R
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
-import io.legado.app.utils.ColorUtils
+import io.legado.app.lib.theme.dialogForegroundColor
 
 
 class NameListPreference(context: Context, attrs: AttributeSet) : ListPreference(context, attrs) {
@@ -31,9 +29,9 @@ class NameListPreference(context: Context, attrs: AttributeSet) : ListPreference
         if (v is TextView) {
             v.text = entry
             if (isBottomBackground) {
-                val bgColor = context.bottomBackground
-                val pTextColor = context.getPrimaryTextColor(ColorUtils.isColorLight(bgColor))
-                v.setTextColor(pTextColor)
+                // 与 Preference.bindView 同一口径: 半屏面板里的右侧取值文字走
+                // 「弹框文字与图标颜色」(用户 2026-09-30), 不再按栏位底色反推。
+                v.setTextColor(context.dialogForegroundColor)
             }
         }
         super.onBindViewHolder(holder)

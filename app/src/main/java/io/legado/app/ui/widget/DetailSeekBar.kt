@@ -12,10 +12,8 @@ import android.widget.SeekBar
 import androidx.appcompat.widget.TooltipCompat
 import io.legado.app.R
 import io.legado.app.databinding.ViewDetailSeekBarBinding
-import io.legado.app.lib.theme.bottomBackground
-import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.ui.widget.seekbar.SeekBarChangeListener
-import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.progressAdd
 
 
@@ -57,8 +55,10 @@ class DetailSeekBar @JvmOverloads constructor(
         binding.seekBar.max = typedArray.getInteger(R.styleable.DetailSeekBar_max, 0)
         typedArray.recycle()
         if (isBottomBackground && !isInEditMode) {
-            val isLight = ColorUtils.isColorLight(context.bottomBackground)
-            val textColor = context.getPrimaryTextColor(isLight)
+            // 标签 / 数值 / ± 图标统一走「弹框文字与图标颜色」——
+            // 这个控件只出现在阅读页的弹框面板里(panel 底色是「弹框背景色」)。
+            // 原来按栏位底色反推, 栏位底为深色时标签与数值整片发白(用户 2026-09-30 反馈)。
+            val textColor = context.dialogForegroundColor
             binding.tvSeekTitle.setTextColor(textColor)
             binding.ivSeekPlus.setColorFilter(textColor, PorterDuff.Mode.SRC_IN)
             binding.ivSeekReduce.setColorFilter(textColor, PorterDuff.Mode.SRC_IN)

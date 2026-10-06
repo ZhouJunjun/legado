@@ -20,9 +20,9 @@ import io.legado.app.lib.dialogs.SelectItem
 import io.legado.app.lib.theme.TintHelper
 import io.legado.app.lib.theme.accentColor
 import io.legado.app.lib.theme.backgroundColor
+import io.legado.app.lib.theme.barForegroundColor
 import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.elevation
-import io.legado.app.lib.theme.getPrimaryTextColor
 import io.legado.app.lib.theme.getSecondaryDisabledTextColor
 import io.legado.app.lib.theme.transparentNavBar
 import io.legado.app.utils.ColorUtils
@@ -40,7 +40,9 @@ class SelectActionBar @JvmOverloads constructor(
     private val bgIsLight = ColorUtils.isColorLight(
         if (context.transparentNavBar) context.backgroundColor else context.bottomBackground
     )
-    private val primaryTextColor = context.getPrimaryTextColor(bgIsLight)
+    // 多选操作栏是**栏位**: 全选文字/更多图标走「顶栏底栏文字与图标颜色」,
+    // 不再按栏位底色反推(栏位底为深色时会反推出白色)。
+    private val primaryTextColor = context.barForegroundColor
     private val disabledColor = context.getSecondaryDisabledTextColor(bgIsLight)
 
     private var callBack: CallBack? = null

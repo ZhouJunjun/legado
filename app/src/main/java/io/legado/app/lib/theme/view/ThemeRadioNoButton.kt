@@ -8,10 +8,9 @@ import androidx.appcompat.widget.TooltipCompat
 import io.legado.app.R
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.accentColor
-import io.legado.app.lib.theme.bottomBackground
 import io.legado.app.lib.theme.buttonSurfaceColor
 import io.legado.app.lib.theme.buttonSurfacePressedColor
-import io.legado.app.lib.theme.getPrimaryTextColor
+import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.utils.ColorUtils
 import io.legado.app.utils.dpToPx
 import io.legado.app.utils.getCompatColor
@@ -44,7 +43,8 @@ class ThemeRadioNoButton(context: Context, attrs: AttributeSet) :
         when {
             panelButtonStyle -> {
                 // 与 StrokeTextView 同一套"面板方形按钮"规格: 无选中时淡灰底无边框。
-                val isLight = ColorUtils.isColorLight(context.bottomBackground)
+                // 未选中文字色走「弹框文字与图标颜色」—— 这些按钮只出现在阅读页弹框面板
+                // (如界面面板的「翻页动画」), 面板底色是「弹框背景色」, 前景必须同源。
                 background = Selector.shapeBuild()
                     .setCornerRadius(2.dpToPx())
                     .setDefaultBgColor(context.buttonSurfaceColor)
@@ -53,14 +53,13 @@ class ThemeRadioNoButton(context: Context, attrs: AttributeSet) :
                     .create()
                 setTextColor(
                     Selector.colorBuild()
-                        .setDefaultColor(context.getPrimaryTextColor(isLight))
+                        .setDefaultColor(context.dialogForegroundColor)
                         .setCheckedColor(checkedTextColor)
                         .create()
                 )
             }
             isBottomBackground -> {
-                val isLight = ColorUtils.isColorLight(context.bottomBackground)
-                val textColor = context.getPrimaryTextColor(isLight)
+                val textColor = context.dialogForegroundColor
                 background = Selector.shapeBuild()
                     .setCornerRadius(2.dpToPx())
                     .setStrokeWidth(2.dpToPx())

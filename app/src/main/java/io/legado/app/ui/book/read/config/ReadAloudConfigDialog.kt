@@ -16,8 +16,8 @@ import io.legado.app.help.IntentHelp
 import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.prefs.SwitchPreference
 import io.legado.app.lib.prefs.fragment.PreferenceFragment
-import io.legado.app.lib.theme.backgroundColor
 import io.legado.app.lib.theme.bottomBackground
+import io.legado.app.lib.theme.dialogBackground
 import io.legado.app.model.ReadAloud
 import io.legado.app.service.BaseReadAloudService
 import io.legado.app.utils.postEvent
@@ -42,7 +42,9 @@ class ReadAloudConfigDialog : BasePrefDialogFragment() {
         savedInstanceState: Bundle?
     ): View {
         val view = LinearLayout(requireContext())
-        view.setBackgroundColor(requireContext().backgroundColor)
+        // 这是弹框, 底色必须走「弹框背景色」而不是页面背景色 ——
+        // 原来取 backgroundColor, 改「弹框背景色」时它纹丝不动(用户 2026-09-30 反馈, 图7)。
+        view.setBackgroundColor(requireContext().dialogBackground)
         view.id = R.id.tag1
         container?.addView(view)
         return view
