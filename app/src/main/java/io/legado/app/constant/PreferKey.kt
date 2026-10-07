@@ -3,7 +3,6 @@ package io.legado.app.constant
 @Suppress("ConstPropertyName")
 object PreferKey {
 
-    const val myMoreItems = "myMoreItems"
     const val language = "language"
     const val fontScale = "fontScale"
     const val themeMode = "themeMode"
@@ -136,8 +135,6 @@ object PreferKey {
     const val mangaRightToLeft = "mangaRightToLeft"
     const val hideMangaTitle = "hideMangaTitle"
     const val mangaColorFilter = "mangaColorFilter"
-    const val enableMangaEInk = "enableMangaEInk"
-    const val mangaEInkThreshold = "mangaEInkThreshold"
     const val disableHorizontalPageSnap = "disableHorizontalPageSnap"
     const val enableMangaGray = "enableMangaGray"
     const val autoRefresh = "auto_refresh"

@@ -25,6 +25,12 @@ import java.util.concurrent.atomic.AtomicLong
 internal fun pendingSpeechPageMoves(currentPageIndex: Int, targetPageIndex: Int): Int =
     (targetPageIndex - currentPageIndex).coerceAtLeast(0)
 
+/** 整本读完收尾播报的 utteranceId 尾段标记(与普通朗读的 `:true/false` 区分开)。 */
+private const val FINISH_FLAG = "finish"
+
+/** 收尾播报的超时兜底: 个别 TTS 引擎不回调 onDone, 不能一直等下去。 */
+private const val FINISH_SPEAK_TIMEOUT_MS = 10_000L
+
 /**
  * 本地朗读
  */
@@ -40,6 +46,14 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
     private val playbackSessionId = AtomicLong()
     private val callbackHandler by lazy { buildMainHandler() }
     private val TAG = "TTSReadAloudService"
+    /** 正在等待「整本读完」的收尾播报播完, 播完才停服务。 */
+    private var stoppingAfterFinishSpeak = false
+    private val finishSpeakTimeout = Runnable {
+        if (stoppingAfterFinishSpeak) {
+            stoppingAfterFinishSpeak = false
+            stopSelf()
+        }
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -51,6 +65,7 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
 
     override fun onDestroy() {
         super.onDestroy()
+        callbackHandler.removeCallbacks(finishSpeakTimeout)
         clearTTS()
     }
 
@@ -177,6 +192,40 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
     }
 
     /**
+     * 整本书朗读完毕: 先播报一句「已朗读完所有内容」, 播完再停服务。
+     *
+     * 🔴 不能直接 stopSelf(): onDestroy → clearTTS() 会 stop+shutdown TTS,
+     * 刚排队的那句话根本来不及出声。
+     * 也不能只等 onDone: 个别引擎不回调 → 配了超时兜底。
+     */
+    @Synchronized
+    override fun speakBookFinishedAndStop() {
+        val tts = textToSpeech
+        if (tts == null) {
+            stopSelf()
+            return
+        }
+        stoppingAfterFinishSpeak = true
+        // 提高会话号, 让仍在途的旧朗读回调全部失效; 同时留一个可识别的 utteranceId。
+        val sessionId = playbackSessionId.incrementAndGet()
+        speakJob?.cancel()
+        val result = tts.runCatching {
+            speak(
+                getString(R.string.read_aloud_book_finished),
+                TextToSpeech.QUEUE_FLUSH,
+                null,
+                "${AppConst.APP_TAG}:$sessionId:0:0:$FINISH_FLAG"
+            )
+        }.getOrDefault(TextToSpeech.ERROR)
+        if (result == TextToSpeech.ERROR) {
+            stoppingAfterFinishSpeak = false
+            stopSelf()
+            return
+        }
+        callbackHandler.postDelayed(finishSpeakTimeout, FINISH_SPEAK_TIMEOUT_MS)
+    }
+
+    /**
      * 更新朗读速度
      */
     override fun upSpeechRate(reset: Boolean) {
@@ -214,7 +263,18 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
 
         private val TAG = "TTSUtteranceListener"
 
+        /**
+         * 收尾播报(「已朗读完所有内容」)的 utteranceId 识别。
+         *
+         * 🔴 收尾播报必须从所有回调里**及早剔除**:
+         * - onStart 会去读 `contentList[nowSpeak]`, 但整本读完后 contentList 已耗尽 → 越界崩溃;
+         *    即便不崩, 也会把页面翻回首页、进度条归零;
+         * - onError / onDone 会走 `nextParagraph()` → nextChapter → Stop → 再播一遍收尾 → 死循环。
+         */
+        private fun isFinishUtterance(id: String?): Boolean = id?.endsWith(":$FINISH_FLAG") == true
+
         override fun onStart(s: String) {
+            if (isFinishUtterance(s)) return
             dispatchCurrentCallback(s) {
                 val msg = "onStart nowSpeak:$nowSpeak pageIndex:$pageIndex utteranceId:$s"
                 if (textChapter != null) {
@@ -229,6 +289,15 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         }
 
         override fun onDone(s: String) {
+            // 收尾播报: 播完就停服务, 不参与正常的「推进到下一段」。
+            if (isFinishUtterance(s)) {
+                if (stoppingAfterFinishSpeak) {
+                    stoppingAfterFinishSpeak = false
+                    callbackHandler.removeCallbacks(finishSpeakTimeout)
+                    stopSelf()
+                }
+                return
+            }
             dispatchCurrentCallback(s) {
                 if (s.substringAfterLast(':') != "false") nextParagraph()
             }
@@ -236,6 +305,7 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
 
         override fun onRangeStart(utteranceId: String?, start: Int, end: Int, frame: Int) {
             super.onRangeStart(utteranceId, start, end, frame)
+            if (isFinishUtterance(utteranceId)) return
             dispatchCurrentCallback(utteranceId) {
                 val msg =
                     "onRangeStart nowSpeak:$nowSpeak pageIndex:$pageIndex utteranceId:$utteranceId start:$start end:$end frame:$frame"
@@ -246,6 +316,15 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
         }
 
         override fun onError(utteranceId: String?, errorCode: Int) {
+            if (isFinishUtterance(utteranceId)) {
+                // 收尾播报失败: 不走 nextParagraph(会形成重复播报死循环), 直接收工。
+                if (stoppingAfterFinishSpeak) {
+                    stoppingAfterFinishSpeak = false
+                    callbackHandler.removeCallbacks(finishSpeakTimeout)
+                    stopSelf()
+                }
+                return
+            }
             dispatchCurrentCallback(utteranceId) {
                 if (utteranceId?.substringAfterLast(':') != "false") nextParagraph()
             }
@@ -266,6 +345,7 @@ class TTSReadAloudService : BaseReadAloudService(), TextToSpeech.OnInitListener 
 
         @Deprecated("Deprecated in Java")
         override fun onError(s: String) {
+            if (isFinishUtterance(s)) return
             dispatchCurrentCallback(s) {
                 if (s.substringAfterLast(':') != "false") nextParagraph()
             }

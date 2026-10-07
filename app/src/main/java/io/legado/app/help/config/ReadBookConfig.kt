@@ -338,9 +338,6 @@ object ReadBookConfig {
             if (it.bgTypeNight == 2) {
                 list.add(it.bgStrNight)
             }
-            if (it.bgTypeEInk == 2) {
-                list.add(it.bgStrEInk)
-            }
         }
         return list
     }
@@ -376,7 +373,9 @@ object ReadBookConfig {
     fun clearBgAndCache() {
         val bgs = hashSetOf<String>()
         (configList + shareConfig).forEach { config ->
-            repeat(3) {
+            // 背景槽只剩 2 个: 0=白天, 1=夜间(墨水屏槽已随墨水屏逻辑删除)。
+            // 这里若仍是 repeat(3), getBgPath(2) 会命中 else -> error("unknown bgIndex: 2") 抛异常。
+            repeat(2) {
                 config.getBgPath(it)?.let { path ->
                     bgs.add(path)
                 }
@@ -898,20 +897,6 @@ object ReadBookConfig {
         } else if (config.bgTypeNight == 0) {
             config.bgStrNight.toColorInt()
         }
-        if (config.bgTypeEInk == 2) {
-            val bgName = FileUtils.getName(config.bgStrEInk)
-            config.bgStrEInk = bgName
-            val bgPath = FileUtils.getPath(appCtx.externalFiles, "bg", bgName)
-            if (!FileUtils.exist(bgPath)) {
-                val bgFile = configDir.getFile(bgName)
-                if (bgFile.exists()) {
-                    bgFile.copyTo(File(bgPath))
-                }
-            }
-            config.bgStrEInk = bgPath
-        } else if (config.bgTypeEInk == 0) {
-            config.bgStrEInk.toColorInt()
-        }
         config.curTextColor()
         config.curTextAccentColor()
         return config
@@ -928,22 +913,16 @@ object ReadBookConfig {
         var name: String = "",
         var bgStr: String = "#EEEEEE",//白天背景
         var bgStrNight: String = "#000000",//夜间背景
-        var bgStrEInk: String = "#FFFFFF",//EInk背景
         var bgAlpha: Int = 100,//背景透明度
         var bgType: Int = 0,//白天背景类型 0:颜色, 1:assets图片, 2其它图片
         var bgTypeNight: Int = 0,//夜间背景类型
-        var bgTypeEInk: Int = 0,//EInk背景类型
         private var darkStatusIcon: Boolean = true,//白天是否暗色状态栏
         private var darkStatusIconNight: Boolean = false,//晚上是否暗色状态栏
-        private var darkStatusIconEInk: Boolean = true,
         private var textColor: String = "#3E3D3B",//白天文字颜色
         private var textColorNight: String = "#ADADAD",//夜间文字颜色
-        private var textColorEInk: String = "#000000",
         private var textAccentColor: String = "#E53935",//白天强调文字颜色
         private var textAccentColorNight: String = "#FE4D55",//夜间强调文字颜色
-        private var textAccentColorEInk: String = "#000000",
         private var pageAnim: Int = 0,//翻页动画
-        private var pageAnimEInk: Int = 4,
         var textFont: String = "",//字体
         var titleFont: String = "",//标题字体, 空值跟随正文字体
         var titleBold: Int = -1,//标题字重 -1:保持原有随正文变化的效果, 0:正常, 1:粗体, 2:细体
@@ -1009,9 +988,6 @@ object ReadBookConfig {
     ) {
 
         @Transient
-        private var textColorIntEInk = -1
-
-        @Transient
         private var textColorIntNight = -1
 
         @Transient
@@ -1021,14 +997,10 @@ object ReadBookConfig {
         private var initColorInt = false
 
         private fun initColorInt() {
-            textColorIntEInk = textColorEInk.toColorInt()
             textColorIntNight = textColorNight.toColorInt()
             textColorInt = textColor.toColorInt()
             initColorInt = true
         }
-
-        @Transient
-        private var textAccentColorIntEInk = -1
 
         @Transient
         private var textAccentColorIntNight = -1
@@ -1040,7 +1012,6 @@ object ReadBookConfig {
         private var initAccentColorInt = false
 
         private fun initAccentColorInt() {
-            textAccentColorIntEInk = textAccentColorEInk.toColorInt()
             textAccentColorIntNight = textAccentColorNight.toColorInt()
             textAccentColorInt = textAccentColor.toColorInt()
             initAccentColorInt = true
@@ -1049,11 +1020,6 @@ object ReadBookConfig {
         fun setCurTextColor(color: Int) {
             val changed = curTextColor() != color
             when {
-                AppConfig.isEInkMode -> {
-                    textColorEInk = "#${color.hexString}"
-                    textColorIntEInk = color
-                }
-
                 AppConfig.isNightTheme -> {
                     textColorNight = "#${color.hexString}"
                     textColorIntNight = color
@@ -1072,7 +1038,6 @@ object ReadBookConfig {
                 initColorInt()
             }
             return when {
-                AppConfig.isEInkMode -> textColorIntEInk
                 AppConfig.isNightTheme -> textColorIntNight
                 else -> textColorInt
             }
@@ -1081,11 +1046,6 @@ object ReadBookConfig {
         fun setCurTextAccentColor(color: Int) {
             val changed = curTextAccentColor() != color
             when {
-                AppConfig.isEInkMode -> {
-                    textAccentColorEInk = "#${color.hexString}"
-                    textAccentColorIntEInk = color
-                }
-
                 AppConfig.isNightTheme -> {
                     textAccentColorNight = "#${color.hexString}"
                     textAccentColorIntNight = color
@@ -1104,7 +1064,6 @@ object ReadBookConfig {
                 initAccentColorInt()
             }
             return when {
-                AppConfig.isEInkMode -> textAccentColorIntEInk
                 AppConfig.isNightTheme -> textAccentColorIntNight
                 else -> textAccentColorInt
             }
@@ -1112,7 +1071,6 @@ object ReadBookConfig {
 
         fun setCurStatusIconDark(isDark: Boolean) {
             when {
-                AppConfig.isEInkMode -> darkStatusIconEInk = isDark
                 AppConfig.isNightTheme -> darkStatusIconNight = isDark
                 else -> darkStatusIcon = isDark
             }
@@ -1120,34 +1078,22 @@ object ReadBookConfig {
 
         fun curStatusIconDark(): Boolean {
             return when {
-                AppConfig.isEInkMode -> darkStatusIconEInk
                 AppConfig.isNightTheme -> darkStatusIconNight
                 else -> darkStatusIcon
             }
         }
 
         fun setCurPageAnim(@PageAnim.Anim anim: Int) {
-            when {
-                AppConfig.isEInkMode -> pageAnimEInk = anim
-                else -> pageAnim = anim
-            }
+            pageAnim = anim
         }
 
         fun curPageAnim(): Int {
-            return when {
-                AppConfig.isEInkMode -> pageAnimEInk
-                else -> pageAnim
-            }
+            return pageAnim
         }
 
         fun setCurBg(bgType: Int, bg: String) {
             val changed = curBgType() != bgType || curBgStr() != bg
             when {
-                AppConfig.isEInkMode -> {
-                    bgTypeEInk = bgType
-                    bgStrEInk = bg
-                }
-
                 AppConfig.isNightTheme -> {
                     bgTypeNight = bgType
                     bgStrNight = bg
@@ -1163,7 +1109,6 @@ object ReadBookConfig {
 
         fun curBgStr(): String {
             return when {
-                AppConfig.isEInkMode -> bgStrEInk
                 AppConfig.isNightTheme -> bgStrNight
                 else -> bgStr
             }
@@ -1171,7 +1116,6 @@ object ReadBookConfig {
 
         fun curBgType(): Int {
             return when {
-                AppConfig.isEInkMode -> bgTypeEInk
                 AppConfig.isNightTheme -> bgTypeNight
                 else -> bgType
             }
@@ -1217,7 +1161,6 @@ object ReadBookConfig {
             val bgType = when (bgIndex) {
                 0 -> bgType
                 1 -> bgTypeNight
-                2 -> bgTypeEInk
                 else -> error("unknown bgIndex: $bgIndex")
             }
             if (bgType != 2) {
@@ -1226,7 +1169,6 @@ object ReadBookConfig {
             val bgStr = when (bgIndex) {
                 0 -> bgStr
                 1 -> bgStrNight
-                2 -> bgStrEInk
                 else -> error("unknown bgIndex: $bgIndex")
             }
             val path = if (bgStr.contains(File.separator)) {
@@ -1259,28 +1201,20 @@ object ReadBookConfig {
             "name" to name,
             "bgStr" to bgStr,
             "bgStrNight" to bgStrNight,
-            "bgStrEInk" to bgStrEInk,
             "bgAlpha" to bgAlpha,
             "bgType" to bgType,
             "bgTypeNight" to bgTypeNight,
-            "bgTypeEInk" to bgTypeEInk,
             "darkStatusIcon" to darkStatusIcon,
             "darkStatusIconNight" to darkStatusIconNight,
-            "darkStatusIconEInk" to darkStatusIconEInk,
             "textColor" to textColor,
             "textColorNight" to textColorNight,
-            "textColorEInk" to textColorEInk,
             "textColorInt" to textColorInt,
             "textColorIntNight" to textColorIntNight,
-            "textColorIntEInk" to textColorIntEInk,
             "textAccentColor" to textAccentColor,
             "textAccentColorNight" to textAccentColorNight,
-            "textAccentColorEInk" to textAccentColorEInk,
             "textAccentColorInt" to textAccentColorInt,
             "textAccentColorIntNight" to textAccentColorIntNight,
-            "textAccentColorIntEInk" to textAccentColorIntEInk,
             "pageAnim" to pageAnim,
-            "pageAnimEInk" to pageAnimEInk,
             "textFont" to textFont,
             "titleFont" to titleFont,
             "titleBold" to titleBold,

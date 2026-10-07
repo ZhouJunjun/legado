@@ -14,7 +14,6 @@ import androidx.core.view.ViewCompat
 import com.google.android.material.bottomnavigation.BottomNavigationView
 import io.legado.app.R
 import io.legado.app.databinding.ViewNavigationBadgeBinding
-import io.legado.app.help.config.AppConfig
 import io.legado.app.lib.theme.Selector
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.backgroundColor
@@ -58,7 +57,7 @@ class ThemeBottomNavigationVIew(context: Context, attrs: AttributeSet) :
         themeIconTint = colorStateList
         itemIconTintList = colorStateList
         itemTextColor = colorStateList
-        if (AppConfig.isEInkMode || transparentNavBar) {
+        if (transparentNavBar) {
             isItemHorizontalTranslationEnabled = false
             itemBackground = Color.TRANSPARENT.toDrawable()
         }

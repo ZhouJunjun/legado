@@ -6,26 +6,19 @@ import android.graphics.PorterDuff
 import android.graphics.PorterDuffColorFilter
 import android.os.Build
 import android.os.Bundle
-import android.view.Gravity
 import android.view.View
-import android.view.WindowManager
 import androidx.annotation.LayoutRes
 import androidx.core.view.forEach
 import androidx.fragment.app.DialogFragment
 import androidx.fragment.app.FragmentManager
-import androidx.lifecycle.Lifecycle
-import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.lifecycleScope
 import com.google.android.material.textfield.TextInputLayout
 import io.legado.app.R
-import io.legado.app.help.config.AppConfig
 import io.legado.app.help.coroutine.Coroutine
 import io.legado.app.lib.theme.ThemeStore
 import io.legado.app.lib.theme.dialogForegroundColor
 import io.legado.app.utils.alignTitleInk
 import io.legado.app.utils.disableAutoFill
-import io.legado.app.utils.dpToPx
-import io.legado.app.utils.setBackgroundKeepPadding
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlin.coroutines.CoroutineContext
@@ -48,29 +41,6 @@ abstract class BaseDialogFragment(
         dialog?.window?.decorView?.disableAutoFill()
         if (adaptationSoftKeyboard) {
             dialog?.window?.setBackgroundDrawableResource(R.color.transparent)
-        } else if (AppConfig.isEInkMode) {
-            dialog?.window?.let {
-                it.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-                val attr = it.attributes
-                attr.dimAmount = 0.0f
-                attr.windowAnimations = 0
-                it.attributes = attr
-                it.decorView.setBackgroundKeepPadding(R.color.transparent)
-            }
-            // 修改gravity的时机一般在子类的onStart方法中, 因此需要在onStart之后执行.
-            lifecycle.addObserver(LifecycleEventObserver { _, event ->
-                if (event == Lifecycle.Event.ON_START) {
-                    when (dialog?.window?.attributes?.gravity) {
-                        Gravity.TOP -> view?.setBackgroundResource(R.drawable.bg_eink_border_bottom)
-                        Gravity.BOTTOM -> view?.setBackgroundResource(R.drawable.bg_eink_border_top)
-                        else -> {
-                            val padding = 2.dpToPx();
-                            view?.setPadding(padding, padding, padding, padding)
-                            view?.setBackgroundResource(R.drawable.bg_eink_border_dialog)
-                        }
-                    }
-                }
-            })
         }
     }
 
@@ -87,7 +57,7 @@ abstract class BaseDialogFragment(
         if (adaptationSoftKeyboard) {
             view.findViewById<View>(R.id.vw_bg)?.setOnClickListener(null)
             view.setOnClickListener { dismiss() }
-        } else if (!AppConfig.isEInkMode) {
+        } else {
             // 弹框根背景走「弹框背景色」(独立于栏位底色), 用户 2026-09-30 的规格;
             // 未设置时 ThemeStore 会回落到栏位底色, 升级后观感不变。
             view.setBackgroundColor(ThemeStore.dialogBackground())

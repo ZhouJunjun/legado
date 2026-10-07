@@ -226,9 +226,7 @@ class TitleBar @JvmOverloads constructor(
                 }
             }
 
-            if (AppConfig.isEInkMode) {
-                setBackgroundResource(R.drawable.bg_eink_border_bottom)
-            } else if (!opaque && context.transparentNavBar) {
+            if (!opaque && context.transparentNavBar) {
                 setBackgroundColor(Color.TRANSPARENT)
             } else {
                 // 顶部栏统一用底栏背景色(取代原来的 primaryColor 彩色).
@@ -257,14 +255,13 @@ class TitleBar @JvmOverloads constructor(
 
     val usesTransparentForeground: Boolean
         get() = automaticForegroundInit && context.transparentNavBar &&
-            !AppConfig.isEInkMode && background?.alpha == 0
+            background?.alpha == 0
 
     /**
      * 顶部栏实际底色。透明顶栏时露出的是页面背景色, 否则就是我们自己设的底栏色。
      */
     private val barBackgroundColor: Int
         get() = when {
-            AppConfig.isEInkMode -> context.backgroundColor
             usesTransparentForeground -> context.backgroundColor
             else -> context.bottomBackground
         }

@@ -312,22 +312,6 @@ data class TextLine(
             }
         }
 
-        // 墨水屏模式下的朗读和搜索下划线
-        if (AppConfig.isEInkMode && (isReadAloud || searchResultColumnCount > 0)) {
-            val underlinePaint = PaintPool.obtain()
-            underlinePaint.set(ChapterProvider.contentPaint)
-            underlinePaint.strokeWidth = 1.dpToPx().toFloat()
-            val lineY = height - 1.dpToPx()
-            if (searchResultColumnCount > 0) {
-                canvas.drawLine(lineStart + indentWidth, lineY, lineEnd, lineY, underlinePaint)
-            } else {
-                columns.filterIsInstance<TextBaseColumn>().filter { it.isReadAloud }.forEach {
-                    canvas.drawLine(it.start, lineY, it.end, lineY, underlinePaint)
-                }
-            }
-            PaintPool.recycle(underlinePaint)
-        }
-
         activeUnderlineMode()?.let { drawUnderline(canvas, it) }
     }
 

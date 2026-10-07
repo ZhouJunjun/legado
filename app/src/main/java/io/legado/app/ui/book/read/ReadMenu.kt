@@ -230,13 +230,8 @@ class ReadMenu @JvmOverloads constructor(
         brightnessBackground.cornerRadius = 5F.dpToPx()
         brightnessBackground.setColor(ColorUtils.adjustAlpha(bgColor, 0.5f))
         llBrightness.background = brightnessBackground
-        if (AppConfig.isEInkMode) {
-            titleBar.setBackgroundResource(R.drawable.bg_eink_border_bottom)
-            llBottomBg.setBackgroundResource(R.drawable.bg_eink_border_top)
-        } else {
-            // 阅读菜单尾(底部设置栏)上边线 1dp 实心灰, 与顶栏的下边线呼应。
-            llBottomBg.background = context.barBorderBackground(bgColor, atTop = true)
-        }
+        // 阅读菜单尾(底部设置栏)上边线 1dp 实心灰, 与顶栏的下边线呼应。
+        llBottomBg.background = context.barBorderBackground(bgColor, atTop = true)
         fabSearch.backgroundTintList = bottomBackgroundList
         fabSearch.setColorFilter(textColor)
         fabAutoPage.backgroundTintList = bottomBackgroundList
@@ -245,6 +240,11 @@ class ReadMenu @JvmOverloads constructor(
         fabReplaceRule.setColorFilter(textColor)
         fabNightTheme.backgroundTintList = bottomBackgroundList
         fabNightTheme.setColorFilter(textColor)
+        fabAloudPause.backgroundTintList = bottomBackgroundList
+        fabAloudPause.setColorFilter(textColor)
+        fabAloudClose.backgroundTintList = bottomBackgroundList
+        fabAloudClose.setColorFilter(textColor)
+        upAloudButtons()
         val chapterTextColor = Selector.colorBuild()
             .setDefaultColor(textColor)
             .setDisabledColor(ColorUtils.withAlpha(textColor, 0.4f))
@@ -413,7 +413,7 @@ class ReadMenu @JvmOverloads constructor(
         }
     }
 
-    fun runMenuIn(anim: Boolean = !AppConfig.isEInkMode) {
+    fun runMenuIn(anim: Boolean = true) {
         val showMemo = context.getPrefBoolean(PreferKey.showBookMemo, false)
         binding.llMemo.isVisible = showMemo
         binding.memoSpacer.isVisible = showMemo
@@ -421,6 +421,8 @@ class ReadMenu @JvmOverloads constructor(
         // 而唯一会恢复它们的 applyPanel() 在 curPanel == PANEL_NONE 时 early-return ——
         // 不在这里补一刀, 首次打开菜单这两行就永远不显示(要开一次面板再关掉才出现)。
         upPanelRows()
+        // 朗读按钮的显隐/图标随朗读状态变化, 进场时按当前状态刷一次。
+        upAloudButtons()
         callBack.onMenuShow()
         this.visible()
         binding.titleBar.visible()
@@ -434,7 +436,7 @@ class ReadMenu @JvmOverloads constructor(
         }
     }
 
-    fun runMenuOut(anim: Boolean = !AppConfig.isEInkMode, onMenuOutEnd: (() -> Unit)? = null) {
+    fun runMenuOut(anim: Boolean = true, onMenuOutEnd: (() -> Unit)? = null) {
         if (isMenuOutAnimating) {
             return
         }
@@ -539,6 +541,76 @@ class ReadMenu @JvmOverloads constructor(
         val show = curPanel == PANEL_NONE
         llFloatingButton.visible(show)
         llChapterProgress.visible(show)
+    }
+
+    /**
+     * 朗读专用按钮(暂停/继续、关闭)的显隐与图标状态。
+     *
+     * **只有朗读中才展示**; 非朗读时连占位都不要(GONE) —— 理由是它们排在 FAB 行末尾,
+     * 若用 INVISIBLE 占位, 非朗读时会白留两块空隙, 反而把原本均匀分布的 4 个按钮挤歪。
+     * (FAB 行本身用 INVISIBLE 是因为它整行都在/都不在, 与这里的「行内个别按钮」不同。)
+     *
+     * 暂停按钮的图标随 [BaseReadAloudService.pause] 切换: 非暂停显示暂停符(‖),
+     * 暂停中显示播放符(▶), 语义即「点它会发生什么」。
+     */
+    fun upAloudButtons() = binding.run {
+        val aloud = BaseReadAloudService.isRun
+        // 🔴 必须 GONE, 不能用 visible(aloud): legado 的 visible(Boolean) 传 false 时
+        // 置的是 INVISIBLE(占位), 与需求「非朗读连占位都不要」不符。
+        // 且这两个按钮两侧的 Space 是弹性分割项, 必须**一起** GONE —— 否则非朗读时
+        // Space 仍参与权重分配, 会把原有 4 个 FAB 的均匀分布挤歪(违反「不改变菜单默认效果」)。
+        if (!aloud) {
+            fabAloudPause.gone()
+            fabAloudClose.gone()
+            spaceAloudPause.gone()
+            spaceAloudClose.gone()
+            applyFabRowCompact(false)
+            return@run
+        }
+        applyFabRowCompact(true)
+        fabAloudPause.visible()
+        fabAloudClose.visible()
+        spaceAloudPause.visible()
+        spaceAloudClose.visible()
+        if (BaseReadAloudService.pause) {
+            fabAloudPause.setImageResource(R.drawable.ic_play_24dp)
+            fabAloudPause.contentDescription = context.getString(R.string.resume)
+            fabAloudPause.tooltipText = context.getString(R.string.resume)
+        } else {
+            fabAloudPause.setImageResource(R.drawable.ic_pause_24dp)
+            fabAloudPause.contentDescription = context.getString(R.string.pause)
+            fabAloudPause.tooltipText = context.getString(R.string.pause)
+        }
+        fabAloudPause.setColorFilter(textColor)
+        fabAloudClose.setColorFilter(textColor)
+    }
+
+    /**
+     * FAB 行的「紧凑 / 常规」尺寸切换。
+     *
+     * 朗读中这一行有 6 个 mini FAB(每个 40dp)。常规间距(每侧 16dp + 行内边距 16dp)下
+     * 需要 6×40 + 6×32 + 2×16 = 464dp, 远超 360dp 屏的内容宽 —— 最右的【关闭朗读】
+     * 会被顶出屏幕裁掉。压到「每侧 8dp + 行内边距 12dp」后正好
+     * 6×40 + 6×16 + 2×12 = 336dp = 360dp 屏的内容宽, 恰好放得下。
+     *
+     * 只在朗读中收紧; **非朗读时恢复布局文件里的原值(16dp)** ⇒ 菜单默认外观
+     * 与改动前完全一致(用户 2026-10-06 的硬约束: 不改菜单原有默认效果)。
+     */
+    private fun applyFabRowCompact(compact: Boolean) = binding.run {
+        val margin = if (compact) 8.dpToPx() else 16.dpToPx()
+        val pad = if (compact) 12.dpToPx() else 16.dpToPx()
+        if (llFloatingButton.paddingLeft != pad) {
+            llFloatingButton.setPadding(pad, llFloatingButton.paddingTop, pad, llFloatingButton.paddingBottom)
+        }
+        arrayOf(fabSearch, fabAutoPage, fabReplaceRule, fabNightTheme, fabAloudPause, fabAloudClose)
+            .forEach { fab ->
+                val lp = fab.layoutParams as? ViewGroup.MarginLayoutParams ?: return@forEach
+                if (lp.leftMargin != margin || lp.rightMargin != margin) {
+                    lp.leftMargin = margin
+                    lp.rightMargin = margin
+                    fab.layoutParams = lp
+                }
+            }
     }
 
     /**
@@ -652,6 +724,20 @@ class ReadMenu @JvmOverloads constructor(
         fabNightTheme.setOnClickListener {
             AppConfig.isNightTheme = !AppConfig.isNightTheme
             ThemeConfig.applyDayNight(context)
+        }
+
+        //朗读中: 暂停 / 继续
+        fabAloudPause.setOnClickListener {
+            // 图标显示什么就做什么: 非暂停态显示暂停符 → 暂停; 暂停态显示播放符 → 继续。
+            // 走 callBack 而不是直接用 ReadAloud, 是为了让 Activity 统一处理
+            // 「滚动模式下暂停期间翻过页 → 以当前可见页为新起点重启」这条既有分支
+            // (见 ReadBookActivity.onClickReadAloud 注释), 避免两处实现分叉。
+            callBack.onClickReadAloudPause()
+        }
+
+        //朗读中: 关闭朗读
+        fabAloudClose.setOnClickListener {
+            callBack.onClickReadAloudStop()
         }
 
         //上一章
@@ -812,6 +898,13 @@ class ReadMenu @JvmOverloads constructor(
         fun showBookMemo()
         fun upSystemUiVisibility()
         fun onClickReadAloud()
+
+        /** FAB 行【暂停/继续朗读】按钮: 非暂停时暂停, 暂停中继续。 */
+        fun onClickReadAloudPause()
+
+        /** FAB 行【关闭朗读】按钮: 彻底结束朗读。 */
+        fun onClickReadAloudStop()
+
         fun showHelp()
         fun skipToChapter(index: Int)
         fun onMenuShow()

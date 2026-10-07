@@ -61,7 +61,6 @@ object ThemeConfig {
     private var needClearImg = true
 
     fun getTheme() = when {
-        AppConfig.isEInkMode -> Theme.EInk
         AppConfig.isNightTheme -> Theme.Dark
         else -> Theme.Light
     }
@@ -377,17 +376,6 @@ object ThemeConfig {
      */
     fun applyTheme(context: Context) = with(context) {
         when {
-            AppConfig.isEInkMode -> {
-                ThemeStore.editTheme(this)
-                    .primaryColor(Color.WHITE)
-                    .accentColor(Color.BLACK)
-                    .backgroundColor(Color.WHITE)
-                    .bottomBackground(Color.WHITE)
-                    .dialogBackground(Color.WHITE)
-                    .transparentNavBar(false)
-                    .apply()
-            }
-
             AppConfig.isNightTheme -> {
                 val primary =
                     getPrefInt(PreferKey.cNPrimary, getCompatColor(R.color.md_blue_grey_600))

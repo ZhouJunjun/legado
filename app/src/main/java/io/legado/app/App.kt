@@ -44,7 +44,7 @@ class App : Application() {
         oldConfig = Configuration(resources.configuration)
         ResourceThemeGeneration.observeSystemNight(
             oldConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES,
-            AppConfig.themeMode !in listOf("1", "2", "3"),
+            AppConfig.themeMode !in listOf("1", "2"),
         )
         WallpaperTheme.syncWithPreferences(this)
         applyDayNightInit(this)
@@ -89,7 +89,7 @@ class App : Application() {
         if ((diff and ActivityInfo.CONFIG_UI_MODE) != 0) {
             ResourceThemeGeneration.observeSystemNight(
                 newConfig.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES,
-                AppConfig.themeMode !in listOf("1", "2", "3"),
+                AppConfig.themeMode !in listOf("1", "2"),
             )
             applyDayNight(this)
         }

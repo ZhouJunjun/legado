@@ -184,6 +184,7 @@
     <string name="read_aloud_listen_this_chapter">Listen to this chapter</string>
     <string name="read_aloud_back_to_text">Read text</string>
     <string name="read_aloud_not_started">No listening progress yet</string>
+    <string name="read_aloud_book_finished">Finished reading the whole book</string>
     <string name="read_aloud_start">首次朗读起始设置</string>
     <string name="read_aloud_start_page">页首开始朗读</string>
     <string name="read_aloud_start_sentence">句首开始朗读</string>
@@ -665,8 +666,6 @@
     <string name="switch_display_style">Switch display styles</string>
     <string name="import_per">Import local books requires storage permission</string>
     <string name="night_theme">Night Theme</string>
-    <string name="eink_theme">E-Ink</string>
-    <string name="eink_theme_desc">Optimization for E-ink devices</string>
     <string name="get_storage_per">requires storage permission</string>
     <string name="double_click_exit">Tap again to exit the program</string>
     <string name="import_book_per">Import local books requires storage permission</string>
@@ -723,8 +722,6 @@
     <string name="source_tab_content">Content</string>
     <string name="source_tab_review">Reviews</string>
 
-    <string name="e_ink_mode">E-Ink mode</string>
-    <string name="e_ink_mode_detail">Remove animations and optimize the experience of using E-paper books</string>
     <string name="web_menu">Web service</string>
     <string name="web_port_title">Web port</string>
     <string name="web_port_summary">Current port %s</string>
@@ -1553,9 +1550,6 @@
     <string name="refresh_explore">刷新发现</string>
     <string name="padding_display_cutouts">Padding display cutouts</string>
     <string name="read_aloud_pause_resume">Pause/Resume Speech</string>
-    <string name="manga_epaper">墨水屏</string>
-    <string name="manga_epaper_stting">墨水屏设置</string>
-    <string name="manga_epaper_value">阈值</string>
     <string name="disable_horizontal_page_snap">禁用水平翻页效果</string>
     <string name="enable_manga_gray">开启图片灰色</string>
     <string name="play_mode">播放模式</string>
@@ -1833,6 +1827,4 @@
     <string name="view_in_code_editor">View in editor</string>
     <string name="code_editor_result_error">Could not read the editor result. The preview has been kept.</string>
     <string name="reimport_book_source">Reimport this book’s source</string>
-    <string name="customize_my">Customize My page</string>
-    <string name="my_more_items">Move selected items to More</string>
 </resources>

@@ -13,13 +13,15 @@ import io.legado.app.utils.canvasrecorder.recordIfNeeded
 
 /**
  * 自动翻页
+ *
+ * 墨水屏专用的「定时整页跳转」分支已随墨水屏逻辑一并移除: 现在统一走
+ * 动画推进(靠 invalidate 驱动), 不再区分设备。
  */
 class AutoPager(private val readView: ReadView) : Runnable {
     private var progress = 0
     var isRunning = false
         private set
     private var isPausing = false
-    private var isEInkMode = false
     private var scrollOffsetRemain = 0.0
     private var scrollOffset = 0
     private var lastTimeMillis = 0L
@@ -29,15 +31,10 @@ class AutoPager(private val readView: ReadView) : Runnable {
 
     fun start() {
         isRunning = true
-        isEInkMode = AppConfig.isEInkMode
         readView.curPage.upSelectAble(false)
-        if (isEInkMode) {
-            readView.postDelayed(this, ReadBookConfig.autoReadSpeed * 1000L)
-        } else {
-            paint.color = ThemeStore.accentColor
-            lastTimeMillis = SystemClock.uptimeMillis()
-            readView.invalidate()
-        }
+        paint.color = ThemeStore.accentColor
+        lastTimeMillis = SystemClock.uptimeMillis()
+        readView.invalidate()
     }
 
     fun stop() {
@@ -46,7 +43,6 @@ class AutoPager(private val readView: ReadView) : Runnable {
         }
         isRunning = false
         isPausing = false
-        isEInkMode = false
         readView.removeCallbacks(this)
         readView.curPage.upSelectAble(AppConfig.textSelectAble)
         readView.invalidate()
@@ -67,28 +63,15 @@ class AutoPager(private val readView: ReadView) : Runnable {
             return
         }
         isPausing = false
-        if (isEInkMode) {
-            // eInk 分支只 postDelayed, 不像非 eInk 那样靠 invalidate 驱动。
-            // 若不清掉旧回调, 连续两次 resume()(如滚动取消时 cancelAnim 与 ACTION_CANCEL
-            // 各调一次)会排入两个定时任务, 自动翻页变成约 2 倍速。
-            readView.removeCallbacks(this)
-            readView.postDelayed(this, ReadBookConfig.autoReadSpeed * 1000L)
-        } else {
-            lastTimeMillis = SystemClock.uptimeMillis()
-            readView.invalidate()
-        }
+        lastTimeMillis = SystemClock.uptimeMillis()
+        readView.invalidate()
     }
 
     fun reset() {
-        if (isEInkMode) {
-            readView.removeCallbacks(this)
-            readView.postDelayed(this, ReadBookConfig.autoReadSpeed * 1000L)
-        } else {
-            progress = 0
-            scrollOffsetRemain = 0.0
-            scrollOffset = 0
-            canvasRecorder.invalidate()
-        }
+        progress = 0
+        scrollOffsetRemain = 0.0
+        scrollOffset = 0
+        canvasRecorder.invalidate()
     }
 
     fun upRecorder() {
@@ -97,7 +80,7 @@ class AutoPager(private val readView: ReadView) : Runnable {
     }
 
     fun onDraw(canvas: Canvas) {
-        if (!isRunning || isEInkMode) {
+        if (!isRunning) {
             return
         }
 
@@ -128,7 +111,7 @@ class AutoPager(private val readView: ReadView) : Runnable {
     }
 
     fun computeOffset() {
-        if (!isRunning || isPausing || isEInkMode) {
+        if (!isRunning || isPausing) {
             return
         }
 

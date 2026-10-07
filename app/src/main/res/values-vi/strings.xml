@@ -491,8 +491,6 @@
     <string name="switch_display_style">Chuyển đổi kiểu hiển thị</string>
     <string name="import_per">Nhập sách cục bộ cần quyền truy cập bộ nhớ</string>
     <string name="night_theme">Chủ đề tối</string>
-    <string name="eink_theme">Chế độ E-Ink</string>
-    <string name="eink_theme_desc">Tối ưu hóa cho thiết bị E-ink</string>
     <string name="get_storage_per">cần quyền truy cập bộ nhớ</string>
     <string name="double_click_exit">Chạm lần nữa để thoát chương trình</string>
     <string name="import_book_per">Nhập sách cục bộ cần quyền truy cập bộ nhớ</string>
@@ -545,8 +543,6 @@
     <string name="source_tab_toc">Chương</string>
     <string name="source_tab_content">Nội dung</string>
 
-    <string name="e_ink_mode">Chế độ E-Ink</string>
-    <string name="e_ink_mode_detail">Xóa hoạt ảnh và tối ưu hóa trải nghiệm sử dụng sách E-paper</string>
     <string name="web_menu">Dịch vụ web</string>
     <string name="web_port_title">Cổng web</string>
     <string name="web_port_summary">Cổng hiện tại %s</string>
@@ -1197,9 +1193,6 @@
     <string name="hide_manga_title">Ẩn tiêu đề danh sách manga</string>
     <string name="refresh_explore">Làm mới khám phá</string>
     <string name="padding_display_cutouts">Đệm các phần cắt hiển thị</string>
-    <string name="manga_epaper">Màn hình mực</string>
-    <string name="manga_epaper_stting">Cài đặt màn hình mực</string>
-    <string name="manga_epaper_value">Ngưỡng</string>
     <string name="disable_horizontal_page_snap">禁用水平翻页效果</string>
     <string name="enable_manga_gray">Bật ảnh xám</string>
     <string name="play_mode">Chế độ phát</string>

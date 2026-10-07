@@ -276,11 +276,7 @@ class BooksFragment() : BaseFragment(R.layout.fragment_books),
     }
 
     fun gotoTop() {
-        if (AppConfig.isEInkMode) {
-            binding.rvBookshelf.scrollToPosition(0)
-        } else {
-            binding.rvBookshelf.smoothScrollToPosition(0)
-        }
+        binding.rvBookshelf.smoothScrollToPosition(0)
     }
 
     fun getBooksCount(): Int {

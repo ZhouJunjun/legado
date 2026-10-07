@@ -1464,13 +1464,10 @@ class ReadBookActivity : BaseReadBookActivity(),
 
     override fun showActionMenu() {
         when {
-            // 规范 2.1: 朗读中, 主菜单 + 朗读面板一起出来(底栏【朗读】高亮)。
-            // 用 openPanel 而不是 togglePanel —— 这里是「展示」语义, 不是「切换」:
-            // 若面板已在, 不该因为点了一下 body 就把它关掉。
-            BaseReadAloudService.isRun -> {
-                if (!binding.readMenu.isVisible) binding.readMenu.runMenuIn()
-                binding.readMenu.openPanel(ReadMenu.PANEL_ALOUD)
-            }
+            // 朗读中点击正文: **只**让主菜单进场, 不再自动叠出朗读面板。
+            // 朗读面板改由底栏【朗读】主动打开; 朗读的暂停/关闭已迁到 FAB 行上的
+            // 两个专用按钮(仅朗读中显示, 见 ReadMenu.upAloudButtons)。
+            BaseReadAloudService.isRun -> binding.readMenu.runMenuIn()
 
             isAutoPage -> showDialogFragment<AutoReadDialog>()
             isShowingSearchResult -> binding.searchMenu.runMenuIn()
@@ -1632,7 +1629,15 @@ class ReadBookActivity : BaseReadBookActivity(),
      * 更新状态栏,导航栏
      */
     override fun upSystemUiVisibility() {
-        upSystemUiVisibility(isInMultiWindow, !menuLayoutIsVisible, bottomDialog > 0)
+        // 🔴 不要传 useBgMeanColor = (bottomDialog > 0)。
+        // 面板(【界面】/【朗读】)打开时 Activity 会走 onWindowFocusChanged(false),
+        // 若此处把 useBgMeanColor 置 true, 基类就会把状态栏图标的判据从
+        // 「顶栏实际底色 bottomBackground」换成「正文背景色均值 bgMeanColor」——
+        // 非沉浸模式下二者不同源, 图标明暗会翻转(用户 2026-10-06 反馈:
+        // 「点 body 出菜单时状态栏是对的, 点【界面】就不对, 关掉又对了」, 【朗读】同理)。
+        // 沉浸式场景已被基类的 readBarStyleFollowPage && curBgType()==0 覆盖,
+        // 该参数在此处纯属冗余且有害(引入者: 3a67b22fd "优化", 2023-06-20)。
+        upSystemUiVisibility(isInMultiWindow, !menuLayoutIsVisible)
         upNavigationBarColor()
     }
 
@@ -1721,6 +1726,30 @@ class ReadBookActivity : BaseReadBookActivity(),
 
             else -> ReadAloud.pause(this)
         }
+    }
+
+    /**
+     * FAB 行【暂停/继续朗读】按钮。
+     *
+     * 语义与朗读面板里的播放/暂停键完全一致, 所以直接复用 [onClickReadAloud] 的
+     * 暂停/继续两条分支 —— 这样「滚动模式下暂停期间翻过页要重启朗读」这类既有
+     * 细节不会在第二个入口上被漏掉。起读分支不在此列(按钮仅在朗读中可见)。
+     */
+    override fun onClickReadAloudPause() {
+        onClickReadAloud()
+        binding.readMenu.upAloudButtons()
+    }
+
+    /**
+     * FAB 行【关闭朗读】按钮: 彻底结束朗读(与服务通知栏、朗读面板【停止】同一语义)。
+     *
+     * 服务停止后会发 [EventBus.ALOUD_STATE]=STOP, 主菜单随之收起 —— 关闭按钮本就
+     * 只在朗读中出现, 朗读都没了再留着菜单也没有意义。
+     */
+    override fun onClickReadAloudStop() {
+        ReadAloud.stop(this)
+        binding.readMenu.upAloudButtons()
+        binding.readMenu.runMenuOut()
     }
 
     override fun showHelp() {
@@ -2210,6 +2239,10 @@ class ReadBookActivity : BaseReadBookActivity(),
             // 朗读状态变化会影响「自动翻页保持常亮」是否成立, 每次都要重算熄屏策略;
             // 朗读结束后若不再处于自动翻页, 这里会把屏幕交还给正常熄屏定时。
             upScreenTimeOut()
+            // FAB 行的暂停/继续、关闭按钮随朗读状态显隐; 暂停时图标要变成播放符。
+            // 这些变化也可能来自本 Activity 之外的入口(通知栏、耳机线控、定时结束),
+            // 所以不能只在按钮点击处刷新, 必须在事件里统一刷。
+            binding.readMenu.upAloudButtons()
             if (it == Status.STOP || it == Status.PAUSE) {
                 ReadBook.curTextChapter?.let { textChapter ->
                     val page = textChapter.getPageByReadPos(ReadBook.durChapterPos)

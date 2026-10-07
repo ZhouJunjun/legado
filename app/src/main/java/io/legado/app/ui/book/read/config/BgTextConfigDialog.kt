@@ -612,7 +612,8 @@ class BgTextConfigDialog : BaseDialogFragment(R.layout.dialog_read_bg_text) {
             } else ""
             configFile.writeText(GSON.toJson(config))
             exportFiles.add(configFile)
-            repeat(3) {
+            // 背景槽只剩 2 个(0=白天, 1=夜间); 墨水屏槽已删, getBgPath(2) 会抛 unknown bgIndex。
+            repeat(2) {
                 val path = ReadBookConfig.durConfig.getBgPath(it) ?: return@repeat
                 val bgExportFile = copyBgImage(path, configDir) ?: return@repeat
                 exportFiles.add(bgExportFile)

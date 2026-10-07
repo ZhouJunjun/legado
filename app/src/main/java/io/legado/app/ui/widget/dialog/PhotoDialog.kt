@@ -44,9 +44,7 @@ class PhotoDialog() : BaseDialogFragment(R.layout.dialog_photo_view) {
 
     @SuppressLint("CheckResult")
     override fun onFragmentCreated(view: View, savedInstanceState: Bundle?) {
-        if (!AppConfig.isEInkMode) {
-            binding.root.setBackgroundResource(R.color.photo_viewer_scrim)
-        }
+        binding.root.setBackgroundResource(R.color.photo_viewer_scrim)
         binding.photoView.setOnClickListener { dismiss() }
         val arguments = arguments ?: return
         val src = arguments.getString("src") ?: return

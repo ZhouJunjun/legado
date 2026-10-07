@@ -182,6 +182,7 @@
     <string name="read_aloud_listen_this_chapter">听此章</string>
     <string name="read_aloud_back_to_text">看原文</string>
     <string name="read_aloud_not_started">暂无听书进度</string>
+    <string name="read_aloud_book_finished">已朗读完所有内容</string>
     <string name="read_aloud_timer">正在朗读（还剩 %d 分钟）</string>
     <string name="read_aloud_timer_chapter">正在朗读（还剩 %d 章）</string>
     <string name="playing_timer">正在播放（还剩 %d 分钟）</string>
@@ -652,8 +653,6 @@
     <string name="switch_display_style">切换显示样式</string>
     <string name="import_per">导入本地书籍需要存储权限</string>
     <string name="night_theme">夜间模式</string>
-    <string name="eink_theme">E-Ink 模式</string>
-    <string name="eink_theme_desc">电子墨水屏模式</string>
     <string name="get_storage_per">需要存储权限</string>
     <string name="double_click_exit">再按一次退出程序</string>
     <string name="import_book_per">导入本地书籍需要存储权限</string>
@@ -710,8 +709,6 @@
     <string name="source_tab_content">正文</string>
     <string name="source_tab_review">段评</string>
 
-    <string name="e_ink_mode">E-Ink 模式</string>
-    <string name="e_ink_mode_detail">去除动画，优化电纸书使用体验</string>
     <string name="web_menu">Web 服务</string>
     <string name="web_port_title">Web 端口</string>
     <string name="web_port_summary">当前端口 %s</string>
@@ -1535,9 +1532,6 @@
     <string name="refresh_explore">刷新发现</string>
     <string name="padding_display_cutouts">填充刘海区域</string>
     <string name="read_aloud_pause_resume">朗读暂停/继续</string>
-    <string name="manga_epaper">墨水屏</string>
-    <string name="manga_epaper_stting">墨水屏设置</string>
-    <string name="manga_epaper_value">阈值</string>
     <string name="disable_horizontal_page_snap">禁用水平翻页效果</string>
     <string name="enable_manga_gray">开启图片灰色</string>
     <string name="custom_hosts">自定义Hosts</string>
@@ -1712,6 +1706,4 @@
     <string name="view_in_code_editor">编辑器查看</string>
     <string name="code_editor_result_error">无法读取编辑器返回内容，已保留预览内容。</string>
     <string name="reimport_book_source">重新导入本书书源</string>
-    <string name="customize_my">自定义我的页面</string>
-    <string name="my_more_items">将选中的功能放入更多</string>
 </resources>

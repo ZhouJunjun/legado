@@ -498,8 +498,6 @@
     <string name="switch_display_style">切換顯示樣式</string>
     <string name="import_per">導入本地書籍需存儲權限</string>
     <string name="night_theme">夜間模式</string>
-    <string name="eink_theme">E-Ink 模式</string>
-    <string name="eink_theme_desc">電子墨水屏模式</string>
     <string name="get_storage_per">需要存儲權限</string>
     <string name="double_click_exit">再按一次退出程式</string>
     <string name="import_book_per">導入本地書籍需存儲權限</string>
@@ -554,8 +552,6 @@
     <string name="source_tab_toc">目錄</string>
     <string name="source_tab_content">正文</string>
 
-    <string name="e_ink_mode">E-Ink 模式</string>
-    <string name="e_ink_mode_detail">去除動畫，優化電紙書使用體驗</string>
     <string name="web_menu">Web 服務</string>
     <string name="web_port_title">web 端口</string>
     <string name="web_port_summary">當前端口 %s</string>
@@ -1277,9 +1273,6 @@
     <string name="refresh_explore">刷新发现</string>
     <string name="padding_display_cutouts">填充刘海区域</string>
     <string name="read_aloud_pause_resume">朗讀暫停/繼續</string>
-    <string name="manga_epaper">墨水屏</string>
-    <string name="manga_epaper_stting">墨水屏设置</string>
-    <string name="manga_epaper_value">阈值</string>
     <string name="disable_horizontal_page_snap">禁用水平翻页效果</string>
     <string name="enable_manga_gray">开启图片灰色</string>
     <string name="sure_cache_book">是否确认开始缓存？</string>
@@ -1315,6 +1308,4 @@
     <string name="book_memo_discard">放棄未儲存的修改並關閉？</string>
     <string name="book_memo_save_failed">備忘儲存失敗：%1$s</string>
     <string name="reimport_book_source">重新匯入本書書源</string>
-    <string name="customize_my">自訂我的頁面</string>
-    <string name="my_more_items">將選取的功能移至更多</string>
 </resources>

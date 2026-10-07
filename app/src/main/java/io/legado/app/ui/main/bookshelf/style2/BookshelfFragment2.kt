@@ -284,11 +284,7 @@ class BookshelfFragment2() : BaseBookshelfFragment(R.layout.fragment_bookshelf2)
     }
 
     override fun gotoTop() {
-        if (AppConfig.isEInkMode) {
-            binding.rvBookshelf.scrollToPosition(0)
-        } else {
-            binding.rvBookshelf.smoothScrollToPosition(0)
-        }
+        binding.rvBookshelf.smoothScrollToPosition(0)
     }
 
     override fun onItemClick(item: Any) {

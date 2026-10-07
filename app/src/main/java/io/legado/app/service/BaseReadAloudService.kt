@@ -962,8 +962,21 @@ abstract class BaseReadAloudService : BaseService(),
                 loadSpeechChapterOnly(speechChapterIndex() + 1)
             }
 
-            SpeechFollowState.NextChapterDecision.Stop -> stopSelf()
+            // Stop 有两个来源: ①确实没有下一章(整本读完) ②跟随模式下可见页未同步。
+            // 只有前者才是「朗读完整个小说」, 才需要收尾播报(见 speakBookFinishedAndStop)。
+            SpeechFollowState.NextChapterDecision.Stop ->
+                if (hasNextChapter) stopSelf() else speakBookFinishedAndStop()
         }
+    }
+
+    /**
+     * 整本书朗读完毕时的收尾。
+     *
+     * 默认直接停服务; TTS 引擎会重写为「先播报一句『已朗读完所有内容』,
+     * 等播报结束再停」—— 否则 stopSelf → onDestroy → clearTTS 会把刚排队的那句话掐掉。
+     */
+    open fun speakBookFinishedAndStop() {
+        stopSelf()
     }
 
     /**

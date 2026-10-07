@@ -2,7 +2,6 @@ package io.legado.app.ui.book.searchContent
 
 import android.text.Spanned
 import androidx.core.text.HtmlCompat
-import io.legado.app.help.config.AppConfig
 
 data class SearchResult(
     val resultCount: Int = 0,
@@ -31,24 +30,13 @@ data class SearchResult(
                         val end = match.range.last + 1
                         val leftString = resultText.take(start)
                         val rightString = resultText.substring(end)
-                        val html = if (AppConfig.isEInkMode) {
-                            // 墨水屏模式：使用下划线
-                            buildString {
-                                append("<u>${chapterTitle}</u>")
-                                append("<br>")
-                                append(leftString)
-                                append("<u>${matchedText}</u>")
-                                append(rightString)
-                            }
-                        } else {
-                            // 普通模式：使用颜色
-                            buildString {
-                                append(chapterTitle.colorTextForHtml(accentColor))
-                                append("<br>")
-                                append(leftString.colorTextForHtml(textColor))
-                                append(matchedText.colorTextForHtml(accentColor))
-                                append(rightString.colorTextForHtml(textColor))
-                            }
+                        // 普通模式：使用颜色
+                        val html = buildString {
+                            append(chapterTitle.colorTextForHtml(accentColor))
+                            append("<br>")
+                            append(leftString.colorTextForHtml(textColor))
+                            append(matchedText.colorTextForHtml(accentColor))
+                            append(rightString.colorTextForHtml(textColor))
                         }
                         return HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
                     } else {
@@ -67,25 +55,13 @@ data class SearchResult(
                 if (queryIndexInSurrounding >= 0) {
                     val leftString = resultText.take(queryIndexInSurrounding)
                     val rightString = resultText.substring(queryIndexInSurrounding + query.length)
-                    // 检查是否为墨水屏模式
-                    val html = if (AppConfig.isEInkMode) {
-                        // 墨水屏模式：使用下划线
-                        buildString {
-                            append("<u>${chapterTitle}</u>")
-                            append("<br>")
-                            append(leftString)
-                            append("<u>${query}</u>")
-                            append(rightString)
-                        }
-                    } else {
-                        // 普通模式：使用颜色
-                        buildString {
-                            append(chapterTitle.colorTextForHtml(accentColor))
-                            append("<br>")
-                            append(leftString.colorTextForHtml(textColor))
-                            append(query.colorTextForHtml(accentColor))
-                            append(rightString.colorTextForHtml(textColor))
-                        }
+                    // 普通模式：使用颜色
+                    val html = buildString {
+                        append(chapterTitle.colorTextForHtml(accentColor))
+                        append("<br>")
+                        append(leftString.colorTextForHtml(textColor))
+                        append(query.colorTextForHtml(accentColor))
+                        append(rightString.colorTextForHtml(textColor))
                     }
                     return HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
                 } else {
@@ -98,11 +74,7 @@ data class SearchResult(
     }
 
     private fun getNormalHtml(textColor: String): Spanned {
-        val html = if (AppConfig.isEInkMode) {
-            resultText
-        } else {
-            resultText.colorTextForHtml(textColor)
-        }
+        val html = resultText.colorTextForHtml(textColor)
         return HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
     }
 

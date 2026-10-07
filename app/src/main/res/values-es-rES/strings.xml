@@ -493,8 +493,6 @@
     <string name="switch_display_style">Cambiar modo de visualización</string>
     <string name="import_per">La importación de libros locales requiere permiso de almacenamiento</string>
     <string name="night_theme">Tema nocturno</string>
-    <string name="eink_theme">E-Ink</string>
-    <string name="eink_theme_desc">Optimización para dispositivos E-ink</string>
     <string name="get_storage_per">requiere permiso</string>
     <string name="double_click_exit">Toque nuevamente para salir de la aplicación</string>
     <string name="import_book_per">La importación de libros locales requiere permiso de almacenamiento</string>
@@ -547,8 +545,6 @@
     <string name="source_tab_toc">Capítulos</string>
     <string name="source_tab_content">Contenido</string>
 
-    <string name="e_ink_mode">Modo E-Ink</string>
-    <string name="e_ink_mode_detail">Elimina animaciones y optimiza la experiencia para libros en papel electrónico</string>
     <string name="web_menu">Servicio web</string>
     <string name="web_port_title">Puerto web</string>
     <string name="web_port_summary">Puerto actual %s</string>
@@ -1204,9 +1200,6 @@
     <string name="hide_manga_title">隐藏漫画列表标题</string>
     <string name="refresh_explore">刷新发现</string>
     <string name="padding_display_cutouts">Padding display cutouts</string>
-    <string name="manga_epaper">墨水屏</string>
-    <string name="manga_epaper_stting">墨水屏设置</string>
-    <string name="manga_epaper_value">阈值</string>
     <string name="disable_horizontal_page_snap">禁用水平翻页效果</string>
     <string name="enable_manga_gray">开启图片灰色</string>
     <string name="sure_cache_book">是否确认开始缓存？</string>

@@ -179,9 +179,6 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
         viewPagerMain.addOnPageChangeListener(PageChangeCallback())
         bottomNavigationView.setOnNavigationItemSelectedListener(this@MainActivity)
         bottomNavigationView.setOnNavigationItemReselectedListener(this@MainActivity)
-        if (AppConfig.isEInkMode) {
-            bottomNavigationView.setBackgroundResource(R.drawable.bg_eink_border_top)
-        }
         bottomNavigationView.setOnApplyWindowInsetsListenerCompat { view, windowInsets ->
             val height = windowInsets.navigationBarHeight
             view.bottomPadding = height

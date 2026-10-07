@@ -43,7 +43,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
     var editTheme = appCtx.getPrefInt(PreferKey.editTheme, 0)
     var editThemeDark = appCtx.getPrefInt(PreferKey.editThemeDark, 0)
     var editTemeAuto = appCtx.getPrefBoolean(PreferKey.editTemeAuto)
-    var isEInkMode = appCtx.getPrefString(PreferKey.themeMode) == "3"
     var clickActionTL = appCtx.getPrefInt(PreferKey.clickActionTL, 2)
     var clickActionTC = appCtx.getPrefInt(PreferKey.clickActionTC, 2)
     var clickActionTR = appCtx.getPrefInt(PreferKey.clickActionTR, 1)
@@ -83,7 +82,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
                 // Each preference mutation invalidates resources, including A -> B -> A
                 // before queued preference callbacks observe the final value.
                 themeMode = appCtx.getPrefString(PreferKey.themeMode, "0")
-                isEInkMode = themeMode == "3"
                 ResourceThemeGeneration.changed()
             }
 
@@ -178,7 +176,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = when (themeMode) {
             "1" -> false
             "2" -> true
-            "3" -> false
             else -> sysConfiguration.isNightMode
         }
         set(value) {
@@ -439,10 +436,7 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         }
 
     var elevation: Int
-        get() = if (isEInkMode) 0 else appCtx.getPrefInt(
-            PreferKey.barElevation,
-            AppConst.sysElevation
-        )
+        get() = appCtx.getPrefInt(PreferKey.barElevation, AppConst.sysElevation)
         set(value) {
             appCtx.putPrefInt(PreferKey.barElevation, value)
         }
@@ -966,19 +960,6 @@ object AppConfig : SharedPreferences.OnSharedPreferenceChangeListener {
         get() = appCtx.getPrefBoolean(PreferKey.hideMangaTitle, false)
         set(value) {
             appCtx.putPrefBoolean(PreferKey.hideMangaTitle, value)
-        }
-
-    //开启墨水屏模式
-    var enableMangaEInk
-        get() = appCtx.getPrefBoolean(PreferKey.enableMangaEInk, false)
-        set(value) {
-            appCtx.putPrefBoolean(PreferKey.enableMangaEInk, value)
-        }
-
-    var mangaEInkThreshold
-        get() = appCtx.getPrefInt(PreferKey.mangaEInkThreshold, 150)
-        set(value) {
-            appCtx.putPrefInt(PreferKey.mangaEInkThreshold, value)
         }
 
     var disableHorizontalPageSnap

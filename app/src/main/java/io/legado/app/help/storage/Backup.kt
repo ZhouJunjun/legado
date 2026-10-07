@@ -144,7 +144,6 @@ object Backup {
                 (readConfigSnapshot + shareReadConfigSnapshot).forEach { config ->
                     if (config.bgType == 2) add(config.bgStr)
                     if (config.bgTypeNight == 2) add(config.bgStrNight)
-                    if (config.bgTypeEInk == 2) add(config.bgStrEInk)
                 }
             }
         } else {

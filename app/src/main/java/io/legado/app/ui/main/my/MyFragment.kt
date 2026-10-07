@@ -1,12 +1,9 @@
 package io.legado.app.ui.main.my
 
-import android.content.SharedPreferences
 import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
-import androidx.preference.MultiSelectListPreference
-import androidx.preference.PreferenceGroup
 import androidx.preference.Preference
 import io.legado.app.R
 import io.legado.app.base.BaseFragment
@@ -58,64 +55,21 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         when (item.itemId) {
             R.id.menu_help -> showHelp("appHelp")
-            R.id.menu_customize_my -> (childFragmentManager.findFragmentByTag("prefFragment")
-                as? MyPreferenceFragment)?.showCustomization()
         }
     }
 
     /**
      * 配置
+     *
+     * 🔴 原「更多」页 + 顶栏「自定义我的页面」已整体移除(用户 2026-10-06 需求)。
+     * 那套机制只是按 `PreferKey.myMoreItems` 把本页的项二分: 不勾选的留本页,
+     * 勾选的搬进「更多」页。而该集合**默认为空集** ⇒ 点进去永远是空白页。
+     * 移除后本页直接平铺 [R.xml.pref_main] 的全部项。
      */
-    class MyPreferenceFragment : PreferenceFragment(),
-        SharedPreferences.OnSharedPreferenceChangeListener {
-
-        private val isMore: Boolean
-            get() = activity?.intent?.getStringExtra("configTag") == ConfigTag.MY_MORE
-        private lateinit var customization: MultiSelectListPreference
-
-        fun showCustomization() = onDisplayPreferenceDialog(customization)
-
-        private fun applyVisibility(group: PreferenceGroup = preferenceScreen) {
-            val moreItems = customization.values
-            repeat(group.preferenceCount) { index ->
-                val preference = group.getPreference(index)
-                if (preference is PreferenceGroup) {
-                    applyVisibility(preference)
-                    preference.isVisible = (0 until preference.preferenceCount)
-                        .any { preference.getPreference(it).isVisible }
-                } else {
-                    preference.isVisible = when (preference.key) {
-                        PreferKey.myMoreItems -> false
-                        "myMore", "exit" -> !isMore
-                        else -> (preference.key in moreItems) == isMore
-                    }
-                }
-            }
-        }
+    class MyPreferenceFragment : PreferenceFragment() {
 
         override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
             addPreferencesFromResource(R.xml.pref_main)
-            if (isMore) activity?.setTitle(R.string.reader_menu_more)
-            val available = mutableListOf<Preference>()
-            fun collect(group: PreferenceGroup) {
-                repeat(group.preferenceCount) { index ->
-                    val preference = group.getPreference(index)
-                    if (preference is PreferenceGroup) collect(preference)
-                    else if (preference.key !in setOf("exit", "myMore")) available.add(preference)
-                }
-            }
-            collect(preferenceScreen)
-            customization = MultiSelectListPreference(requireContext()).apply {
-                key = PreferKey.myMoreItems
-                title = getString(R.string.customize_my)
-                dialogTitle = getString(R.string.my_more_items)
-                entries = available.map { it.title }.toTypedArray()
-                entryValues = available.map { it.key }.toTypedArray()
-                setDefaultValue(emptySet<String>())
-                isVisible = false
-            }
-            preferenceScreen.addPreference(customization)
-            applyVisibility()
             findPreference<NameListPreference>(PreferKey.themeMode)?.let {
                 it.setOnPreferenceChangeListener { _, _ ->
                     view?.post { ThemeConfig.applyDayNight(requireContext()) }
@@ -129,37 +83,8 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
             listView.setEdgeEffectColor(bottomBackground)
         }
 
-        override fun onResume() {
-            super.onResume()
-            preferenceManager.sharedPreferences?.registerOnSharedPreferenceChangeListener(this)
-            customization.values = preferenceManager.sharedPreferences?.getStringSet(
-                PreferKey.myMoreItems, emptySet<String>()
-            ).orEmpty()
-            applyVisibility()
-        }
-
-        override fun onPause() {
-            preferenceManager.sharedPreferences?.unregisterOnSharedPreferenceChangeListener(this)
-            super.onPause()
-        }
-
-        override fun onSharedPreferenceChanged(
-            sharedPreferences: SharedPreferences?,
-            key: String?
-        ) {
-            when (key) {
-                PreferKey.myMoreItems -> {
-                    customization.values = sharedPreferences?.getStringSet(
-                        key, emptySet<String>()
-                    ).orEmpty()
-                    applyVisibility()
-                }
-            }
-        }
-
         override fun onPreferenceTreeClick(preference: Preference): Boolean {
             when (preference.key) {
-                "myMore" -> startActivity<ConfigActivity> { putExtra("configTag", ConfigTag.MY_MORE) }
                 "replaceManage" -> startActivity<ReplaceRuleActivity>()
                 "txtTocRuleManage" -> startActivity<TxtTocRuleActivity>()
                 "bookmark" -> startActivity<AllBookmarkActivity>()
@@ -182,7 +107,6 @@ class MyFragment() : BaseFragment(R.layout.fragment_my_config), MainFragmentInte
             }
             return super.onPreferenceTreeClick(preference)
         }
-
 
     }
 }
