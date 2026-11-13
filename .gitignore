@@ -28,3 +28,4 @@ keystore.properties
 
 # Rocky 打包脚本的缓存（pack.sh 落这里）
 .build-cache/
+/third_party/maven/com/android/tools/r8/9.1.29
