@@ -14,6 +14,9 @@
 #   LINT=on sh pack.sh                         # 保留 lintVital 检查（默认跳过）
 #   MIRROR=off sh pack.sh                      # 不用国内镜像，直连 google/mavenCentral
 #   ARM_ONLY=on sh pack.sh                     # 只打 arm64-v8a + armeabi-v7a（-ParmOnly=true）
+#   PROXY_ON=1 PROXY_SCHEME=http PROXY_HOST=h PROXY_PORT=p sh pack.sh
+#                                              # 走代理（默认关；SOCKS5 认证在 Gradle 里不通，
+#                                              #   优先用支持 HTTP CONNECT 的代理）
 #   sh pack.sh --sign-only                     # 跳过编译，只给已有的未签名 APK 签名
 #                                              # （编译已经成功、只剩签名失败时用，几秒出结果）
 #
@@ -109,6 +112,30 @@ ARM_ONLY="${ARM_ONLY:-off}"
 NET_CONNECT_TIMEOUT_MS="${NET_CONNECT_TIMEOUT_MS:-8000}"
 NET_SOCKET_TIMEOUT_MS="${NET_SOCKET_TIMEOUT_MS:-20000}"
 NET_RETRIES="${NET_RETRIES:-3}"
+
+# ============================================================ 代理（默认关闭）
+#
+# 默认不走代理，只靠国内镜像 + 直连。要用代理时：
+#   PROXY_ON=1 sh pack.sh
+#
+# ⚠️ 已知问题：内网这台 10.4.56.1:1080 是**纯 SOCKS5 且强制用户名口令**，
+#    而 Gradle 的依赖下载走它自带的 Apache HttpClient，实测下面几条路都不通：
+#      · -Djava.net.socks.username/password        → JDK 21 不读，报 SOCKS authentication failed
+#      · init 脚本 Authenticator.setDefault(...)   → 依赖解析阶段不生效，同样报错
+#      · gradle.properties 的 systemProp.socksProxyUser/Password → 同样报错
+#    （纯 Java 探针用 Authenticator 是能通的，所以是 Gradle 客户端不走全局 Authenticator）
+#    如果以后换成**支持 HTTP CONNECT 的代理**（squid/clash 的 http 端口），
+#    把 PROXY_SCHEME=http 打开即可，那条路 Gradle 支持得很好。
+#
+# 代码保留但默认关闭，等有可用代理时只改 PROXY_ON。
+PROXY_ON="${PROXY_ON:-0}"
+PROXY_SCHEME="${PROXY_SCHEME:-socks5}"
+PROXY_HOST="${PROXY_HOST:-10.4.56.1}"
+PROXY_PORT="${PROXY_PORT:-1080}"
+PROXY_USER="${PROXY_USER:-}"
+PROXY_PASS="${PROXY_PASS:-}"
+# 本机回环不要绕代理（本地 maven 仓库、scp 到自己都不受影响）
+NO_PROXY_HOSTS="${NO_PROXY_HOSTS:-127.0.0.1|localhost|::1}"
 
 # 内存预算（cgroup 算 RSS，比堆大：还有元空间、代码缓存、线程栈、直接内存）：
 # in-process 只有一份 JVM —— Gradle 堆 3.75G + 元空间 0.562G，其余约 1.6G 留给 JVM 开销。
@@ -489,6 +516,44 @@ setup_limits() {
     say "并发：--max-workers=${WORKERS}（Kotlin 策略 ${KOTLIN_STRATEGY}）"
 }
 
+# ============================================================ 代理参数（受 PROXY_ON 门控）
+#
+# PROXY_ON=0（默认）时本函数什么都不做，构建完全走国内镜像 + 直连。
+# PROXY_ON=1 时才生成 -D 参数。
+#
+# ⚠️ 认证是已知难点（见上面 PROXY_ON 处的说明）：
+#   SOCKS5 的用户名/口令在 Gradle 里没有可靠的传法，已实测三种都失败。
+#   所以真要启用，请优先使用**支持 HTTP CONNECT 的代理**，那条路是通的。
+build_proxy_args() {
+    PROXY_ARGS=()
+    [ "$PROXY_ON" = "1" ] || return 0
+
+    case "$PROXY_SCHEME" in
+        http|https)
+            PROXY_ARGS=(
+                "-Dhttp.proxyHost=${PROXY_HOST}"
+                "-Dhttp.proxyPort=${PROXY_PORT}"
+                "-Dhttps.proxyHost=${PROXY_HOST}"
+                "-Dhttps.proxyPort=${PROXY_PORT}"
+                "-Dhttp.nonProxyHosts=${NO_PROXY_HOSTS}"
+            )
+            ;;
+        *)
+            # socks 分支保留，但注意认证大概率不通（见文件头说明）
+            PROXY_ARGS=(
+                "-DsocksProxyHost=${PROXY_HOST}"
+                "-DsocksProxyPort=${PROXY_PORT}"
+                "-DsocksProxyVersion=5"
+                "-Dhttp.proxyHost=${PROXY_HOST}"
+                "-Dhttp.proxyPort=${PROXY_PORT}"
+                "-Dhttps.proxyHost=${PROXY_HOST}"
+                "-Dhttps.proxyPort=${PROXY_PORT}"
+                "-Dhttp.nonProxyHosts=${NO_PROXY_HOSTS}"
+            )
+            ;;
+    esac
+}
+
 # 把 Gradle 的任务名翻译成人话，心跳时显示更有用
 friendly_task() {
     case "$1" in
@@ -573,6 +638,9 @@ gradle_with_progress() {
         "-Dorg.gradle.internal.repository.initial.backoff=500"
     )
 
+    # 代理（默认关闭，PROXY_ON=1 才启用；见文件头关于 SOCKS5 认证的说明）
+    build_proxy_args
+
     "${LIMITER[@]}" "${TASKSET[@]}" "$GRADLE_HOME/bin/gradle" assembleRelease \
         --console=plain --no-daemon \
         "--max-workers=$WORKERS" \
@@ -581,6 +649,7 @@ gradle_with_progress() {
         "${lint_args[@]}" \
         "${abi_args[@]}" \
         "${net_args[@]}" \
+        "${PROXY_ARGS[@]}" \
         "-Dorg.gradle.jvmargs=-Xmx${GRADLE_HEAP_MB}m -XX:MaxMetaspaceSize=${GRADLE_META_MB}m -Dfile.encoding=UTF-8" \
         >>"$log" 2>&1 &
     pid=$!
@@ -752,11 +821,19 @@ build_apk() {
         say ""
     fi
     if [ "$MIRROR" != "off" ] && [ -f "$MIRROR_INIT" ]; then
-        ok "依赖镜像：阿里云（google / mavenCentral / gradle-plugin 前置，jitpack 保持直连）"
+        ok "依赖镜像：阿里云（google / mavenCentral / gradle-plugin 前置）"
+        say "         com.github.* 按 group 分流：glide 系 / zxing-lite 走阿里云，"
+        say "         其余只在 jitpack 上的（LyricViewX / glide-svg / LiveEventBus 等）直连 jitpack"
     elif [ "$MIRROR" = "off" ]; then
         warn "依赖镜像：已按 MIRROR=off 关闭，直连 google / mavenCentral（国内很慢）"
     else
         warn "依赖镜像：找不到 $MIRROR_INIT，直连 google / mavenCentral（国内很慢）"
+    fi
+
+    if [ "$PROXY_ON" = "1" ]; then
+        warn "代理：已启用 ${PROXY_SCHEME}://${PROXY_HOST}:${PROXY_PORT}（SOCKS5 认证在 Gradle 里可能不通）"
+    else
+        say "代理：未启用（PROXY_ON=1 可开启）"
     fi
 
     if [ "$LINT" = "skip" ]; then
@@ -1085,7 +1162,7 @@ SIGN_ONLY=0
 UNSIGNED_APK=""
 
 usage() {
-    sed -n '7,18p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '7,22p' "$0" | sed 's/^# \{0,1\}//'
 }
 
 parse_args() {
