@@ -1,6 +1,7 @@
 package io.legado.app.ui.main
 
 import android.app.Application
+import android.os.SystemClock
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.viewModelScope
 import androidx.recyclerview.widget.RecyclerView.RecycledViewPool
@@ -10,10 +11,9 @@ import io.legado.app.constant.EventBus
 import io.legado.app.data.appDb
 import io.legado.app.data.entities.Book
 import io.legado.app.data.entities.saveReadRecordSnapshot
-import io.legado.app.help.book.update
+import io.legado.app.help.book.LocalBookChangeScanner
+import io.legado.app.help.book.LocalBookTocReloader
 import io.legado.app.help.config.AppConfig
-import io.legado.app.model.ReadBook
-import io.legado.app.model.localBook.LocalBook
 import io.legado.app.utils.onEachParallel
 import io.legado.app.utils.postEvent
 import kotlinx.coroutines.CoroutineStart
@@ -35,6 +35,9 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     private var poolSize = min(threadCount, AppConst.MAX_THREAD)
     private var upTocPool = Executors.newFixedThreadPool(poolSize).asCoroutineDispatcher()
     private val tocUpdateRequests = TocUpdateRequests()
+
+    /** 上一次「书架文件变更扫描」的时刻（[SystemClock.elapsedRealtime]），用于节流。 */
+    private var lastLocalScanAt = 0L
     val onUpBooksLiveData = MutableLiveData<Int>()
     private var upTocJob: Job? = null
     private var upTocJobGeneration = 0L
@@ -162,22 +165,49 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
     /**
      * 重新解析本地书籍的目录。
      * 纯本地阅读器：内容与目录均来自本地文件，不再联网获取。
+     *
+     * 实际重解析走 [LocalBookTocReloader]：它按 bookUrl 加锁，
+     * 避免和「打开 App 时的变更扫描」并发把章节表写坏。
      */
     private suspend fun updateToc(request: TocUpdateRequestToken) {
         val bookUrl = request.bookUrl
         try {
             val book = appDb.bookDao.getBook(bookUrl) ?: return
             currentCoroutineContext().ensureActive()
-            val toc = LocalBook.getChapterList(book)
-            appDb.bookChapterDao.delByBook(bookUrl)
-            appDb.bookChapterDao.insert(*toc.toTypedArray())
-            book.update()
-            ReadBook.onChapterListUpdated(book)
+            LocalBookTocReloader.reload(book)
         } catch (e: Throwable) {
             currentCoroutineContext().ensureActive()
         } finally {
             tocUpdateRequests.finish(request, bookUrl)
         }
+    }
+    /**
+     * 打开 App / 从后台恢复时，检查书架上本地书的文件是否变了，变了就后台重解析。
+     *
+     * - 全程在 IO 线程，只有最后「有书真的变了」才回主线程发事件；
+     * - 绝大多数情况下第一轮 stat 就全部跳过，不产生可感知开销；
+     * - 已有一轮在跑时直接忽略（见 [LocalBookChangeScanner.scan]）。
+     *
+     * 这里再加一层时间节流：进出阅读页、旋转屏幕都会走一遍 onResume，
+     * 没有节流的话短时间内会反复 stat 整个书架（SAF 下每本都是一次 binder 调用）。
+     */
+    fun scanLocalBookChanges() {
+        val now = SystemClock.elapsedRealtime()
+        if (lastLocalScanAt != 0L && now - lastLocalScanAt < LOCAL_SCAN_INTERVAL_MS) return
+        lastLocalScanAt = now
+        execute {
+            LocalBookChangeScanner.scan { changedBookUrls ->
+                changedBookUrls.forEach { postEvent(EventBus.UP_BOOKSHELF, it) }
+            }
+        }
+    }
+
+    /**
+     * 用户在其它页面（详情页「更新目录」、阅读页刷新）改过某本书的目录后，
+     * 重置节流，让下一次回前台能立刻按新状态复核，而不是被 30 秒节流挡掉。
+     */
+    fun invalidateLocalScanThrottle() {
+        lastLocalScanAt = 0L
     }
 
     fun postUpBooksLiveData(reset: Boolean = false) {
@@ -197,6 +227,16 @@ class MainViewModel(application: Application) : BaseViewModel(application) {
 
     interface CallBack {
         fun openImportUi(type: Int, source: String)
+    }
+
+    private companion object {
+        /**
+         * 两次「书架文件变更扫描」的最小间隔。
+         * 书架扫描要逐本 stat 源文件（SAF 下每本是一次 binder 调用），
+         * 进出阅读页/转屏都会触发 onResume，不给节流会白跑很多次。
+         * 30 秒足够覆盖「用户去文件管理器换了书再切回来」的场景。
+         */
+        const val LOCAL_SCAN_INTERVAL_MS = 30_000L
     }
 
 }

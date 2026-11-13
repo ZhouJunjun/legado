@@ -136,6 +136,11 @@ class MainActivity : VMBaseActivity<ActivityMainBinding, MainViewModel>(),
     override fun onResume() {
         super.onResume()
         upAloudMiniBar()
+        // 打开 App / 从后台恢复时，检查书架上本地书的源文件有没有更新，
+        // 有就在后台重新解析目录（判定与节流都在 viewModel 里，见 scanLocalBookChanges）。
+        // 放在 onResume 而不是 onCreate：从后台回来同样要检查，
+        // 而「首次打开」也必然先走一遍 onResume。
+        viewModel.scanLocalBookChanges()
     }
 
     override fun onNavigationItemSelected(item: MenuItem): Boolean = binding.run {

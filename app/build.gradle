@@ -18,8 +18,12 @@ static def releaseTime() {
 }
 
 def name = "legado"
-def version = "3." + releaseTime()
-def versionCodeValue = 30000
+// 版本号重新从 1.0.0 起算；后面发版手工改这里（1.0.1、1.0.2 ...）。
+def version = "1.0.0"
+// versionCode 继续沿用「基数 + 提交数」累加，保证单调递增、能覆盖升级。
+// 上一版 3.26093016 的 code 是 38462，这里取 38468（= 37540 + 928 次提交），
+// 也是 Git 不可用时的兜底值 —— 别改小，改小会导致装不上。
+def versionCodeValue = 38468
 // Preserve the published code at this point, then ignore GitHub wrapper merge commits.
 def versionCodeBaseCommit = '9639f027fbc8cfdf57ce136a9e0c98829a235aef'
 def versionCodeAtBase = 37540

@@ -77,7 +77,7 @@ KS_ALIAS="legado"
 # 装到手机上就是「软件包似乎无效」。scp 不经过终端，没这个毛病。
 # 关掉：UPLOAD=off sh pack.sh
 UPLOAD="${UPLOAD:-on}"
-UPLOAD_USER="${UPLOAD_USER:-zjj}"
+UPLOAD_USER="${UPLOAD_USER:-itdev}"
 UPLOAD_HOST="${UPLOAD_HOST:-10.19.118.10}"
 UPLOAD_DIR="${UPLOAD_DIR:-/data/download/junjunzhou}"
 
@@ -670,12 +670,17 @@ gradle_with_progress() {
 }
 
 # 从 output-metadata.json 里读 versionName。
-# legado 的 versionName 是 "3." + 打包时刻（yyMMddHH），build.gradle 里没有字面量，
-# 用 sed 扒 build.gradle 是扒不到的，只能读 AGP 写出来的元数据。
+# 版本号现在在 app/build.gradle 里是字面量 `def version = "1.0.0"`，
+# 但仍以 AGP 写出的元数据为准（它在 flavor/变体层面才是真值）；
+# 读不到时才去 build.gradle 里扒字面量，最后才退成时间戳。
 read_version_name() {
     local v=""
     if [ -f "$APK_META" ]; then
         v="$(sed -n 's/.*"versionName"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$APK_META" | sed -n '1p')"
+    fi
+    if [ -z "$v" ]; then
+        v="$(sed -n 's/^[[:space:]]*def[[:space:]][[:space:]]*version[[:space:]]*=[[:space:]]*"\([^"]*\)".*/\1/p' \
+            "$PROJECT_DIR/app/build.gradle" 2>/dev/null | sed -n '1p')"
     fi
     if [ -z "$v" ]; then
         v="$(date +%y%m%d%H)"

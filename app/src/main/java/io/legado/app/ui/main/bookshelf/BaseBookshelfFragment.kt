@@ -159,7 +159,11 @@ abstract class BaseBookshelfFragment(layoutId: Int) : VMBaseFragment<BookshelfVi
     override fun onCompatOptionsItemSelected(item: MenuItem) {
         super.onCompatOptionsItemSelected(item)
         when (item.itemId) {
-            R.id.menu_update_toc -> activityViewModel.upToc(books, onlyUpdateRead)
+            R.id.menu_update_toc -> {
+                // 刚手动刷过目录，下次回前台应当立刻按新文件状态复核，别被节流挡住
+                activityViewModel.invalidateLocalScanThrottle()
+                activityViewModel.upToc(books, onlyUpdateRead)
+            }
             R.id.menu_bookshelf_layout -> configBookshelf()
             R.id.menu_group_manage -> showDialogFragment<GroupManageDialog>()
             R.id.menu_add_local -> startActivity<ImportBookActivity>()
