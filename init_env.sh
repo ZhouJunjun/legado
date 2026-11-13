@@ -10,7 +10,6 @@
 #   sudo sh init_env.sh               # 用 sh 调也行，脚本会自己切回 bash
 #   PREFIX=/opt/tools sudo bash init_env.sh   # 装到别处
 #   OWNER=itdev sudo bash init_env.sh         # 顺手把项目里的 root 残留交给 itdev
-#   R8_JAR=/tmp/r8-9.1.29.jar sudo bash init_env.sh   # 内网拿不到 R8 时用离线包
 #
 # 特点：
 #   - 只往 /usr/local 解压，不写 PATH、不改 /etc/profile
@@ -24,14 +23,9 @@
 #   platform 36    ← build.gradle 的 compile_sdk_version = 36
 #   build-tools 35.0.0 ← AGP 8.13.2 内置默认值（工程没声明 buildToolsVersion）
 #
-# ⚠️ R8 的事单独说：settings.gradle 的 pluginManagement.buildscript 里写死了
-#   classpath("com.android.tools:r8:9.1.29")，仓库是 storage.googleapis.com/r8-releases/raw。
-#   这个域名在国内基本不可达，阿里云/腾讯/华为/Maven Central 都没有这个构件。
-#   所以本脚本会把 r8-9.1.29.jar 预置到 $PREFIX/legado-maven（本地 maven 仓库），
-#   pack.sh 会把它加进构建的仓库列表，从而绕开 Google Storage。
-#   拿不到网络时用 R8_JAR= 指定一个手工拷过来的 jar 即可（Windows 上已有缓存：
-#   ~/.gradle/caches/modules-2/files-2.1/com.android.tools/r8/9.1.29/<hash>/r8-9.1.29.jar，
-#   sha256 应为 9a7d1e9e4c2d3ee05482b9695df5f4d8f92c22ebb74603d6be4eab0505467f1a）。
+# ℹ️ R8 不需要本脚本处理：它在工程的 third_party/maven 里随代码走
+#   （settings.gradle 的 pluginManagement.buildscript 直接指向它），
+#   首次构建就能命中，不走 storage.googleapis.com。
 #
 set -euo pipefail
 
@@ -73,10 +67,6 @@ declare -A BUILD_TOOLS_ZIP_MAP=(
 )
 PLATFORMTOOLS_ZIP="platform-tools_r36.0.0-linux.zip"
 
-# settings.gradle 写死的 R8 版本，别乱改
-R8_VER="9.1.29"
-R8_SHA256="9a7d1e9e4c2d3ee05482b9695df5f4d8f92c22ebb74603d6be4eab0505467f1a"
-
 # 镜像优先，官方兜底
 M_TUNA="https://mirrors.tuna.tsinghua.edu.cn"
 M_TX="https://mirrors.cloud.tencent.com"
@@ -88,18 +78,12 @@ GRADLE_URL_ALT="https://services.gradle.org/distributions/gradle-$GRADLE_VER-bin
 SDK_MIRROR="$M_TX/AndroidSDK"
 SDK_MIRROR_ALT="https://dl.google.com/android/repository"
 
-R8_URL="https://storage.googleapis.com/r8-releases/raw/com/android/tools/r8/$R8_VER/r8-$R8_VER.jar"
-
 # ============================================================ 路径
 
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 JDK_HOME="$PREFIX/$JDK_DIR_NAME"
 GRADLE_HOME="$PREFIX/gradle-$GRADLE_VER"
 SDK_HOME="$PREFIX/android-sdk"
-
-# R8 的本地 maven 仓库（pack.sh 会把它加进构建仓库）
-LOCAL_MAVEN="$PREFIX/legado-maven"
-R8_DIR="$LOCAL_MAVEN/com/android/tools/r8/$R8_VER"
 
 # 项目里由构建产生的东西，root 跑过就会留成 root 所有
 CACHE_ROOT="$PROJECT_DIR/.build-cache"
@@ -504,82 +488,6 @@ EOF
     fi
 }
 
-# ============================================================ R8（Google Storage 绕行）
-
-# settings.gradle 里 buildscript 写死了 com.android.tools:r8:9.1.29，仓库是
-# storage.googleapis.com/r8-releases/raw —— 国内基本不可达，官方镜像都没有这个构件。
-# 把它放成本地 maven 仓库，pack.sh 会把这个目录前置进构建仓库列表。
-ensure_r8() {
-    step "R8 $R8_VER（绕开 Google Storage）"
-
-    local jar="$R8_DIR/r8-$R8_VER.jar"
-    local pom="$R8_DIR/r8-$R8_VER.pom"
-
-    if [ -s "$jar" ]; then
-        ok "已存在 $jar"
-        write_r8_pom "$pom"
-        return 0
-    fi
-
-    mkdir -p "$R8_DIR"
-
-    # 1) 手工指定的离线包优先
-    if [ -n "${R8_JAR:-}" ]; then
-        [ -s "$R8_JAR" ] || die "R8_JAR 指向的文件不存在或为空：$R8_JAR"
-        say "使用离线包 $R8_JAR"
-        cp -f "$R8_JAR" "$jar"
-    else
-        # 2) 试着直接下（能通就省事）
-        local tmp; tmp="$(new_tmp)"
-        if fetch "$R8_URL" "$tmp/r8.jar"; then
-            check_archive_size "$tmp/r8.jar" 40000000 "R8 $R8_VER"
-            mv -f "$tmp/r8.jar" "$jar"
-        else
-            rm -f "$jar"
-            warn "取不到 R8（storage.googleapis.com 不可达）"
-            warn "这台机器将无法编译：settings.gradle 的 pluginManagement.buildscript 需要它"
-            warn ""
-            warn "解决办法（二选一）："
-            warn "  a) 在内网/能出网的机器上下载，然后重跑："
-            warn "     sudo R8_JAR=/path/to/r8-$R8_VER.jar bash $PROJECT_DIR/init_env.sh"
-            warn "  b) 直接手工放到：$jar"
-            warn "     （Windows 本机已有缓存，见本脚本开头的说明）"
-            return 0
-        fi
-    fi
-
-    # 校验：这个 jar 是 56MB 的编译器本体，坏了要到构建最后才炸，不如现在查
-    local actual
-    actual="$(sha256sum "$jar" | awk '{print $1}')"
-    if [ "$actual" != "$R8_SHA256" ]; then
-        rm -f "$jar"
-        die "R8 $R8_VER 校验不通过
-  期望 $R8_SHA256
-  实际 $actual
-  这个 jar 可能是错误页或被截断，换一个来源再试"
-    fi
-    ok "sha256 校验通过"
-
-    write_r8_pom "$pom"
-    ok "完成：$jar"
-}
-
-# 极简 pom —— Gradle 解析模块需要元数据，jar 单放是不够的
-write_r8_pom() {
-    local pom="$1"
-    [ -f "$pom" ] && return 0
-    cat > "$pom" <<POM
-<?xml version="1.0" encoding="UTF-8"?>
-<project xmlns="http://maven.apache.org/POM/4.0.0">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>com.android.tools</groupId>
-  <artifactId>r8</artifactId>
-  <version>$R8_VER</version>
-  <packaging>jar</packaging>
-</project>
-POM
-}
-
 # ============================================================ 项目归属交接
 
 # root 装环境时如果之前有人用 root 跑过构建，项目里会残留 root 所有的目录，
@@ -662,7 +570,6 @@ main() {
     ensure_gradle
     ensure_sdk
     ensure_sdk_licenses
-    ensure_r8
     hand_over_project
 
     # 提示怎么验、怎么跑
@@ -678,14 +585,8 @@ main() {
     say "JDK        : $JDK_HOME"
     say "Gradle     : $GRADLE_HOME"
     say "Android SDK: $SDK_HOME"
-    say "本地 maven : $LOCAL_MAVEN（R8）"
     printf '\n接下来用 %s 执行编译打包：\n' "$owner"
     printf '  cd %s && sh pack.sh\n\n' "$PROJECT_DIR"
-
-    if [ ! -s "$R8_DIR/r8-$R8_VER.jar" ]; then
-        printf '%s!! R8 没装上，构建大概率会卡在配置阶段%s\n' "$C_Y" "$C_0"
-        printf '   补齐方式见上面「R8」那一段，或看 pack.sh 启动时的提示\n\n'
-    fi
 
     # 必须显式返回 0：上面那个 if 在条件不成立时退出码是 1，
     # 会让整个脚本"干完活了却报失败"。

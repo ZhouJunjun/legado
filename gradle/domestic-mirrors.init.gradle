@@ -31,8 +31,6 @@
 //   靠 includeGroupByRegex 限定后，Gradle 对不匹配的仓库**直接跳过、不发请求**，
 //   这才是真正的省时点 —— 之前 12 个依赖 × 3 个镜像 × 404 的空转没了。
 
-def LOCAL_MAVEN = System.getenv('LEGADO_LOCAL_MAVEN')
-
 def DEBUG = System.getProperty('mirror.debug') != null
 
 def MIRROR_URLS = [
@@ -61,10 +59,6 @@ def JITPACK_ONLY_GROUPS = [
 //   com.github.bumptech.glide   —— glide / recyclerview-integration / compiler / compose / ksp / avif
 //   com.github.jenly1314        —— zxing-lite（jitpack 上是 404，只能走阿里云）
 
-def hasLocalMaven = {
-    return LOCAL_MAVEN != null && LOCAL_MAVEN.length() > 0 && new File(LOCAL_MAVEN).isDirectory()
-}
-
 // 改写仓库列表：本地仓库 + 阿里云镜像在前，原仓库（含 jitpack）全部留作兜底。
 //
 // 🔴 这里是「卡在下载」的真正解法，核心只有一条：
@@ -83,17 +77,6 @@ def rewriteAll = { repositories, String tag ->
     def originals = repositories.toList()
 
     repositories.clear()
-
-    // 本地 R8 仓库（只有 com.android.tools:r8）
-    if (hasLocalMaven()) {
-        repositories.maven { repo ->
-            repo.name = "local-${tag}"
-            repo.url = LOCAL_MAVEN
-            repo.content {
-                includeGroup 'com.android.tools'
-            }
-        }
-    }
 
     MIRROR_URLS.eachWithIndex { mirrorUrl, index ->
         repositories.maven { repo ->
@@ -116,29 +99,6 @@ def rewriteAll = { repositories, String tag ->
         repositories.toList().each { r ->
             println "   ${r.name} = ${r.url}"
         }
-    }
-}
-
-// R8 那层必须在 settings.gradle 执行前塞进去：pluginManagement.buildscript 的
-// classpath 是在 settings 求值过程中解析的，等到 settingsEvaluated 就晚了。
-// 这里只 add，不清空 —— 后面 settings.gradle 自己 append 的仓库天然排在我们后面。
-beforeSettings { settings ->
-    if (!hasLocalMaven()) {
-        return
-    }
-    try {
-        settings.pluginManagement.buildscript.repositories.maven { repo ->
-            repo.name = 'local-buildscript'
-            repo.url = LOCAL_MAVEN
-            repo.content {
-                includeGroup 'com.android.tools'
-            }
-        }
-        if (DEBUG) {
-            println "[mirror] buildscript: 前置 ${LOCAL_MAVEN}"
-        }
-    } catch (Throwable ignored) {
-        // 老版本 Gradle 没有这个入口，忽略即可
     }
 }
 

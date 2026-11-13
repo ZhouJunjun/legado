@@ -173,9 +173,9 @@ GRADLE_TMP_DIR="$CACHE_ROOT/tmp"               # Gradle 与子进程的临时文
 # 依赖仓库前置国内镜像的 init 脚本（不改 settings.gradle）
 MIRROR_INIT="$PROJECT_DIR/gradle/domestic-mirrors.init.gradle"
 
-# init_env.sh 预置的 R8 本地 maven 仓库（绕开 storage.googleapis.com）
-LOCAL_MAVEN="$PREFIX/legado-maven"
-R8_JAR_PATH="$LOCAL_MAVEN/com/android/tools/r8/$R8_VER/r8-$R8_VER.jar"
+# R8（AGP 8.13.2 需要 9.1.29，官方只在 storage.googleapis.com 上，且极慢）
+# 随工程放在 third_party/maven 里，首次构建直接命中，不走网络。
+R8_IN_PROJECT="$PROJECT_DIR/third_party/maven/com/android/tools/r8/$R8_VER/r8-$R8_VER.jar"
 
 # 每次运行的结论强制落在文件里。终端断线、日志被截断、管道被 SIGPIPE 打断时，
 # 屏幕上什么都留不下，只有这个文件能说明上一次到底是怎么结束的（含退出码）。
@@ -394,18 +394,17 @@ check_toolchain() {
         warn "缺 SDK 许可证：$SDK_HOME/licenses/android-sdk-license"; missing=1
     fi
 
-    # R8 是 Google Storage 独家，缺了会在 Gradle 配置阶段就失败（不是编译到一半）。
-    # 只签名模式不编译，用不到它，就不拦。
+    # R8 现在随工程走（third_party/maven），这里只确认它在不在。
+    # 缺了虽然能回落 Google Storage，但那个 56MB 只有 ~130KB/s，会卡很久。
     if [ "$SIGN_ONLY" = "1" ]; then
         say "R8 检查：跳过（只签名模式不编译）"
-    elif [ -s "$R8_JAR_PATH" ]; then
-        ok "R8 $R8_VER（本地仓库）"
+    elif [ -s "$R8_IN_PROJECT" ]; then
+        ok "R8 $R8_VER（工程内 third_party/maven，不走网络）"
     else
-        warn "缺 R8：$R8_JAR_PATH"
-        warn "  settings.gradle 的 pluginManagement.buildscript 要 com.android.tools:r8:$R8_VER，"
-        warn "  而它只在 storage.googleapis.com 上，国内多半拉不到。"
-        warn "  补法：sudo R8_JAR=/path/to/r8-$R8_VER.jar bash $PROJECT_DIR/init_env.sh"
-        missing=1
+        warn "工程内缺 R8：$R8_IN_PROJECT"
+        warn "  会回落到 storage.googleapis.com（~130KB/s，56MB 要下很久，看起来像卡死）"
+        warn "  补法：把 r8-$R8_VER.jar + .pom 放进 third_party/maven/com/android/tools/r8/$R8_VER/"
+        # 不 die：能回落，只是慢。让人自己决定要不要补。
     fi
 
     if [ "$missing" = 1 ]; then
@@ -641,7 +640,17 @@ gradle_with_progress() {
     # 代理（默认关闭，PROXY_ON=1 才启用；见文件头关于 SOCKS5 认证的说明）
     build_proxy_args
 
-    "${LIMITER[@]}" "${TASKSET[@]}" "$GRADLE_HOME/bin/gradle" assembleRelease \
+    # 🔴 让 Gradle 的输出变成行缓冲：
+    #   gradle 的 stdout 被重定向到文件（非 TTY）时是**块缓冲**，配置阶段
+    #   可能几十秒甚至几分钟一个字节都不落盘 —— 脚本的轮询自然读不到任何东西，
+    #   屏幕就永远停在"正在配置项目"，看起来就是卡死。用 stdbuf 强制行缓冲，
+    #   一旦有输出立刻可见。（stdbuf 不可用则退化为原行为，不影响正确性）
+    local stdbuf_cmd=()
+    if command -v stdbuf >/dev/null 2>&1; then
+        stdbuf_cmd=(stdbuf -oL -eL)
+    fi
+
+    "${LIMITER[@]}" "${TASKSET[@]}" "${stdbuf_cmd[@]}" "$GRADLE_HOME/bin/gradle" assembleRelease \
         --console=plain --no-daemon \
         "--max-workers=$WORKERS" \
         "${mirror_args[@]}" \
@@ -651,7 +660,7 @@ gradle_with_progress() {
         "${net_args[@]}" \
         "${PROXY_ARGS[@]}" \
         "-Dorg.gradle.jvmargs=-Xmx${GRADLE_HEAP_MB}m -XX:MaxMetaspaceSize=${GRADLE_META_MB}m -Dfile.encoding=UTF-8" \
-        >>"$log" 2>&1 &
+        >>"$log" 2>&1 < /dev/null &
     pid=$!
     # 阶段名要落回"编译"，否则会被 setup_limits 的 "设置资源上限" 覆盖掉
     RUN_STAGE="编译 release（Gradle）"
@@ -667,16 +676,28 @@ gradle_with_progress() {
         sleep 2
         kill -0 "$pid" 2>/dev/null || break
 
-        # 把新出现的任务行刷到屏幕
-        total="$(grep -c '^> Task ' "$log" 2>/dev/null || true)"
+        # 把新增的日志行实时刷到屏幕。
+        # 🔴 原来只刷 `^> Task ` 行 —— 配置阶段（下载依赖、配置子工程）一行都看不见，
+        #    屏幕永远停在"正在配置项目"，用户无法判断是"在下载"还是"真卡死"。
+        #    现在刷**所有新增行**（过滤掉无意义的空行/进度条残留），
+        #    这样 Downloading / Configure project 都能实时看到。
+        total="$(wc -l <"$log" 2>/dev/null || echo 0)"
         [ -z "$total" ] && total=0
         if [ "$total" -gt "$printed" ]; then
-            grep '^> Task ' "$log" | tail -n "$((total - printed))" |
-                sed 's/^> Task /     · /' | progress_out
+            sed -n "$((printed + 1)),${total}p" "$log" 2>/dev/null |
+                grep -vE '^[[:space:]]*$' |
+                grep -vE '^<(===|---|===)>' |
+                sed 's/^> Task /     · /' |
+                sed 's/^/     | /' |
+                progress_out
             printed="$total"
-            # 记下最后一个任务名，心跳和状态文件都用它
-            last_task_line="$(grep '^> Task ' "$log" | tail -1 | sed 's/^> Task //')"
-            printf '%s\n' "$last_task_line" >"$LAST_TASK_FILE" 2>/dev/null || true
+            # 任务名仍然单独记：心跳与失败诊断要用
+            local lt
+            lt="$(grep '^> Task ' "$log" 2>/dev/null | tail -1 | sed 's/^> Task //')"
+            if [ -n "$lt" ]; then
+                last_task_line="$lt"
+                printf '%s\n' "$last_task_line" >"$LAST_TASK_FILE" 2>/dev/null || true
+            fi
         fi
 
         now="$(date +%s)"
@@ -788,11 +809,6 @@ build_apk() {
     export ANDROID_HOME="$SDK_HOME"
     export ANDROID_SDK_ROOT="$SDK_HOME"
 
-    # R8 本地仓库：镜像 init 脚本会读这个变量，把它前置进构建仓库列表
-    if [ -d "$LOCAL_MAVEN" ]; then
-        export LEGADO_LOCAL_MAVEN="$LOCAL_MAVEN"
-    fi
-
     # 依赖与各类缓存全部落在项目目录
     mkdir -p "$GRADLE_USER_HOME_DIR" "$GRADLE_TMP_DIR"
     export GRADLE_USER_HOME="$GRADLE_USER_HOME_DIR"
@@ -803,9 +819,6 @@ build_apk() {
     say "GRADLE_USER_HOME = $GRADLE_USER_HOME"
     say "TMPDIR           = $TMPDIR"
     say "gradle           = $GRADLE_HOME/bin/gradle"
-    if [ -d "$LOCAL_MAVEN" ]; then
-        say "本地 maven       = $LOCAL_MAVEN（R8 $R8_VER）"
-    fi
     say ""
 
     # 上一次构建留下的 APK 必须先清掉：否则本次编译失败时会拿旧包去签名，

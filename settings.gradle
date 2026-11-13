@@ -2,6 +2,21 @@ pluginManagement {
     buildscript {
         repositories {
             mavenCentral()
+            // 🔴 工程内 R8 仓库 —— 首次构建就能命中，完全不联网。
+            //
+            // 为什么不直接用 storage.googleapis.com：
+            //   那个 56MB 的 jar 实测只有 ~130KB/s（慢的时候更糟），而且这个下载
+            //   发生在 **settings 求值阶段**，期间 Gradle 一个字都不输出 ——
+            //   表现就是"卡在配置项目"几分钟甚至更久，看着完全像死机。
+            //
+            // 文件放在 third_party/maven/com/android/tools/r8/9.1.29/ 下
+            // （jar + 极简 pom），与新机器是否预装无关，克隆下来就有。
+            // sha256 = 9a7d1e9e4c2d3ee05482b9695df5f4d8f92c22ebb74603d6be4eab0505467f1a
+            maven {
+                url = uri("$rootDir/third_party/maven")
+                content { includeGroup 'com.android.tools' }
+            }
+            // 兜底：工程内文件缺失时仍可回落到原始地址（会慢，但不会编不过）
             maven {
                 url = uri("https://storage.googleapis.com/r8-releases/raw")
             }
