@@ -1092,6 +1092,8 @@ main() {
     step "检查运行身份"
     require_build_user
 
+    git pull
+
     RUN_STAGE="检查环境"
     check_host
     check_toolchain
