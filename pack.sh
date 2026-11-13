@@ -103,6 +103,13 @@ LINT="${LINT:-skip}"
 # 只打 arm 两种 ABI（工程里的 -ParmOnly=true）。默认关，跟现有 Windows 出包一致。
 ARM_ONLY="${ARM_ONLY:-off}"
 
+# 依赖下载的网络超时（毫秒）。Gradle 默认 connect=30s/socket=30s，且对"连上了但不回数据"
+# 没有额外约束 —— 国内拉 jitpack 时表现为长时间静默，看着就是卡死。
+# 8s 连接 / 20s 读，配 3 次重试：偶发抖动能自愈，真不可达会快速失败而不是干等。
+NET_CONNECT_TIMEOUT_MS="${NET_CONNECT_TIMEOUT_MS:-8000}"
+NET_SOCKET_TIMEOUT_MS="${NET_SOCKET_TIMEOUT_MS:-20000}"
+NET_RETRIES="${NET_RETRIES:-3}"
+
 # 内存预算（cgroup 算 RSS，比堆大：还有元空间、代码缓存、线程栈、直接内存）：
 # in-process 只有一份 JVM —— Gradle 堆 3.75G + 元空间 0.562G，其余约 1.6G 留给 JVM 开销。
 GRADLE_HEAP_MB=$((MEM_LIMIT_MB * 5 / 8))
@@ -553,6 +560,19 @@ gradle_with_progress() {
         abi_args=(-ParmOnly=true)
     fi
 
+    # 网络超时与重试（Gradle 默认 connectTimeout=30s 且不限制"卡住"，这里是"看起来
+    # 卡住几分钟"的主要来源）。legado 有 12 个 com.github.* 依赖必须走 jitpack，
+    # 每个都要先把阿里云的 3 个镜像试一遍拿到 404 才轮到 jitpack，
+    # 默认 30s 超时 × 多仓库 × 多依赖 = 十几分钟毫无输出。
+    # 8s 连接超时在国内网络下足够（实测 jitpack 建连 < 3ms，慢在等响应），
+    # 重试让偶发抖动自愈，但不会像默认那样无限拖。
+    local net_args=(
+        "-Dorg.gradle.internal.http.connectionTimeout=${NET_CONNECT_TIMEOUT_MS}"
+        "-Dorg.gradle.internal.http.socketTimeout=${NET_SOCKET_TIMEOUT_MS}"
+        "-Dorg.gradle.internal.repository.max.retries=${NET_RETRIES}"
+        "-Dorg.gradle.internal.repository.initial.backoff=500"
+    )
+
     "${LIMITER[@]}" "${TASKSET[@]}" "$GRADLE_HOME/bin/gradle" assembleRelease \
         --console=plain --no-daemon \
         "--max-workers=$WORKERS" \
@@ -560,6 +580,7 @@ gradle_with_progress() {
         "${kotlin_args[@]}" \
         "${lint_args[@]}" \
         "${abi_args[@]}" \
+        "${net_args[@]}" \
         "-Dorg.gradle.jvmargs=-Xmx${GRADLE_HEAP_MB}m -XX:MaxMetaspaceSize=${GRADLE_META_MB}m -Dfile.encoding=UTF-8" \
         >>"$log" 2>&1 &
     pid=$!
