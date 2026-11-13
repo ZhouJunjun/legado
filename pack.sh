@@ -68,7 +68,7 @@ REQUIRED_BUILD_TOOLS=("35.0.0")
 R8_VER="9.1.29"
 
 # 脚本自身版本：跑出来的日志里带这一行，一眼能看出用的是新脚本还是旧脚本
-SCRIPT_VER="2026-11-13-r1"
+SCRIPT_VER="2026-11-13-r2"
 
 # 签名
 KS_PASS="000777"
@@ -856,8 +856,11 @@ build_apk() {
         say "代理：未启用（PROXY_ON=1 可开启）"
     fi
 
-    if [ "$LINT" = "skip" ]; then
+    if [ "$LINT" = "skip" ] && [ -f "$LINT_INIT" ]; then
         ok "lint：跳过 lintVital（只做检查不改产物，最吃内存的一步）；LINT=on 可恢复"
+    elif [ "$LINT" = "skip" ]; then
+        warn "lint：想跳过但找不到 $LINT_INIT —— lintVital 会照常执行，内存峰值升高"
+        warn "      （脚本仍可用，只是慢；补回该文件即可恢复跳过）"
     else
         warn "lint：保留 lintVital 检查，内存峰值会明显升高"
     fi
