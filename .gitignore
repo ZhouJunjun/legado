@@ -25,3 +25,6 @@ package-lock.json
 *.p12
 !/.github/workflows/legado.jks
 keystore.properties
+
+# Rocky 打包脚本的缓存（pack.sh 落这里）
+.build-cache/

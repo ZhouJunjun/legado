@@ -1,0 +1,81 @@
+// 国内镜像加速 —— Gradle 初始化脚本（legado 版）
+//
+// 用法（pack.sh 会自动传）：
+//   gradle assembleRelease --init-script gradle/domestic-mirrors.init.gradle
+//
+// 为什么用 init 脚本而不是改 settings.gradle：
+//   工程里的仓库声明保持原样，镜像只在本机构建时前置，代码评审和上游同步都不受影响。
+//
+// 做什么：
+//   1. pluginManagement / dependencyResolutionManagement 两个仓库列表：
+//      「本地 R8 仓库 → 阿里云镜像 → 原仓库」，镜像命中就直接用，
+//      镜像里没有的构件会落到原仓库兜底，所以不会出现某个依赖镜像缺版本就编不过。
+//      jitpack 不动：阿里云没有它的代理，保持直连。
+//   2. pluginManagement.buildscript 的仓库列表：只前置本地 R8 仓库。
+//      legado 在这一层写死了 com.android.tools:r8:9.1.29，仓库是
+//      storage.googleapis.com/r8-releases/raw（国内基本不可达，各镜像均无此构件），
+//      所以只能靠 init_env.sh 预置到 $PREFIX/legado-maven，再用 file:// 仓库喂给 Gradle。
+//      阿里云不往这里加：它没有 r8，加了只是多两次 404。
+//
+// 本地 R8 仓库路径从环境变量 LEGADO_LOCAL_MAVEN 读（pack.sh 会 export）。
+
+def LOCAL_MAVEN = System.getenv('LEGADO_LOCAL_MAVEN')
+
+def MIRROR_URLS = [
+    'https://maven.aliyun.com/repository/google',        // google() 的镜像（AndroidX / AGP / Compose）
+    'https://maven.aliyun.com/repository/public',        // mavenCentral() + jcenter 的镜像
+    'https://maven.aliyun.com/repository/gradle-plugin', // gradlePluginPortal() 的镜像
+]
+
+def hasLocalMaven = {
+    return LOCAL_MAVEN != null && LOCAL_MAVEN.length() > 0 && new File(LOCAL_MAVEN).isDirectory()
+}
+
+// 完整改写：本地仓库 + 三个镜像在前，原仓库全部留作兜底，顺序不变
+def rewriteAll = { repositories, String tag ->
+    def originals = repositories.toList()
+
+    repositories.clear()
+    if (hasLocalMaven()) {
+        repositories.maven { repo ->
+            repo.name = "local-${tag}"
+            repo.url = LOCAL_MAVEN
+        }
+    }
+    MIRROR_URLS.eachWithIndex { mirrorUrl, index ->
+        repositories.maven { repo ->
+            repo.name = "mirror-${index}-${tag}"
+            repo.url = mirrorUrl
+        }
+    }
+    originals.each { repositories.add(it) }
+
+    if (System.getProperty('mirror.debug') != null) {
+        println "[mirror] ${tag}: " + repositories.toList().collect { it.name + '=' + it.url }.join(', ')
+    }
+}
+
+// R8 那层必须在 settings.gradle 执行前塞进去：pluginManagement.buildscript 的
+// classpath 是在 settings 求值过程中解析的，等到 settingsEvaluated 就晚了。
+// 这里只 add，不清空 —— 后面 settings.gradle 自己 append 的仓库天然排在我们后面。
+beforeSettings { settings ->
+    if (!hasLocalMaven()) {
+        return
+    }
+    try {
+        settings.pluginManagement.buildscript.repositories.maven { repo ->
+            repo.name = 'local-buildscript'
+            repo.url = LOCAL_MAVEN
+        }
+        if (System.getProperty('mirror.debug') != null) {
+            println "[mirror] buildscript: 前置 ${LOCAL_MAVEN}"
+        }
+    } catch (Throwable ignored) {
+        // 老版本 Gradle 没有这个入口，忽略即可
+    }
+}
+
+settingsEvaluated { settings ->
+    rewriteAll(settings.pluginManagement.repositories, 'plugin')
+    rewriteAll(settings.dependencyResolutionManagement.repositories, 'deps')
+}
