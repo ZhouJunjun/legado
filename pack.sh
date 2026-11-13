@@ -172,6 +172,8 @@ GRADLE_TMP_DIR="$CACHE_ROOT/tmp"               # Gradle 与子进程的临时文
 
 # 依赖仓库前置国内镜像的 init 脚本（不改 settings.gradle）
 MIRROR_INIT="$PROJECT_DIR/gradle/domestic-mirrors.init.gradle"
+# 跳过 lintVital 全家桶（-x 对带 flavor 的任务名有歧义，见 build_apk 注释）
+LINT_INIT="$PROJECT_DIR/gradle/skip-lint-vital.init.gradle"
 
 # R8（AGP 8.13.2 需要 9.1.29，官方只在 storage.googleapis.com 上，且极慢）
 # 随工程放在 third_party/maven 里，首次构建直接命中，不走网络。
@@ -608,14 +610,19 @@ gradle_with_progress() {
     fi
 
     # lintVital 只在 release 包里做 fatal 检查，不改产物，却要吃一大口堆；
-    # 默认跳过，需要时 LINT=on sh pack.sh 恢复
+    # 默认跳过，需要时 LINT=on sh pack.sh 恢复。
+    #
+    # 🔴 不能用 `-x lintVitalRelease`：工程有 productFlavors（flavor "app"），
+    #    真实任务名是 lintVitalAppRelease / lintVitalAnalyzeAppRelease /
+    #    lintVitalAnalyzeRelease / lintVitalReportAppRelease 四个。
+    #    `lintVitalRelease` 会被当成**驼峰缩写**去匹配，同时命中多个 ⇒ 直接报
+    #        Task 'lintVitalRelease' is ambiguous in root project 'legado'
+    #    且发生在任务选择阶段，还没开始编译。
+    #    改用 init 脚本按**名字前缀**禁用整个 lintVital* 族，与 flavor/buildType
+    #    数量无关，以后加 flavor 也不会再崩。
     local lint_args=()
-    if [ "$LINT" = "skip" ]; then
-        lint_args=(
-            -x lintVitalAnalyzeRelease
-            -x lintVitalReportRelease
-            -x lintVitalRelease
-        )
+    if [ "$LINT" = "skip" ] && [ -f "$LINT_INIT" ]; then
+        lint_args=(--init-script "$LINT_INIT")
     fi
 
     # 只打 arm 两种 ABI：走工程自带的 armOnly 属性，不改 build.gradle

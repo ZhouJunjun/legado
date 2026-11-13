@@ -1,0 +1,32 @@
+// 跳过 lintVital 全家桶任务（release 包只做 fatal 检查，不改产物，却最吃内存）。
+//
+// 🔴 为什么不能用 `-x lintVitalRelease`：
+//    工程有 productFlavors（dimension "mode" / flavor "app"），AGP 生成的 lint 任务
+//    是带 flavor 的真实名字：
+//        lintVitalAnalyzeAppRelease
+//        lintVitalAnalyzeRelease
+//        lintVitalAppRelease
+//        lintVitalReportAppRelease
+//    Gradle 会把 `lintVitalRelease` 当作**驼峰缩写**去匹配（允许省略中间段），
+//    结果同时命中多个候选，直接报：
+//        Task 'lintVitalRelease' is ambiguous in root project 'legado' and its subprojects
+//    而且这个报错发生在**任务选择阶段**，根本还没进编译。
+//
+// 🔴 为什么不硬编码那 4 个名字：
+//    以后加 flavor、升 AGP、改 buildTypes，任务名都会变，写死就再崩一次。
+//
+// 所以这里按**名字前缀**统一禁用，和 flavor / buildType 的数量无关。
+//
+// 时机选 projectsEvaluated：此刻 AGP 已在 afterEvaluate 里建好全部任务，
+// 而 task graph 还没构建 —— 在这一步把 enabled 置 false，Gradle 建图时就会把它们
+// 连同独占依赖一起排除，analyze 那步也不会偷偷跑起来。
+
+gradle.projectsEvaluated {
+    gradle.rootProject.allprojects { p ->
+        p.tasks.configureEach { t ->
+            if (t.name.startsWith('lintVital')) {
+                t.enabled = false
+            }
+        }
+    }
+}
